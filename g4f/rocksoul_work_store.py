@@ -363,7 +363,11 @@ class WorkItemStore:
                 "created_at": row["created_at"],
             }
             status_discontinuous = expected_sequence > 1 and row["from_status"] != previous_status
-            if row["sequence"] != expected_sequence or row["previous_hash"] != previous or status_discontinuous or self._event_hash(event) != row["event_hash"]:
+            try:
+                computed_event_hash = self._event_hash(event)
+            except (TypeError, ValueError):
+                return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "event_payload_invalid"}
+            if row["sequence"] != expected_sequence or row["previous_hash"] != previous or status_discontinuous or computed_event_hash != row["event_hash"]:
                 return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence}
             if row["event_type"] == "work.verification_recorded":
                 payload = event["payload"]
@@ -375,6 +379,22 @@ class WorkItemStore:
                 try:
                     result_payload = json.loads(record["result_json"])
                     evidence_payload = json.loads(record["evidence_json"])
+                    if not isinstance(result_payload, dict) or not isinstance(evidence_payload, list):
+                        raise ValueError("invalid verifier receipt shape")
+                    expected_columns = {
+                        "profile_id": record["profile_id"], "profile_version": record["profile_version"],
+                        "outcome": record["outcome"], "verifier_id": record["verifier_id"],
+                        "verifier_version": record["verifier_version"],
+                        "independence_group": record["independence_group"],
+                    }
+                    if any(result_payload.get(key) != value for key, value in expected_columns.items()):
+                        raise ValueError("verifier receipt columns do not match canonical result")
+                    if (record["work_id"] != work_id or record["criterion_id"] != payload.get("criterion_id")
+                            or record["profile_id"] != payload.get("profile_id")
+                            or record["profile_version"] != payload.get("profile_version")
+                            or record["outcome"] != payload.get("outcome")
+                            or record["artifact_digest"] != payload.get("artifact_digest")):
+                        raise ValueError("verifier receipt does not match lifecycle event")
                     verification_digest = hashlib.sha256(self._canonical({
                         "verification_id": record["verification_id"], "work_id": record["work_id"],
                         "criterion_id": record["criterion_id"], "profile_id": record["profile_id"],
