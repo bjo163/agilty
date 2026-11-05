@@ -330,20 +330,32 @@ class WorkItemStore:
 
     def verify_event_chain(self, work_id: str) -> dict[str, Any]:
         with self.db.connect() as conn:
-            item = conn.execute("SELECT status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
+            item = conn.execute("SELECT status,contract_json,contract_digest,schema_version FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
             if item is None:
                 return {"ok": False, "verified_events": 0, "failed_sequence": 1, "reason": "work_item_not_found"}
             rows = conn.execute("SELECT * FROM rocksoul_work_events WHERE work_id=? ORDER BY sequence", (work_id,)).fetchall()
             verification_rows = conn.execute("SELECT * FROM rocksoul_work_verifications WHERE work_id=?", (work_id,)).fetchall()
         verification_map = {entry["verification_id"]: entry for entry in verification_rows}
+        try:
+            contract = WorkItem.from_dict(json.loads(item["contract_json"]))
+        except (TypeError, ValueError, KeyError):
+            return {"ok": False, "verified_events": 0, "failed_sequence": 0, "reason": "contract_invalid"}
+        if contract.contract_digest != item["contract_digest"] or contract.schema_version != item["schema_version"]:
+            return {"ok": False, "verified_events": 0, "failed_sequence": 0, "reason": "contract_tampered"}
         previous = None
         previous_status = None
         referenced_verification_ids = set()
         for expected_sequence, row in enumerate(rows, start=1):
+            try:
+                event_payload = json.loads(row["payload_json"])
+            except (TypeError, ValueError):
+                return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "event_payload_invalid"}
+            if not isinstance(event_payload, dict):
+                return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "event_payload_invalid"}
             event = {
                 "event_id": row["event_id"], "work_id": row["work_id"], "sequence": row["sequence"],
                 "event_type": row["event_type"], "from_status": row["from_status"], "to_status": row["to_status"],
-                "payload": json.loads(row["payload_json"]), "previous_hash": row["previous_hash"],
+                "payload": event_payload, "previous_hash": row["previous_hash"],
                 "created_at": row["created_at"],
             }
             status_discontinuous = expected_sequence > 1 and row["from_status"] != previous_status
@@ -356,12 +368,15 @@ class WorkItemStore:
                 record = verification_map.get(verification_id)
                 if record is None:
                     return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_missing"}
-                verification_digest = hashlib.sha256(self._canonical({
-                    "result": json.loads(record["result_json"]),
-                    "evidence": json.loads(record["evidence_json"]),
-                    "artifact_digest": record["artifact_digest"],
-                    "duration_ms": record["duration_ms"],
-                }).encode("utf-8")).hexdigest()
+                try:
+                    result_payload = json.loads(record["result_json"])
+                    evidence_payload = json.loads(record["evidence_json"])
+                    verification_digest = hashlib.sha256(self._canonical({
+                        "result": result_payload, "evidence": evidence_payload,
+                        "artifact_digest": record["artifact_digest"], "duration_ms": record["duration_ms"],
+                    }).encode("utf-8")).hexdigest()
+                except (TypeError, ValueError):
+                    return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_invalid"}
                 if verification_digest != payload.get("verification_digest"):
                     return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_tampered"}
             previous = row["event_hash"]
