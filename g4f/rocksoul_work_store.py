@@ -458,13 +458,22 @@ class WorkItemStore:
                 })
         return {"items": items, "total": total, "limit": limit, "offset": offset}
 
-    def verify_event_chain(self, work_id: str) -> dict[str, Any]:
-        with self.db.connect() as conn:
-            item = conn.execute("SELECT status,contract_json,contract_digest,schema_version FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
-            if item is None:
-                return {"ok": False, "verified_events": 0, "failed_sequence": 1, "reason": "work_item_not_found"}
-            rows = conn.execute("SELECT * FROM rocksoul_work_events WHERE work_id=? ORDER BY sequence", (work_id,)).fetchall()
-            verification_rows = conn.execute("SELECT * FROM rocksoul_work_verifications WHERE work_id=?", (work_id,)).fetchall()
+    def verify_event_chain(self, work_id: str, *, connection: sqlite3.Connection | None = None) -> dict[str, Any]:
+        if connection is None:
+            with self.db.connect() as conn:
+                return self.verify_event_chain(work_id, connection=conn)
+        item = connection.execute(
+            "SELECT status,contract_json,contract_digest,schema_version FROM rocksoul_work_items WHERE work_id=?",
+            (work_id,),
+        ).fetchone()
+        if item is None:
+            return {"ok": False, "verified_events": 0, "failed_sequence": 1, "reason": "work_item_not_found"}
+        rows = connection.execute(
+            "SELECT * FROM rocksoul_work_events WHERE work_id=? ORDER BY sequence", (work_id,)
+        ).fetchall()
+        verification_rows = connection.execute(
+            "SELECT * FROM rocksoul_work_verifications WHERE work_id=?", (work_id,)
+        ).fetchall()
         verification_map = {entry["verification_id"]: entry for entry in verification_rows}
         try:
             contract = WorkItem.from_dict(json.loads(item["contract_json"]))
