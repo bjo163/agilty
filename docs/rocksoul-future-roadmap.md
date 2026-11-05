@@ -105,4 +105,4 @@ A roadmap item cannot be marked complete because code exists. It needs:
 - Existing g4f provider implementations remain the runtime substrate.
 - Existing F1–F7 foundations must remain backward compatible unless a migration is explicitly planned.
 - Arena production quality certification remains `NOT_CERTIFIED` until dataset provenance, licensing, contamination, evaluator, variance, and environment gates are met.
-- Adaptive routing, WorkGraph autonomy, provenance-aware memory, native Console outcome workflow, and additional verifier adapters remain future work. The shipped verifier engine currently supports artifact SHA-256 and a bounded JSON Schema subset only.
+- Adaptive routing, WorkGraph autonomy, provenance-aware memory, cryptographically attributable human approval, independent remote artifact acquisition, signed external evidence/verifier identity, rich evidence diff/export, and native outcome analytics remain future work. The current verifier engine executes five bounded deterministic adapters; the Console supports immutable profile registration and bounded artifact upload/verification. External source authenticity is not established.
