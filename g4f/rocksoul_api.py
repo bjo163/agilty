@@ -350,7 +350,7 @@ def create_app(db: RocksoulDB | None = None):
         result = ExecutionEngine(database).execute(request)
         if body.work_id:
             try:
-                work_items.attach_execution(body.work_id, result.request_id, result.outcome)
+                work_items.attach_execution(body.work_id, result.request_id, result.outcome, applied_budget=applied_budget)
             except WorkItemStoreError as exc:
                 raise HTTPException(status_code=409, detail=f"Execution completed but trace linkage failed: {exc}") from exc
         attempts = [{
