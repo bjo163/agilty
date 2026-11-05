@@ -64,7 +64,20 @@ The operator command `rocksoul-arena-production run-campaign` is available for l
 
 A passing Stage 4 implementation gate means the operator workflow is present and safety-tested. It does **not** mean a real dataset or live campaign has been reviewed or authorized.
 
-## Live production benchmark-pack activation gate
+## Stage 5 — Evidence audit/report gate
+
+- [x] Verify pack manifest and canonical Arena suite digests.
+- [x] Reconcile all run IDs, repeat indexes, target identity, environment metadata, and suite identity.
+- [x] Reconcile every case ID, weight, output digest, case score, pass/fail count, and weighted run score.
+- [x] Recompute campaign mean, population standard deviation, and variance decision.
+- [x] Fail closed for missing runs or tampered pack/run/campaign evidence.
+- [x] Produce deterministic reports scoped to one pack and optionally one exact target digest.
+- [x] Keep model quality certification explicitly disabled.
+- [x] Cover valid, tampered, missing, and multi-target report paths with offline tests.
+
+A green Stage 5 gate certifies the evidence-audit/report implementation only. It does not promote a live benchmark pack or infer a ranking across unlike targets.
+
+## Live production benchmark-pack activation gate## Live production benchmark-pack activation gate
 
 The contract being implemented does **not** by itself certify a live provider/model benchmark pack. Before any live benchmark is advertised as authoritative, all of the following must be satisfied with real evidence:
 
@@ -79,7 +92,7 @@ The contract being implemented does **not** by itself certify a live provider/mo
 
 ## Release decision
 
-The **F5 Arena deterministic foundation, offline evidence registry, and dual-opt-in campaign operator are GREEN** on Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd`. Manifest validation, exact artifact hash registration, persisted evidence readback, duplicate-key/non-finite JSON rejection, and installed-wheel command paths passed current-main gates. This does not certify real provider/model quality; live benchmark-pack activation remains deferred until real data, independent review, exact target revision, and repeated authorized campaign evidence exist.
+The **F5 Arena deterministic foundation, offline evidence registry, dual-opt-in campaign operator, and campaign evidence audit/report implementation are GREEN** on Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd`. Manifest validation, exact artifact hash registration, persisted evidence readback, duplicate-key/non-finite JSON rejection, and installed-wheel command paths passed current-main gates. This does not certify real provider/model quality; live benchmark-pack activation remains deferred until real data, independent review, exact target revision, and repeated authorized campaign evidence exist.
 
 No broad live-provider/model quality claim is certified until the live activation gate is fully satisfied. A production-contract implementation may merge to `main` without creating a new production release or changing the published live benchmark scope.
 

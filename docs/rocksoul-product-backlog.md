@@ -90,6 +90,12 @@ The production evidence CLI now has an explicitly authorized `run-campaign` path
 
 This is an operator capability, not a production quality certification. Real pack activation still requires the independent dataset, license, contamination, target-revision, and methodology reviews described in the Arena release gate.
 
+## F5 Stage 5 — Campaign evidence audit and certification reporting
+
+Stage 5 adds `verify-campaign` and `campaign-report`. The verifier reconciles the registered pack manifest and canonical immutable suite against every Arena run, every case result, score aggregates, target/environment evidence, and repeat policy. Reports group by exact target digest and include a deterministic report digest.
+
+The report's only certification field is intentionally `NOT_CERTIFIED`: integrity verification is not an independent dataset audit or a model-quality certification. Tampered evidence is marked rejected and is never silently repaired.
+
 ## Release rule
 
 Do not merge or market a candidate as certified while any mandatory final-head CI gate is red. F4 is certified only when the final candidate is green on dedicated ROCKSOUL Mesh CI, existing ROCKSOUL CI, and general Unittest. Do not treat legacy Mesh/Arena scaffolding as product readiness; F5's deterministic foundation and offline production-evidence operator are verified, while live benchmark activation remains independently gated.

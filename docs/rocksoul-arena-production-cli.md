@@ -12,6 +12,8 @@ rocksoul-arena-production list-packs [--limit <n>]
 rocksoul-arena-production list-campaigns [--pack-digest <digest>] [--limit <n>]
 rocksoul-arena-production show-campaign <campaign-id>
 rocksoul-arena-production fixture-campaign
+rocksoul-arena-production verify-campaign <campaign-id>
+rocksoul-arena-production campaign-report --pack-digest <sha256> [--target-digest <sha256>] [--limit <n>]
 rocksoul-arena-production run-campaign <manifest.json> --dataset-file <path> --provider <name> --model <model> --provider-revision <revision> --runtime-revision <revision> --network-mode <mode> --region <region> --confirm-live --confirm-pack-digest <digest>
 ```
 
@@ -126,6 +128,15 @@ ROCKSOUL_ALLOW_LIVE_ARENA=1 python -m g4f.rocksoul_arena_production_cli run-camp
 Provider credentials must be configured through the provider's existing supported configuration path; never put credentials in manifests or command-line arguments. Repeats run sequentially without automatic fallback or retries. A campaign outside the variance threshold is persisted but returns exit code 4 and `ok=false`. CI exercises this path with a fake provider only. A request-count cap does not guarantee monetary cost, and the provider timeout is a hint that some providers may interpret differently.
 
 The command is not wired into GitHub Actions, cron, startup, or the default test suite. No live campaign is started automatically.
+
+## Campaign evidence integrity and reports (Stage 5)
+
+- `verify-campaign <campaign-id>` reloads the immutable production pack and its canonical Arena suite, then reconciles the pack/suite digests, exact target and environment metadata, repeat indexes, case IDs, weights, output/result validity, weighted run scores, run timestamps, campaign score list, mean, population standard deviation, and variance decision.
+- The command returns exit code `0` only when all integrity checks pass; `3` means the campaign does not exist; `4` means evidence was rejected.
+- `campaign-report --pack-digest SHA256` creates a deterministic report for a single pack. Optional `--target-digest` keeps distinct provider/model targets from being mixed. `--limit` is bounded to 1–1000 campaigns.
+- Reports include a digest over the report content, per-target campaign statistics, verified/rejected evidence counts, and variance-acceptance counts.
+- Reports always use `quality_certification=NOT_CERTIFIED`. Evidence integrity and repeat stability do not independently certify dataset licensing, contamination, scientific methodology, or model quality.
+- A tampered or incomplete run is marked rejected; the auditor does not repair or rewrite historical evidence.
 
 ## Security and claim boundary
 

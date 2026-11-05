@@ -107,6 +107,8 @@ python -m g4f.rocksoul_arena_production_cli validate-pack pack.json --dataset-fi
 python -m g4f.rocksoul_arena_production_cli register-pack pack.json --dataset-file ./dataset.json
 python -m g4f.rocksoul_arena_production_cli list-packs
 python -m g4f.rocksoul_arena_production_cli list-campaigns
+python -m g4f.rocksoul_arena_production_cli verify-campaign <campaign-id>
+python -m g4f.rocksoul_arena_production_cli campaign-report --pack-digest <pack-sha256>
 ```
 
 The CLI does not invoke providers or make network calls. Its built-in `fixture-campaign` runs only synthetic offline cases. The registered pack is immutable by name/version; changing content requires a version bump. See [production CLI manifest and workflow](docs/rocksoul-arena-production-cli.md).

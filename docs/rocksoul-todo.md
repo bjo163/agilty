@@ -279,6 +279,26 @@ ROCKSOUL is the product/control-plane layer built on top of the existing g4f run
 - Scope: persist exact target/runtime/network/region evidence and all repeated Arena run IDs; report high-variance campaigns as unaccepted with a non-zero exit status.
 - Acceptance: readback contains the exact provider/model/revisions and observed environment; campaign evidence does not independently certify dataset licensing or contamination.
 
+## Stage 5 — Campaign evidence audit and certification reporting
+
+### RS-F5-013 — Immutable campaign integrity verifier
+- Status: `DONE`
+- Scope: reconcile each persisted campaign with the immutable pack manifest, canonical Arena suite, all constituent Arena runs, exact target/environment metadata, repeat ordering, case-level results, weighted scores, and timestamps.
+- Acceptance: a valid campaign verifies reproducibly; deleted runs, altered metadata, changed case weights/results, score drift, malformed repeats, or altered variance fields fail closed. The auditor never repairs stored evidence.
+- Implementation: `g4f/rocksoul_arena_production.py` (`ArenaProductionStore.verify_campaign`).
+
+### RS-F5-014 — Deterministic per-pack/per-target campaign reports
+- Status: `DONE`
+- Scope: aggregate campaign evidence per exact target without mixing different provider/model revisions; include integrity and variance acceptance counts and a deterministic report digest.
+- Acceptance: no-pack/no-evidence, verified, and rejected states have stable machine-readable status and exit codes. Reports always state `quality_certification=NOT_CERTIFIED`.
+- Implementation: `ArenaProductionStore.campaign_report` and production CLI commands.
+
+### RS-F5-015 — Offline regression and release gate
+- Status: `DONE`
+- Scope: test verifier acceptance and tamper rejection, report grouping/filtering/determinism, unknown campaign behavior, and CLI exit codes without external requests.
+- Acceptance: default Arena/ROCKSOUL CI and general Unittest exercise evidence audit; CodeQL and wheel/entrypoint gates remain green.
+- Tests: `tests/test_rocksoul_arena_production.py`, `tests/test_rocksoul_arena_production_cli.py`.
+
 ## Current-main recovery note
 
-Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its current-main verification. Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed Arena CI [#42030958020](https://github.com/bjo163/agilty/actions/runs/42030958020), ROCKSOUL CI plus package/wheel smoke [#42030958117](https://github.com/bjo163/agilty/actions/runs/42030958117), general Unittest on Python 3.10 and 3.15 [#42030958126](https://github.com/bjo163/agilty/actions/runs/42030958126), and CodeQL Advanced [#42030958006](https://github.com/bjo163/agilty/actions/runs/42030958006). The dedicated Mesh CI remained green from Stage 2 [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726); Stage 3 changed no Mesh implementation, and the broad ROCKSOUL suite re-ran offline Mesh contracts across all four OS/Python lanes. The final Stage 3 implementation outcome was 13 successful checks, 2 intentionally skipped distribution-publication checks, zero failures, and zero pending checks. Live production benchmark packs remain deferred.
+Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its current-main verification. Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed Arena CI [#42030958020](https://github.com/bjo163/agilty/actions/runs/42030958020), ROCKSOUL CI plus package/wheel smoke [#42030958117](https://github.com/bjo163/agilty/actions/runs/42030958117), general Unittest on Python 3.10 and 3.15 [#42030958126](https://github.com/bjo163/agilty/actions/runs/42030958126), and CodeQL Advanced [#42030958006](https://github.com/bjo163/agilty/actions/runs/42030958006). The dedicated Mesh CI remained green from Stage 2 [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726); Stage 3 changed no Mesh implementation, and the broad ROCKSOUL suite re-ran offline Mesh contracts across all four OS/Python lanes. The final Stage 3 implementation outcome was 13 successful checks, 2 intentionally skipped distribution-publication checks, zero failures, and zero pending checks. Live production benchmark packs remain deferred. Stage 5 verifies stored campaign integrity and produces per-target reports, but does not independently certify dataset licensing, contamination, methodology, or model quality.

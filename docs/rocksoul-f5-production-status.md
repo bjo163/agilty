@@ -23,6 +23,12 @@ The local `run-campaign` command can execute an already registered pack against 
 
 The network mode and provider/model/runtime revision strings are operator-supplied attestations, not independently verified measurements. The command's presence does not certify a real dataset or model result.
 
+## Stage 5 evidence audit/report capability
+
+The `verify-campaign` command reconciles campaign data with the immutable pack and canonical suite records, including every repeat run, case result, score aggregate, target, environment, and variance decision. The `campaign-report` command aggregates by exact target digest, emits a deterministic report digest, and surfaces integrity rejection. Both paths are offline and are covered by synthetic regression tests.
+
+This verifies persistence integrity; it does not independently audit source licensing or contamination, and it never sets model quality to certified.
+
 ## Live activation status
 
 Live production benchmark packs remain `DEFERRED` until a real dataset and real campaign satisfy every live activation item in `docs/rocksoul-arena-release-gate.md`.
