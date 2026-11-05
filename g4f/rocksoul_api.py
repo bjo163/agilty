@@ -6,9 +6,13 @@ not implement or own provider adapters.
 import hmac
 import json
 import os
+from dataclasses import asdict
 from typing import Any
 
 from .rocksoul_control import ProviderControlStore
+from .rocksoul_mesh import MeshStore, MeshError
+from .rocksoul_arena import ArenaStore
+from .rocksoul_arena_production import ArenaProductionStore
 from .rocksoul_db import RocksoulDB
 from .rocksoul_execution import ExecutionEngine, ExecutionRequest
 from .rocksoul_execution_store import ExecutionTraceStore
@@ -118,6 +122,63 @@ def create_app(db: RocksoulDB | None = None):
             "requirements": [item.name for item in required],
             "candidates": ExplainableRouter(database).explain(model, required, allowed),
         }
+
+
+    @app.get("/api/v1/traces")
+    def list_traces(limit: int = 50, offset: int = 0):
+        limit=max(1,min(limit,200)); offset=max(0,min(offset,100000))
+        with database.connect() as conn:
+            rows=conn.execute("""SELECT r.request_id,r.model,r.started_at,r.finished_at,r.status,r.attempt_count,
+                r.final_error_class,p.name selected_provider FROM execution_runs r
+                LEFT JOIN providers p ON p.id=r.selected_provider_id
+                ORDER BY r.started_at DESC,r.request_id DESC LIMIT ? OFFSET ?""",(limit,offset)).fetchall()
+            total=int(conn.execute("SELECT COUNT(*) FROM execution_runs").fetchone()[0])
+        return {"items":[dict(row) for row in rows],"total":total,"limit":limit,"offset":offset}
+
+    @app.get("/api/v1/mesh")
+    def mesh_overview(limit: int = 100):
+        mesh=MeshStore(database); limit=max(1,min(limit,200))
+        with database.connect() as conn:
+            leases=conn.execute("SELECT id,request_id,node_id,status,created_at,expires_at,finished_at,error FROM mesh_leases ORDER BY created_at DESC LIMIT ?",(limit,)).fetchall()
+        return {"status":mesh.status(),"nodes":[asdict(node) for node in mesh.list_nodes()],"leases":[dict(row) for row in leases],"events":mesh.events(limit=limit)}
+
+    @app.post("/api/v1/mesh/nodes/{node_id}/state")
+    def set_mesh_node_state(node_id: str, body: dict[str, Any], x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        if set(body)-{"state","reason"}: raise HTTPException(status_code=422,detail="Unknown fields")
+        state=str(body.get("state","")).upper()
+        if state not in {"ACTIVE","DRAINING","QUARANTINED","OFFLINE"}: raise HTTPException(status_code=422,detail="Unsupported operator node state")
+        try: node=MeshStore(database).set_state(node_id,state,str(body.get("reason") or "operator_action")[:300])
+        except MeshError as exc: raise HTTPException(status_code=404,detail="Mesh node not found or state invalid") from exc
+        return {"node_id":node.node_id,"state":node.state,"reason":node.reason}
+
+    @app.get("/api/v1/arena")
+    def arena_overview(limit: int = 100):
+        arena=ArenaStore(database); production=ArenaProductionStore(arena); limit=max(1,min(limit,200))
+        return {"status":arena.status(),"production":production.status(),"packs":production.list_packs(limit=limit),
+                "campaigns":production.list_campaigns(limit=limit),"runs":arena.list_runs(limit=limit),"leaderboard":arena.leaderboard()}
+
+    @app.get("/api/v1/arena/campaigns/{campaign_id}/verify")
+    def verify_arena_campaign(campaign_id: str):
+        result=ArenaProductionStore(ArenaStore(database)).verify_campaign(campaign_id)
+        if result is None: raise HTTPException(status_code=404,detail="Arena campaign not found")
+        return result
+
+    @app.get("/api/v1/arena/packs/{pack_digest}/report")
+    def arena_pack_report(pack_digest: str,target_digest: str|None=None):
+        return ArenaProductionStore(ArenaStore(database)).campaign_report(pack_digest,target_digest)
+
+    @app.post("/api/v1/providers/{provider}/control")
+    def control_provider(provider: str,body: dict[str, Any],x_rocksoul_api_key: str|None=Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        if set(body)-{"action","reason"}: raise HTTPException(status_code=422,detail="Unknown fields")
+        action=str(body.get("action","")).lower(); reason=str(body.get("reason") or "operator_action")[:300]
+        store=ProviderControlStore(database)
+        actions={"activate":store.active,"quarantine":store.quarantine,"probe":store.begin_recovery,"readmit":store.re_admit}
+        if action not in actions: raise HTTPException(status_code=422,detail="Unsupported provider control action")
+        try: state=actions[action](provider,reason)
+        except (KeyError,ValueError) as exc: raise HTTPException(status_code=404,detail="Provider not found") from exc
+        return {"provider":state.provider,"state":state.state,"reason":state.reason}
 
     @app.get("/api/v1/traces/{request_id}")
     def get_trace(request_id: str):
