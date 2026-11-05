@@ -32,11 +32,16 @@ This roadmap converts the strategic blueprint into staged, small work packages. 
 
 - [ ] Build a normalized outcome evidence record linked to request and trace IDs.
 - [ ] Define task families and outcome labels with provenance.
-- [ ] Implement deterministic verification adapters for JSON/schema outputs.
+- [x] Implement a bounded deterministic JSON Schema verification adapter; unsupported schema keywords fail closed.
 - [ ] Implement code verification adapter: tests, lint, type checks, build receipts.
 - [ ] Implement factual research verifier: source-to-claim mapping and freshness metadata.
+- [x] Implement artifact SHA-256 verification against exact supplied bytes with provenance-bearing evidence.
+- [x] Persist verifier executions and evidence receipts; link canonical receipt digests into the append-only WorkItem event chain and block acceptance on tampering.
+- [x] Correlate optional WorkItem IDs with execution request IDs at the API boundary without changing legacy execution request behavior.
+- [ ] Add native `execution_runs.work_id` linkage and operator Console outcome workflow.
+- [ ] Add executable pytest, HTTP-contract, and source-provenance verifier adapters plus authenticated external source receipts.
 - [ ] Add verifier findings and severity to trace readback.
-- [ ] Add accepted/unverified/rejected outcome states to API.
+- [x] Add accepted/unverified/rejected WorkItem lifecycle states and guarded transitions to API; execution transport success remains separate.
 - [ ] Add outcome-focused metrics to Console.
 - [ ] Add historical outcome query interface for routing.
 - [ ] Prototype contextual retrieval router in shadow mode.
@@ -100,4 +105,4 @@ A roadmap item cannot be marked complete because code exists. It needs:
 - Existing g4f provider implementations remain the runtime substrate.
 - Existing F1–F7 foundations must remain backward compatible unless a migration is explicitly planned.
 - Arena production quality certification remains `NOT_CERTIFIED` until dataset provenance, licensing, contamination, evaluator, variance, and environment gates are met.
-- Adaptive routing, outcome verification engine, WorkGraph autonomy, and provenance-aware memory are future work until implemented and independently tested.
+- Adaptive routing, WorkGraph autonomy, provenance-aware memory, native Console outcome workflow, and additional verifier adapters remain future work. The shipped verifier engine currently supports artifact SHA-256 and a bounded JSON Schema subset only.
