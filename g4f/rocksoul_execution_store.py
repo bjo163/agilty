@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS execution_runs (
     selected_provider_id INTEGER,
     attempt_count INTEGER NOT NULL DEFAULT 0,
     final_error_class TEXT,
+    work_id TEXT,
     FOREIGN KEY(selected_provider_id) REFERENCES providers(id) ON DELETE SET NULL
 );
 CREATE TABLE IF NOT EXISTS execution_attempts (
@@ -48,6 +49,10 @@ class ExecutionTraceStore:
         self.db = db
         with self.db.connect() as conn:
             conn.executescript(EXECUTION_SCHEMA)
+            columns = {str(row["name"]) for row in conn.execute("PRAGMA table_info(execution_runs)")}
+            if "work_id" not in columns:
+                conn.execute("ALTER TABLE execution_runs ADD COLUMN work_id TEXT")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_execution_runs_work ON execution_runs(work_id)")
 
     def _ids(self, provider: str, model: str) -> tuple[int, int]:
         return self.db.provider_id(provider), self.db.upsert_model(model)
