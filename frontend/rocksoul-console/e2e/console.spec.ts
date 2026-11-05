@@ -13,7 +13,7 @@ test("operator can sign in",async({page})=>{
   const loginResponse=page.waitForResponse(response=>response.url().includes("/api/auth/login")&&response.request().method()==="POST");
   await page.getByRole("button",{name:"AUTHENTICATE"}).click();
   const response=await loginResponse;
-  expect(response.status(),await response.text()).toBe(200);
+  expect(response.status()).toBe(200);
   await expect(page).toHaveURL("http://127.0.0.1:3100/");
   await expect(page.getByRole("heading",{name:"Overview"})).toBeVisible();
   const session=await page.request.get("/api/auth/session");
