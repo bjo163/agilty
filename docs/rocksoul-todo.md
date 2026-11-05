@@ -338,14 +338,18 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 
 ### Latest-main verification — 2026-11-05
 
-- HEAD: `15512baa1c72654522a4ff5f4ff5d9bed2502671`.
-- All Stage 7 implementation and follow-up fixes are committed directly to `main`; no feature branches or PRs.
-- Previous Console CI run #42066121542 failed at lint. Root causes: malformed Playwright URL regex, explicit `any` lint error, and raw anchor navigation to logout. These have been corrected on main.
-- Next.js/React security updates: Next.js and eslint-config-next pinned to 15.5.29, the official November 3, 2026 Maintenance LTS security release. React and React DOM pinned to 19.1.2.
-- Latest Console CI #42068250365: queued (includes lint, production build, Playwright Chromium smoke tests, Docker Compose config validation).
-- Latest Unittest #42068250134: queued. Previous Unittest #42066242622: in progress at last inspection.
-- ROCKSOUL CI #42066242548: all four Windows/Ubuntu Python 3.10/3.13 test lanes passed; wheel/sdist validation passed.
-- CodeQL #42068257466: queued.
-- PyPI distribution publication skipped (no release publication requested).
-- Vercel deployment is not the deployment target. Docker Compose/Coolify runtime deployment remains unperformed; Compose config validation is in CI.
-- Do not mark Stage 7 release acceptance green until latest Console CI, Unittest and CodeQL complete successfully.
+- Final inspected HEAD: `eb890d385d87001657506857916394723d80e02e` on `main`.
+- Work was committed directly to `main`; no feature branch or pull request was created.
+- Stage 7 Console baseline: `COMPLETE` for the defined product scope. Legacy HTML routes remain available. Route-by-route migration of every legacy HTML-only screen remains a separate compatibility backlog and is not claimed as completed.
+- Console CI #42072227021: `SUCCESS` on the final inspected HEAD. Lint, Next.js production build, Playwright Chromium browser tests (2/2), and Docker Compose configuration validation all passed: https://github.com/bjo163/agilty/actions/runs/42072227021
+- General Unittest #42072227074: `SUCCESS` on the final inspected HEAD; Python 3.10 and Python 3.15 test lanes passed: https://github.com/bjo163/agilty/actions/runs/42072227074
+- CodeQL Advanced #42072226852: `SUCCESS` on the final inspected HEAD: https://github.com/bjo163/agilty/actions/runs/42072226852
+- Backend ROCKSOUL CI #42068321403: all Windows/Ubuntu Python 3.10/3.13 lanes plus wheel/sdist validation passed on the immediately preceding backend candidate. Subsequent changes were limited to Console frontend/auth/startup, workflow configuration, and documentation; no backend runtime/API source changed: https://github.com/bjo163/agilty/actions/runs/42068321403
+- Security baseline: Next.js and eslint-config-next pinned to 15.5.29; React and React DOM pinned to 19.1.2.
+- Console authentication smoke test covers unauthenticated redirect, Operator login, successful session creation, and authenticated landing page.
+- Standalone startup now copies `.next/static` and optional `public` assets into the standalone runtime before starting, preventing unhydrated pages in production-style smoke tests.
+- Docker Compose topology validates successfully. `.env.rocksoul.example` provides placeholders only; real credentials must be created and configured privately.
+- PyPI distribution publication was skipped; no package release was requested.
+- A live Coolify deployment was not performed because no deployment target, domain/DNS, or production secrets were supplied. The Compose topology is validated and documented, but runtime deployment must not be represented as completed.
+- Arena production quality certification remains `NOT_CERTIFIED`; the separate production dataset/methodology gate remains deferred.
+
