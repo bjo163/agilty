@@ -13,7 +13,7 @@ from typing import Any, Mapping
 
 from .rocksoul_contracts import WorkItem, WorkStatus, validate_status_transition
 from .rocksoul_db import RocksoulDB
-from .rocksoul_verification import EvidenceRecord, VerificationOutcome, VerificationProfileError, VerificationResult
+from .rocksoul_verification import EvidenceRecord, VerificationOutcome, VerificationProfileError
 from .rocksoul_verification_store import VerificationProfileStore
 from .rocksoul_verifier_engine import VerificationEngine, VerificationExecution
 
@@ -215,6 +215,8 @@ class WorkItemStore:
                 raise WorkItemStoreError("verifier artifact digest is invalid")
             if isinstance(execution.duration_ms, bool) or not isinstance(execution.duration_ms, (int, float)) or not math.isfinite(execution.duration_ms) or execution.duration_ms < 0:
                 raise WorkItemStoreError("verifier duration must be finite and non-negative")
+            if len({entry.evidence_id for entry in execution.evidence}) != len(execution.evidence):
+                raise WorkItemStoreError("evidence IDs must be unique within a verifier execution")
             if any(entry.digest != execution.artifact_digest for entry in execution.evidence):
                 raise WorkItemStoreError("evidence digest must match the verified artifact bytes")
             if any(entry.verifier_id != result.verifier_id or entry.verifier_version != result.verifier_version for entry in execution.evidence):
