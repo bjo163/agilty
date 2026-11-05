@@ -108,5 +108,32 @@ class VerificationEngineTests(unittest.TestCase):
         self.assertEqual(result.result.outcome, VerificationOutcome.FAIL)
 
 
+    def test_numeric_schema_bounds_reject_non_finite_and_boolean_values(self):
+        profile = self.profile("json_schema", "json_validation")
+        for schema in (
+            {"type": "object", "properties": {"value": {"type": "number", "minimum": float("inf")}}},
+            {"type": "object", "properties": {"value": {"type": "number", "maximum": float("nan")}}},
+            {"type": "object", "properties": {"value": {"type": "number", "minimum": True}}},
+        ):
+            with self.subTest(schema=schema), self.assertRaises(ValueError):
+                self.engine.verify(
+                    profile, b'{"value":1}', source="artifact://json/bad-bound", schema=schema,
+                )
+
+    def test_numeric_schema_bounds_enforce_valid_ranges(self):
+        profile = self.profile("json_schema", "json_validation")
+        valid = self.engine.verify(
+            profile, b'{"value":3}', source="artifact://json/range-valid",
+            schema={"type": "object", "properties": {"value": {"type": "number", "minimum": 1, "maximum": 5}}},
+        )
+        invalid = self.engine.verify(
+            profile, b'{"value":8}', source="artifact://json/range-invalid",
+            schema={"type": "object", "properties": {"value": {"type": "number", "minimum": 1, "maximum": 5}}},
+        )
+        self.assertEqual(valid.result.outcome, VerificationOutcome.PASS)
+        self.assertEqual(invalid.result.outcome, VerificationOutcome.FAIL)
+
+
+
 if __name__ == "__main__":
     unittest.main()
