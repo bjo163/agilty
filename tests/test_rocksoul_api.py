@@ -271,6 +271,15 @@ class RocksoulApiTests(unittest.TestCase):
                 json={"expected_status": "ready", "target_status": "running"},
             )
             self.assertEqual(running.status_code, 200, running.text)
+            late_body = {**body, "nonce": secrets.token_hex(16)}
+            late_canonical = json.dumps(late_body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            late_signature = hmac.new(secret.encode(), late_canonical.encode(), "sha256").hexdigest()
+            late = self.client.post(
+                "/api/v1/work-items/approval-api-work/approval",
+                headers={**headers, "X-ROCKSOUL-Approval-Signature": late_signature},
+                json=late_body,
+            )
+            self.assertEqual(late.status_code, 409)
             detail = self.client.get("/api/v1/work-items/approval-api-work", headers=headers)
             self.assertTrue(any(event["event_type"] == "work.approval_recorded" for event in detail.json()["events"]))
             chain = self.client.get("/api/v1/work-items/approval-api-work/verify-chain", headers=headers)
