@@ -396,12 +396,45 @@ class ArenaProductionStore:
 
     def verify_campaign(self, campaign_id: str) -> dict[str, Any] | None:
         """Reconcile a persisted campaign against its immutable pack and every Arena run."""
-        campaign = self.get_campaign(campaign_id)
-        if campaign is None:
+        with self.arena.db.connect() as conn:
+            raw_campaign = conn.execute(
+                "SELECT * FROM arena_campaigns WHERE id=?",
+                (campaign_id,),
+            ).fetchone()
+        if raw_campaign is None:
             return None
-
+        campaign = dict(raw_campaign)
         checks: list[dict[str, Any]] = []
-        errors: list[str] = []
+        for column, field_name, expected_type, default in (
+            ("target_json", "target", dict, {}),
+            ("environment_json", "environment", dict, {}),
+            ("run_ids_json", "run_ids", list, []),
+            ("scores_json", "scores", list, []),
+        ):
+            try:
+                decoded = json.loads(campaign.pop(column))
+                decode_ok = isinstance(decoded, expected_type)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                decoded = default
+                decode_ok = False
+            if not decode_ok:
+                decoded = default
+            campaign[field_name] = decoded
+            self._audit_check(
+                checks,
+                f"campaign_{field_name}_json",
+                decode_ok,
+                f"stored campaign {field_name} must be valid {expected_type.__name__} JSON",
+            )
+        variance_raw = campaign.get("variance_accepted")
+        variance_valid = type(variance_raw) is int and variance_raw in (0, 1)
+        campaign["variance_accepted"] = bool(variance_raw)
+        self._audit_check(
+            checks,
+            "campaign_variance_flag",
+            variance_valid,
+            "stored variance_accepted must be the integer 0 or 1",
+        )
         pack_row = None
         with self.arena.db.connect() as conn:
             pack_row = conn.execute(
@@ -535,17 +568,24 @@ class ArenaProductionStore:
             if isinstance(item, dict) and isinstance(item.get("case_id"), str)
         }
         for index, run_id in enumerate(run_ids):
-            run = self.arena.get_run(str(run_id))
+            try:
+                run = self.arena.get_run(str(run_id))
+            except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                self._audit_check(checks, f"run_{index + 1}_decode", False, f"Arena run evidence cannot be decoded: {exc}")
+                continue
             if run is None:
                 self._audit_check(checks, f"run_{index + 1}_exists", False, f"Arena run {run_id!r} is missing")
                 continue
 
             run_metadata = run.get("metadata", {})
+            metadata_mapping_ok = isinstance(run_metadata, dict)
+            if not metadata_mapping_ok:
+                run_metadata = {}
             expected_run_target = (
                 f"{target.get('provider')}:{target.get('model')}@{target.get('revision')}"
                 if isinstance(target, dict) else ""
             )
-            metadata_ok = (
+            metadata_ok = metadata_mapping_ok and (
                 run_metadata.get("production_benchmark") is True
                 and run_metadata.get("pack_digest") == pack_digest
                 and run_metadata.get("pack_name") == pack_name
@@ -572,9 +612,13 @@ class ArenaProductionStore:
             )
 
             results = run.get("results", [])
+            results_list_ok = isinstance(results, list)
+            if not results_list_ok:
+                results = []
             result_ids = [item.get("case_id") for item in results if isinstance(item, dict)]
             results_shape_ok = (
-                len(results) == len(expected_cases)
+                results_list_ok
+                and len(results) == len(expected_cases)
                 and len(result_ids) == len(results)
                 and set(result_ids) == set(expected_cases)
                 and len(set(result_ids)) == len(result_ids)
@@ -743,18 +787,31 @@ class ArenaProductionStore:
         by_target: dict[str, list[dict[str, Any]]] = {}
         for item in campaigns:
             by_target.setdefault(str(item["target_digest"]), []).append(item)
+        audits_by_id = {item["campaign_id"]: item for item in audits}
         target_summaries = []
         for digest, items in sorted(by_target.items()):
-            means = [float(item["score_mean"]) for item in items]
+            verified_means: list[float] = []
+            for item in items:
+                audit = audits_by_id.get(item["id"])
+                try:
+                    score_mean_value = float(item["score_mean"])
+                except (TypeError, ValueError, OverflowError):
+                    continue
+                if audit and audit["integrity_verified"] and math.isfinite(score_mean_value) and 0.0 <= score_mean_value <= 100.0:
+                    verified_means.append(score_mean_value)
             target_summaries.append({
                 "target_digest": digest,
                 "campaign_count": len(items),
-                "mean_score_across_campaigns": statistics.fmean(means) if means else 0.0,
-                "min_campaign_score": min(means) if means else 0.0,
-                "max_campaign_score": max(means) if means else 0.0,
-                "variance_accepted_campaigns": sum(bool(item["variance_accepted"]) for item in items),
                 "integrity_verified_campaigns": sum(
                     1 for audit in audits if audit["target_digest"] == digest and audit["integrity_verified"]
+                ),
+                "campaigns_in_score_aggregate": len(verified_means),
+                "mean_score_across_verified_campaigns": statistics.fmean(verified_means) if verified_means else None,
+                "min_verified_campaign_score": min(verified_means) if verified_means else None,
+                "max_verified_campaign_score": max(verified_means) if verified_means else None,
+                "variance_accepted_campaigns": sum(
+                    1 for item in items
+                    if audits_by_id.get(item["id"], {}).get("integrity_verified") and bool(item["variance_accepted"])
                 ),
             })
         audits_by_id = {item["campaign_id"]: item for item in audits}
@@ -780,8 +837,16 @@ class ArenaProductionStore:
                 {
                     "campaign_id": item["id"],
                     "target_digest": item["target_digest"],
-                    "score_mean": item["score_mean"],
-                    "score_stddev": item["score_stddev"],
+                    "score_mean": (
+                        float(item["score_mean"])
+                        if isinstance(item["score_mean"], (int, float)) and math.isfinite(float(item["score_mean"]))
+                        else None
+                    ),
+                    "score_stddev": (
+                        float(item["score_stddev"])
+                        if isinstance(item["score_stddev"], (int, float)) and math.isfinite(float(item["score_stddev"]))
+                        else None
+                    ),
                     "variance_accepted": bool(item["variance_accepted"]),
                     "integrity_status": audits_by_id.get(item["id"], {}).get("integrity_status", "MISSING"),
                 }

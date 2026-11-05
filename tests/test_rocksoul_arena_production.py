@@ -246,6 +246,28 @@ class RocksoulArenaProductionTests(unittest.TestCase):
         self.assertEqual(filtered["campaigns"][0]["campaign_id"], first.campaign_id)
         self.assertEqual(filtered["campaigns"][0]["target_digest"], first.target_digest)
 
+
+    def test_verifier_rejects_malformed_campaign_json_without_raising(self):
+        store = self.make_store()
+        campaign = store.run_campaign(self.pack(runs=2), self.target(), self.environment(), lambda case: case.expected)
+        with store.arena.db.connect() as conn:
+            conn.execute("UPDATE arena_campaigns SET run_ids_json=? WHERE id=?", ("not-json", campaign.campaign_id))
+        audit = store.verify_campaign(campaign.campaign_id)
+        self.assertFalse(audit["integrity_verified"])
+        self.assertIn("campaign_run_ids_json", audit["failed_checks"])
+
+    def test_campaign_report_handles_non_finite_or_missing_stored_statistics(self):
+        store = self.make_store()
+        pack = self.pack(runs=2)
+        campaign = store.run_campaign(pack, self.target(), self.environment(), lambda case: case.expected)
+        with store.arena.db.connect() as conn:
+            conn.execute("UPDATE arena_campaigns SET score_mean=NULL WHERE id=?", (campaign.campaign_id,))
+        report = store.campaign_report(pack.digest)
+        self.assertEqual(report["report_status"], "EVIDENCE_REJECTED")
+        self.assertEqual(report["integrity_rejected_campaigns"], 1)
+        self.assertIsNone(report["campaigns"][0]["score_mean"])
+        self.assertEqual(report["targets"][0]["campaigns_in_score_aggregate"], 0)
+
     def test_campaign_report_rejects_tampered_evidence_and_unknown_pack(self):
         store = self.make_store()
         pack = self.pack(runs=2)
