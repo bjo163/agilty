@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import hmac
 import json
 import os
@@ -334,21 +336,67 @@ class RocksoulApiTests(unittest.TestCase):
             "deadline_at": None,
             "human_approval_required": False,
         }
+        profile = {
+            "schema_version": 1,
+            "profile_id": "export.artifact",
+            "version": 1,
+            "adapter_id": "artifact_digest",
+            "evidence_requirements": [{
+                "evidence_type": "artifact_digest",
+                "minimum_count": 1,
+                "require_digest": True,
+                "require_source": True,
+            }],
+            "severity": "error",
+            "independence_group": "export-tests",
+            "deterministic": True,
+            "side_effect_free": True,
+            "timeout_seconds": 5,
+        }
         with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
             created = self.client.post("/api/v1/work-items", headers=headers, json=contract)
             self.assertEqual(created.status_code, 200)
+            registered = self.client.post("/api/v1/verification-profiles", headers=headers, json=profile)
+            self.assertEqual(registered.status_code, 200, registered.text)
+            for current, target in (("pending", "planning"), ("planning", "ready"),
+                                    ("ready", "running"), ("running", "verifying")):
+                moved = self.client.post(
+                    "/api/v1/work-items/evidence-export-work/transitions",
+                    headers=headers,
+                    json={"expected_status": current, "target_status": target},
+                )
+                self.assertEqual(moved.status_code, 200, moved.text)
+            for artifact in (b"artifact-version-one", b"artifact-version-two"):
+                digest = hashlib.sha256(artifact).hexdigest()
+                verified = self.client.post(
+                    "/api/v1/work-items/evidence-export-work/criteria/artifact/verify",
+                    headers=headers,
+                    json={
+                        "profile_id": "export.artifact",
+                        "profile_version": 1,
+                        "artifact_base64": base64.b64encode(artifact).decode("ascii"),
+                        "source": "artifact://export-tests/" + digest,
+                        "expected_sha256": digest,
+                    },
+                )
+                self.assertEqual(verified.status_code, 200, verified.text)
+                self.assertEqual(verified.json()["outcome"], "pass")
             no_auth = self.client.get("/api/v1/work-items/evidence-export-work/evidence-bundle")
             diff = self.client.get("/api/v1/work-items/evidence-export-work/evidence-diff", headers=headers)
             bundle = self.client.get("/api/v1/work-items/evidence-export-work/evidence-bundle", headers=headers)
         self.assertEqual(no_auth.status_code, 401)
         self.assertEqual(diff.status_code, 200)
-        self.assertEqual(diff.json()["criteria"], {})
+        criterion = diff.json()["criteria"]["artifact"]
+        self.assertEqual(criterion["attempt_count"], 2)
+        self.assertTrue(criterion["changed"])
+        self.assertNotEqual(criterion["previous"]["artifact_digest"], criterion["latest"]["artifact_digest"])
         self.assertEqual(bundle.status_code, 200)
         self.assertEqual(bundle.json()["bundle_schema_version"], 1)
         self.assertTrue(bundle.json()["integrity"]["ok"])
+        self.assertEqual(len(bundle.json()["work_item"]["verifications"]), 2)
         self.assertIn("verifier_receipts", bundle.json()["contents"])
         self.assertIn("Metadata-only export", bundle.json()["trust_boundary"])
-
+        self.assertNotIn("artifact_base64", bundle.text)
 
 if __name__ == "__main__":
     unittest.main()
