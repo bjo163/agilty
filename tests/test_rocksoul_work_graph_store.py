@@ -53,6 +53,8 @@ class WorkGraphStoreTests(unittest.TestCase):
             self.store.list(limit=101)
         with self.assertRaises(WorkGraphStoreError):
             self.store.list(offset=-1)
+        with self.assertRaises(WorkGraphStoreError):
+            self.store.list(offset=1_000_001)
 
     def test_detects_event_payload_tampering(self):
         self.store.create(self.graph)
