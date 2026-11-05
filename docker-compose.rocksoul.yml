@@ -1,0 +1,44 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: frontend/rocksoul-console/Dockerfile.api
+    environment:
+      ROCKSOUL_API_HOST: 0.0.0.0
+      ROCKSOUL_API_PORT: 8765
+      ROCKSOUL_API_KEY: ${ROCKSOUL_API_KEY:?Set ROCKSOUL_API_KEY}
+      LOCALAPPDATA: /data
+    volumes: [rocksoul-data:/data]
+    expose: ["8765"]
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/healthz',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+  console:
+    build:
+      context: ./frontend/rocksoul-console
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      ROCKSOUL_API_INTERNAL_URL: http://api:8765
+      ROCKSOUL_API_KEY: ${ROCKSOUL_API_KEY:?Set ROCKSOUL_API_KEY}
+      ROCKSOUL_CONSOLE_ADMIN_PASSWORD: ${ROCKSOUL_CONSOLE_ADMIN_PASSWORD:?Set ROCKSOUL_CONSOLE_ADMIN_PASSWORD}
+      ROCKSOUL_CONSOLE_OPERATOR_PASSWORD: ${ROCKSOUL_CONSOLE_OPERATOR_PASSWORD:?Set ROCKSOUL_CONSOLE_OPERATOR_PASSWORD}
+      ROCKSOUL_CONSOLE_SESSION_SECRET: ${ROCKSOUL_CONSOLE_SESSION_SECRET:?Set ROCKSOUL_CONSOLE_SESSION_SECRET}
+    ports: ["${ROCKSOUL_CONSOLE_PORT:-3000}:3000"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    restart: unless-stopped
+volumes:
+  rocksoul-data:
