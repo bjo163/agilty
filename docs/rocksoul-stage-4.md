@@ -11,7 +11,7 @@ Close the operational gap between Stage 3's offline evidence registry and an int
 3. Require a previously registered immutable pack and an exact `--confirm-pack-digest` match.
 4. Re-hash the exact local dataset artifact immediately before any provider request.
 5. Pin execution to one exact provider and model; reject provider chains and do not use adaptive fallback/retries.
-6. Require explicit provider/model revision, runtime revision, region, and observed network mode.
+6. Require explicit provider/model revision, runtime revision, region, and operator-declared network mode.
 7. Check the pack's network, Python, and OS requirements before the first provider call.
 8. Validate every text-only prompt before starting; cap prompt length, max tokens, timeout hint, and total provider request count.
 9. Persist every repeated Arena run and campaign with exact target and observed environment evidence.
@@ -25,6 +25,7 @@ Close the operational gap between Stage 3's offline evidence registry and an int
 - Credentials are read only through the provider's existing supported configuration path; they must not be stored in manifests or command-line arguments.
 - A request-count cap is not a guarantee of monetary cost; providers may price tokens differently or enforce their own quotas.
 - Provider timeout is passed as a provider hint; providers that ignore it may have different transport behavior.
+- Network mode, region, and provider/model/runtime revision strings are operator-supplied attestations; the CLI does not independently prove a provider's deployed revision or inspect the real network path.
 - A green Stage 4 gate certifies the operator workflow, not dataset licensing, contamination, scientific methodology, or real provider quality.
 
 ## Acceptance checklist

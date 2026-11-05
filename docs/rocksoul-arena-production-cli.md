@@ -12,6 +12,7 @@ rocksoul-arena-production list-packs [--limit <n>]
 rocksoul-arena-production list-campaigns [--pack-digest <digest>] [--limit <n>]
 rocksoul-arena-production show-campaign <campaign-id>
 rocksoul-arena-production fixture-campaign
+rocksoul-arena-production run-campaign <manifest.json> --dataset-file <path> --provider <name> --model <model> --provider-revision <revision> --runtime-revision <revision> --network-mode <mode> --region <region> --confirm-live --confirm-pack-digest <digest>
 ```
 
 The same commands are available from a source checkout through `python -m g4f.rocksoul_arena_production_cli`.
@@ -108,7 +109,7 @@ Before the first provider request it verifies all of the following:
 2. The manifest is structurally valid and its digest exactly matches `--confirm-pack-digest`.
 3. The exact pack digest is already registered; registration is never performed by `run-campaign`.
 4. The supplied local dataset file still matches the registered manifest SHA-256.
-5. The observed network mode matches the pack requirement; Python and OS requirements are checked where specified.
+5. The operator-declared network mode matches the pack requirement; Python and OS requirements are checked where specified. The network path itself is not independently inspected—the operator attests to that part of the execution environment.
 6. Every test input is valid text-only chat input before any provider call is made.
 7. `case_count × repeat_runs` is within `--max-requests` (1–1000). Each request also has a caller-set `--max-tokens` cap and a provider timeout hint.
 

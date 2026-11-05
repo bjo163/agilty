@@ -60,7 +60,7 @@ The same production pack `(name, version)` is immutable. Changed evidence requir
 
 ## Stage 4 — Controlled campaign execution gate
 
-The operator command `rocksoul-arena-production run-campaign` is available for locally authorized, exact-target execution. It requires dual opt-in, prior immutable registration, exact pack-digest confirmation, repeat artifact SHA-256 verification, explicit network/environment/target evidence, and a hard total request cap. It calls one provider directly and does not use adaptive fallback or automatic retries. CI validates this flow using a fake provider only.
+The operator command `rocksoul-arena-production run-campaign` is available for locally authorized, exact-target execution. It requires dual opt-in, prior immutable registration, exact pack-digest confirmation, repeat artifact SHA-256 verification, explicit operator-declared network mode and environment/target metadata, and a hard total request cap. It calls one provider directly and does not use adaptive fallback or automatic retries. CI validates this flow using a fake provider only.
 
 A passing Stage 4 implementation gate means the operator workflow is present and safety-tested. It does **not** mean a real dataset or live campaign has been reviewed or authorized.
 

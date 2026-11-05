@@ -17,6 +17,12 @@ The structural production-evidence contract is `CERTIFIED` for merge. PR #20 can
 
 This certification covers the evidence contract, persistence model, deterministic tests, cross-platform Arena CI, and regression compatibility. It does not certify a specific live benchmark pack.
 
+## Stage 4 operator capability
+
+The local `run-campaign` command can execute an already registered pack against one exact provider/model after dual opt-in, digest confirmation, dataset re-hash, Python/OS/network-mode preflight, and provider-request budgeting. It persists declared provider/model/runtime revisions and environment metadata. CI verifies the route using a fake provider only; no real campaign is part of certification.
+
+The network mode and provider/model/runtime revision strings are operator-supplied attestations, not independently verified measurements. The command's presence does not certify a real dataset or model result.
+
 ## Live activation status
 
 Live production benchmark packs remain `DEFERRED` until a real dataset and real campaign satisfy every live activation item in `docs/rocksoul-arena-release-gate.md`.
