@@ -98,6 +98,7 @@ class RocksoulWorkApiTests(unittest.TestCase):
         readback = self.client.get("/api/v1/work-items/api-exec-1", headers=self.headers).json()
         self.assertEqual(readback["status"], "running")
         self.assertEqual(readback["execution_links"][0]["request_id"], "request-work-1")
+        self.assertEqual(readback["execution_links"][0]["applied_budget"]["max_attempts"], 2)
 
     def test_work_item_execution_denies_missing_capability(self):
         contract = {
