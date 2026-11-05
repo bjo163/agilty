@@ -28,7 +28,7 @@ The graph contract is persisted by `g4f/rocksoul_work_graph_store.py` in the exi
 
 The current integration adds a read-only authoritative readiness resolver: every referenced WorkItem must exist and pass its own event/evidence-chain verification. Only an `accepted` dependency with a valid chain satisfies downstream dependencies. Missing or terminal-failed dependencies block descendants; pending dependencies leave descendants waiting; corrupt graph/WorkItem evidence fails closed. This resolver does not mutate WorkItems or dispatch work.
 
-Authenticated API endpoints now support graph create/list/read and readiness readback. The offline `rocksoul-work-graph` CLI supports create/list/get/verify/readiness. These are control-plane inspection and registration surfaces, not a worker scheduler. The implementation still does not create child WorkItems, reserve aggregate budgets, dispatch execution, or propagate cancellation.
+Authenticated API endpoints now support graph create/list/read and readiness readback. The offline `rocksoul-work-graph` CLI supports create/list/get/verify/readiness. The Console WorkGraph tab provides administrator graph registration, graph listing, and read-only readiness visualization including ready/waiting/blocked/integrity-error states. These are control-plane inspection and registration surfaces, not a worker scheduler. The implementation still does not create child WorkItems, reserve aggregate budgets, dispatch execution, or propagate cancellation.
 
 ## Scheduling semantics
 
@@ -57,7 +57,7 @@ The initial graph model intentionally avoids implicit fan-out and dynamic graph 
 - cancellation, deadline propagation, and bounded retry semantics;
 - failure/uncertain propagation and explicit optional-node policy;
 - artifact handoff using content digests rather than mutable paths;
-- Console graph visualization with blocked/ready/running/accepted states;
+- [x] Console graph registry and read-only readiness visualization (ready/waiting/blocked/integrity-error);
 - integration tests proving no child can bypass its own approval and verification gates.
 
 Until those gates pass, WorkGraph is **FOUNDATION**, not an execution orchestrator.
