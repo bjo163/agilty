@@ -135,5 +135,34 @@ class VerificationEngineTests(unittest.TestCase):
 
 
 
+    def test_pytest_junit_receipt_passes_only_when_all_cases_pass(self):
+        report = b'<testsuite name="pytest" tests="2"><testcase classname="sample" name="test_one"/><testcase classname="sample" name="test_two"/></testsuite>'
+        result = self.engine.verify(
+            self.profile("pytest", "test_receipt"), report, source="ci://run/123/junit.xml",
+        )
+        self.assertEqual(result.result.outcome, VerificationOutcome.PASS)
+        self.assertEqual(result.evidence[0].evidence_type, "test_receipt")
+        self.assertEqual(result.evidence[0].digest, hashlib.sha256(report).hexdigest())
+
+    def test_pytest_junit_failures_and_skips_never_pass(self):
+        failed = b'<testsuite><testcase name="test_bad"><failure message="assertion"/></testcase></testsuite>'
+        skipped = b'<testsuite><testcase name="test_skip"><skipped/></testcase></testsuite>'
+        profile = self.profile("pytest", "test_receipt")
+        self.assertEqual(self.engine.verify(profile, failed, source="ci://failed").result.outcome, VerificationOutcome.FAIL)
+        self.assertEqual(self.engine.verify(profile, skipped, source="ci://skipped").result.outcome, VerificationOutcome.INCONCLUSIVE)
+
+    def test_pytest_junit_rejects_dtd_entities_and_empty_reports(self):
+        profile = self.profile("pytest", "test_receipt")
+        for report in (
+            b'<!DOCTYPE testsuite [<!ENTITY x "expanded">]><testsuite><testcase name="x"/></testsuite>',
+            b'<testsuite/>',
+            b'<not-a-suite><testcase name="x"/></not-a-suite>',
+        ):
+            with self.subTest(report=report):
+                result = self.engine.verify(profile, report, source="ci://invalid")
+                self.assertNotEqual(result.result.outcome, VerificationOutcome.PASS)
+
+
+
 if __name__ == "__main__":
     unittest.main()
