@@ -58,6 +58,12 @@ The versioned manifest parser rejects duplicate keys at all depths, non-finite v
 
 The same production pack `(name, version)` is immutable. Changed evidence requires a version bump. A high-variance campaign remains persisted but is not accepted as stable production evidence.
 
+## Stage 4 — Controlled campaign execution gate
+
+The operator command `rocksoul-arena-production run-campaign` is available for locally authorized, exact-target execution. It requires dual opt-in, prior immutable registration, exact pack-digest confirmation, repeat artifact SHA-256 verification, explicit network/environment/target evidence, and a hard total request cap. It calls one provider directly and does not use adaptive fallback or automatic retries. CI validates this flow using a fake provider only.
+
+A passing Stage 4 implementation gate means the operator workflow is present and safety-tested. It does **not** mean a real dataset or live campaign has been reviewed or authorized.
+
 ## Live production benchmark-pack activation gate
 
 The contract being implemented does **not** by itself certify a live provider/model benchmark pack. Before any live benchmark is advertised as authoritative, all of the following must be satisfied with real evidence:
@@ -73,7 +79,7 @@ The contract being implemented does **not** by itself certify a live provider/mo
 
 ## Release decision
 
-The **F5 Arena deterministic foundation and offline production-evidence operator integration are GREEN** on Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd`. Manifest validation, exact artifact hash registration, persisted evidence readback, duplicate-key/non-finite JSON rejection, and installed-wheel command paths passed current-main gates. This does not certify real provider/model quality; live benchmark-pack activation remains deferred until real data, independent review, exact target revision, and repeated authorized campaign evidence exist.
+The **F5 Arena deterministic foundation, offline evidence registry, and dual-opt-in campaign operator are GREEN** on Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd`. Manifest validation, exact artifact hash registration, persisted evidence readback, duplicate-key/non-finite JSON rejection, and installed-wheel command paths passed current-main gates. This does not certify real provider/model quality; live benchmark-pack activation remains deferred until real data, independent review, exact target revision, and repeated authorized campaign evidence exist.
 
 No broad live-provider/model quality claim is certified until the live activation gate is fully satisfied. A production-contract implementation may merge to `main` without creating a new production release or changing the published live benchmark scope.
 

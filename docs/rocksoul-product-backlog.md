@@ -84,6 +84,12 @@ The canonical deterministic Arena foundation, production evidence contract, and 
 
 **Live production benchmark packs remain DEFERRED.** The repository does not invent a real dataset, contamination audit, provider/model revision, production environment, or repeated live campaign. These must be supplied and executed with explicit operator authorization before broad quality claims can be made.
 
+## F5 Stage 4 — Controlled campaign execution
+
+The production evidence CLI now has an explicitly authorized `run-campaign` path. It is pinned to one provider/model, re-verifies the local dataset hash, requires a previously registered immutable pack, records exact target/runtime/environment information, and bounds the total provider request count. It requires both a CLI confirmation flag and `ROCKSOUL_ALLOW_LIVE_ARENA=1`. CI uses a fake provider; live requests are never automatic.
+
+This is an operator capability, not a production quality certification. Real pack activation still requires the independent dataset, license, contamination, target-revision, and methodology reviews described in the Arena release gate.
+
 ## Release rule
 
 Do not merge or market a candidate as certified while any mandatory final-head CI gate is red. F4 is certified only when the final candidate is green on dedicated ROCKSOUL Mesh CI, existing ROCKSOUL CI, and general Unittest. Do not treat legacy Mesh/Arena scaffolding as product readiness; F5's deterministic foundation and offline production-evidence operator are verified, while live benchmark activation remains independently gated.

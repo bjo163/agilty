@@ -260,6 +260,25 @@ ROCKSOUL is the product/control-plane layer built on top of the existing g4f run
 - Acceptance: built wheel installs without dependency resolution and all ROCKSOUL entrypoints start or return help/status successfully.
 - Workflow: `.github/workflows/rocksoul-ci.yml` and `.github/workflows/rocksoul-arena-ci.yml`.
 
+## Stage 4 — Operator-authorized campaign execution
+
+### RS-F5-010 — Explicit live campaign operator command
+- Status: `DONE`
+- Scope: execute one exact registered production pack against one exact g4f provider/model without adaptive fallback or hidden target changes.
+- Acceptance: live execution is denied unless both `--confirm-live` and `ROCKSOUL_ALLOW_LIVE_ARENA=1` are present; the exact pack digest is reconfirmed; the pack must already be registered; the local dataset artifact is SHA-256 verified again; provider/model/runtime revisions, region, and network mode are explicit.
+- Implementation: `g4f/rocksoul_arena_production_cli.py`.
+
+### RS-F5-011 — Preflight and cost-safety envelope
+- Status: `DONE`
+- Scope: validate every text-only test prompt before provider calls, match the declared OS/Python/network environment, enforce max tokens, provider timeout hint, and total request count.
+- Acceptance: malformed prompts, environment mismatch, artifact mismatch, unregistered pack, missing confirmation, or request-budget overflow fail before provider invocation. No automatic retries or provider fallback are used.
+- Tests: `tests/test_rocksoul_arena_production_cli.py` uses a fake provider; no real provider is contacted by CI.
+
+### RS-F5-012 — Persist and classify campaign evidence
+- Status: `DONE`
+- Scope: persist exact target/runtime/network/region evidence and all repeated Arena run IDs; report high-variance campaigns as unaccepted with a non-zero exit status.
+- Acceptance: readback contains the exact provider/model/revisions and observed environment; campaign evidence does not independently certify dataset licensing or contamination.
+
 ## Current-main recovery note
 
 Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its current-main verification. Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed Arena CI [#42030958020](https://github.com/bjo163/agilty/actions/runs/42030958020), ROCKSOUL CI plus package/wheel smoke [#42030958117](https://github.com/bjo163/agilty/actions/runs/42030958117), general Unittest on Python 3.10 and 3.15 [#42030958126](https://github.com/bjo163/agilty/actions/runs/42030958126), and CodeQL Advanced [#42030958006](https://github.com/bjo163/agilty/actions/runs/42030958006). The dedicated Mesh CI remained green from Stage 2 [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726); Stage 3 changed no Mesh implementation, and the broad ROCKSOUL suite re-ran offline Mesh contracts across all four OS/Python lanes. The final Stage 3 implementation outcome was 13 successful checks, 2 intentionally skipped distribution-publication checks, zero failures, and zero pending checks. Live production benchmark packs remain deferred.

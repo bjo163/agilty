@@ -1,6 +1,6 @@
 # ROCKSOUL Arena Production CLI
 
-The `rocksoul-arena-production` command manages production benchmark evidence metadata. It is intentionally offline: it does not discover providers, invoke model endpoints, perform live verification, or execute remote campaigns.
+The `rocksoul-arena-production` command manages production benchmark evidence metadata. All read-only registry commands and the synthetic fixture are offline. The separately gated `run-campaign` subcommand is the only path that can invoke one real provider, and it requires an explicit operator opt-in.
 
 ## Commands
 
@@ -97,6 +97,34 @@ The artifact is hashed in 1 MiB chunks; the file is not loaded wholly into memor
 `list-campaigns` may be filtered by pack digest. `show-campaign` returns the exact target identity, observed runtime/OS/Python/network environment, repeated scores, variance decision, and underlying Arena run IDs.
 
 `fixture-campaign` creates an end-to-end synthetic campaign using an embedded deterministic dataset fixture, a synthetic target, and `network_mode=offline`. It exists for installation and persistence verification only; it is not a real provider benchmark.
+
+## Explicitly authorized campaign execution (Stage 4)
+
+`run-campaign` is the only command that invokes a real provider. It pins the campaign to one exact provider/model; the adaptive router, fallback chain, and automatic retries are not used.
+
+Before the first provider request it verifies all of the following:
+
+1. `--confirm-live` is present **and** the operator process has `ROCKSOUL_ALLOW_LIVE_ARENA=1`.
+2. The manifest is structurally valid and its digest exactly matches `--confirm-pack-digest`.
+3. The exact pack digest is already registered; registration is never performed by `run-campaign`.
+4. The supplied local dataset file still matches the registered manifest SHA-256.
+5. The observed network mode matches the pack requirement; Python and OS requirements are checked where specified.
+6. Every test input is valid text-only chat input before any provider call is made.
+7. `case_count × repeat_runs` is within `--max-requests` (1–1000). Each request also has a caller-set `--max-tokens` cap and a provider timeout hint.
+
+Example (only in an intentionally configured operator environment):
+
+```bash
+ROCKSOUL_ALLOW_LIVE_ARENA=1 python -m g4f.rocksoul_arena_production_cli run-campaign pack.json \\
+  --dataset-file ./dataset.json --provider Openai --model gpt-4o-mini \\
+  --provider-revision <provider-or-model-revision> --runtime-revision <git-commit> \\
+  --network-mode online --region <region> --max-tokens 256 --max-requests 30 \\
+  --confirm-live --confirm-pack-digest <registered-pack-sha256>
+```
+
+Provider credentials must be configured through the provider's existing supported configuration path; never put credentials in manifests or command-line arguments. Repeats run sequentially without automatic fallback or retries. A campaign outside the variance threshold is persisted but returns exit code 4 and `ok=false`. CI exercises this path with a fake provider only. A request-count cap does not guarantee monetary cost, and the provider timeout is a hint that some providers may interpret differently.
+
+The command is not wired into GitHub Actions, cron, startup, or the default test suite. No live campaign is started automatically.
 
 ## Security and claim boundary
 

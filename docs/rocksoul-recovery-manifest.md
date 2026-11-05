@@ -40,6 +40,12 @@ The Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` is now cu
 
 Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed Arena CI [#42030958020](https://github.com/bjo163/agilty/actions/runs/42030958020), ROCKSOUL CI plus package/wheel smoke [#42030958117](https://github.com/bjo163/agilty/actions/runs/42030958117), general Unittest on Python 3.10 and 3.15 [#42030958126](https://github.com/bjo163/agilty/actions/runs/42030958126), and CodeQL Advanced [#42030958006](https://github.com/bjo163/agilty/actions/runs/42030958006). The dedicated Mesh CI remained green from Stage 2 [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726); Stage 3 changed no Mesh implementation, and the broad ROCKSOUL suite re-ran offline Mesh contracts across all four OS/Python lanes. The final Stage 3 implementation outcome was 13 successful checks, 2 intentionally skipped publication checks, and zero failures or pending checks. Historical release records remain immutable; live provider campaigns and release publication stay separately gated.
 
+## Stage 4 operator extension
+
+- A dual-opt-in `run-campaign` command is added for one exact provider/model and one previously registered pack.
+- The command requires environment opt-in plus CLI confirmation, reconfirms the pack digest, rehashes the exact local artifact, checks observed environment requirements, and enforces a request-count cap.
+- Its tests use a fake g4f client/provider. No live provider campaign was executed and no production-quality claim is certified.
+
 ## Explicitly out of scope
 
 - Rebranding or changing the repository/package identity.
@@ -54,5 +60,6 @@ Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed 
 
 - `g4f/rocksoul_arena_production_cli.py` — offline-only production manifest validation, artifact verification, immutable pack registration, and campaign readback.
 - `tests/test_rocksoul_arena_production_cli.py` — manifest, hash mismatch, registration, fixture campaign, and readback contracts.
-- `docs/rocksoul-arena-production-cli.md` and `docs/rocksoul-stage-3.md` — operator schema, safety boundary, and acceptance record.
+- `docs/rocksoul-arena-production-cli.md` and `docs/rocksoul-stage-3.md` — Stage 3 operator schema and acceptance record.
+- `docs/rocksoul-stage-4.md` — dual-opt-in campaign execution and preflight acceptance.
 - Built-wheel entrypoint smoke checks prevent source-tree imports from masking packaging errors.

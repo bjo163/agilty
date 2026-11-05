@@ -64,7 +64,7 @@ bin/dev-pipeline init --project g4f.dev
 ROCKSOUL is an optional control-plane layer within this g4f fork. Its modules live in `g4f/rocksoul_*.py`; the existing `g4f.client` and provider implementations remain the execution substrate. Do not duplicate provider adapters or silently change upstream runtime behavior while modifying ROCKSOUL.
 
 - Run deterministic ROCKSOUL tests with `python3 -m unittest discover -s tests -p 'test_rocksoul_*.py' -v`.
-- Keep unit tests offline; provider probes, capability verification, live execution, and Mesh remote mutations must be explicitly invoked.
+- Keep unit tests offline; provider probes, capability verification, live execution, and Mesh remote mutations must be explicitly invoked. F5 `run-campaign` must keep its dual opt-in, registered-pack/hash/environment preflight, exact target pinning, and request cap; never call a real provider from CI.
 - F4 Mesh and F5 Arena have separate CI workflows and release/activation gates. Historical release evidence does not certify a changed `main` head.
 - `setup.py` is the active packaging configuration on `main`. Do not add or assume `pyproject.toml`/uv-based packaging without a separate migration plan.
 

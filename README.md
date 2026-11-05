@@ -100,7 +100,7 @@ python -m g4f.rocksoul_arena_production_cli --help
 
 The `rocksoul`, `rocksoul-db`, `rocksoul-mesh`, `rocksoul-arena`, `rocksoul-arena-production`, and `rocksoul-legacy` console scripts are also registered by `setup.py` when the package is installed. Live provider probes and Mesh node mutations are explicit operator actions; unit tests and CI use local deterministic fixtures by default.
 
-The production-evidence registry has a separate offline-safe operator CLI. Validate a manifest first, then register it only with the exact local dataset artifact whose SHA-256 is declared in that manifest:
+The production-evidence registry has a separate operator CLI. Validation, registration, listing, readback, and the synthetic fixture campaign remain offline. Stage 4 adds a separately gated live command: it requires both `--confirm-live` and `ROCKSOUL_ALLOW_LIVE_ARENA=1`, a previously registered pack, an exact confirmed digest, repeat dataset hash verification, explicit provider/model/runtime revisions, network mode and region, and a hard request-count budget. It is not run by CI or automatically. Validate a manifest first, then register it only with the exact local dataset artifact whose SHA-256 is declared in that manifest:
 
 ```bash
 python -m g4f.rocksoul_arena_production_cli validate-pack pack.json --dataset-file ./dataset.json
