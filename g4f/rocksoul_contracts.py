@@ -245,7 +245,7 @@ class WorkItem:
             raise ContractValidationError("human_approval_required must be a boolean")
         elif self.risk in {RiskLevel.HIGH, RiskLevel.CRITICAL} and not self.human_approval_required:
             raise ContractValidationError("high and critical risk work always requires human approval")
-        if isinstance(self.schema_version, bool) or self.schema_version != 1:
+        if isinstance(self.schema_version, bool) or not isinstance(self.schema_version, int) or self.schema_version != 1:
             raise ContractValidationError("unsupported WorkItem schema_version")
         object.__setattr__(self, "work_id", work_id)
         object.__setattr__(self, "goal", goal)
