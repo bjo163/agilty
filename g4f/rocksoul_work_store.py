@@ -142,6 +142,8 @@ class WorkItemStore:
                     result = results[criterion_id]
                     if not isinstance(result, dict):
                         raise WorkItemStoreError("each verification result must be an object")
+                    if set(result) - {"outcome", "profile_id", "profile_version", "verifier_id", "verifier_version", "independence_group", "evidence", "findings"}:
+                        raise WorkItemStoreError("verification result contains unknown fields")
                     try:
                         profile = registry.resolve(result.get("profile_id"), result.get("profile_version"))
                         if profile.adapter_id != required[criterion_id].verification_method:
@@ -157,12 +159,19 @@ class WorkItemStore:
                         if len(evidence) != len(raw_evidence):
                             raise WorkItemStoreError("verification evidence contains invalid entries")
                         registry.validate_evidence(profile, evidence)
+                        if len({entry.evidence_id for entry in evidence}) != len(evidence):
+                            raise WorkItemStoreError("evidence IDs must be unique within a criterion result")
+                        if any(entry.verifier_id != result.get("verifier_id") or entry.verifier_version != result.get("verifier_version") for entry in evidence):
+                            raise WorkItemStoreError("evidence verifier identity must match the verification result")
+                        findings = result.get("findings", [])
+                        if not isinstance(findings, list):
+                            raise WorkItemStoreError("verification findings must be an array")
                         VerificationResult(
                             outcome=VerificationOutcome.PASS, profile_id=profile.profile_id,
                             profile_version=profile.version, verifier_id=result.get("verifier_id"),
                             verifier_version=result.get("verifier_version"),
                             independence_group=result.get("independence_group"),
-                            findings=tuple(result.get("findings", [])),
+                            findings=tuple(findings),
                         )
                     except (VerificationProfileError, TypeError, ValueError) as exc:
                         raise WorkItemStoreError(f"required criterion verification is invalid: {exc}") from exc
