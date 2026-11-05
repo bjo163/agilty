@@ -284,7 +284,7 @@ class WorkItemStore:
                 "duration_ms": execution.duration_ms, "evidence": evidence_payload, "created_at": created_at,
             }
 
-    def attach_execution(self, work_id: str, request_id: str, transport_outcome: str, *, applied_budget: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    def attach_execution(self, work_id: str, request_id: str, transport_outcome: str, *, applied_budget: Mapping[str, Any] | None = None, attempt_count: int = 0, duration_ms: float = 0.0) -> dict[str, Any]:
         chain = self.verify_event_chain(work_id)
         if chain.get("reason") == "work_item_not_found":
             raise WorkItemStoreError("WorkItem not found")
@@ -296,6 +296,10 @@ class WorkItemStore:
             raise WorkItemStoreError("transport_outcome must be a non-empty identifier")
         if applied_budget is not None and not isinstance(applied_budget, Mapping):
             raise WorkItemStoreError("applied_budget must be an object")
+        if isinstance(attempt_count, bool) or not isinstance(attempt_count, int) or not 0 <= attempt_count <= 100:
+            raise WorkItemStoreError("attempt_count must be an integer in [0, 100]")
+        if isinstance(duration_ms, bool) or not isinstance(duration_ms, (int, float)) or not math.isfinite(duration_ms) or duration_ms < 0:
+            raise WorkItemStoreError("duration_ms must be finite and non-negative")
         budget_payload = dict(applied_budget or {})
         try:
             if len(self._canonical(budget_payload).encode("utf-8")) > 4096:
@@ -319,12 +323,15 @@ class WorkItemStore:
                     continue
                 if event["work_id"] != work_id:
                     raise WorkItemStoreError("execution request is already linked to another WorkItem")
-                if linked.get("transport_outcome") != transport_outcome or linked.get("applied_budget", {}) != budget_payload:
+                if (linked.get("transport_outcome") != transport_outcome
+                        or linked.get("applied_budget", {}) != budget_payload
+                        or linked.get("attempt_count", 0) != attempt_count
+                        or linked.get("duration_ms", 0.0) != duration_ms):
                     raise WorkItemStoreError("execution request was already linked with different outcome or budget")
                 return self.get(work_id, connection=conn)
             self._append_event(
                 conn, work_id, "work.execution_linked", row["status"], row["status"],
-                {"request_id": request_id, "transport_outcome": transport_outcome, "applied_budget": budget_payload},
+                {"request_id": request_id, "transport_outcome": transport_outcome, "applied_budget": budget_payload, "attempt_count": attempt_count, "duration_ms": duration_ms},
             )
             return self.get(work_id, connection=conn)
 
