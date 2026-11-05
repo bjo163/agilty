@@ -1,9 +1,11 @@
 import {test,expect} from "@playwright/test";
 
-test("unauthenticated visitors are redirected",async({page})=>{
+test("unauthenticated visitors are redirected and cannot approve WorkItems",async({page})=>{
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading",{name:"Enter the control plane."})).toBeVisible();
+  const approval=await page.request.post("/api/approvals/untrusted-work",{data:{decision:"approved"}});
+  expect(approval.status()).toBe(403);
 });
 
 test("operator can sign in",async({page})=>{
