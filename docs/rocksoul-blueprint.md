@@ -278,7 +278,7 @@ The flywheel must not learn from unverified outputs as if they were ground truth
 | Arena | Deterministic foundation and campaign integrity verifier | Provenance-rich suites, adversarial tests, held-out evaluations |
 | API | Versioned product API with authenticated WorkItem lifecycle and verification-profile registry endpoints | Execution-correlated evidence, verifier execution receipts, policy lifecycle APIs |
 | Console | Operator console foundation | Outcome cockpit, approval queue, policy lab |
-| Verification | Versioned immutable profile contracts, evidence requirements, trusted-caller attestation validation; executable adapters not yet shipped | Artifact-bound deterministic adapters, independent evaluators, signed/provenance-checked receipts |
+| Verification | Executable artifact SHA-256 and bounded JSON Schema adapters with persisted evidence receipts | Code/test, HTTP-contract, source-provenance and independent evaluators; authenticated external receipts |
 | Learning | Evidence exists; adaptive policy is not yet certified | Offline learning, shadow tests, controlled promotion |
 
 Do not represent planned capabilities as shipped. Current Arena reports remain `quality_certification=NOT_CERTIFIED` until production dataset and methodology gates are satisfied.
@@ -286,9 +286,11 @@ Do not represent planned capabilities as shipped. Current Arena reports remain `
 
 ### Implemented trust foundation and hard boundary
 
-The current Work Contract slice persists immutable WorkItem contract digests and hash-chained lifecycle events in SQLite. State changes use atomic expected-status transitions. Verification profiles are versioned, immutable, persisted, and restricted to declared adapter identifiers; the API and CLI provide operator readback and controlled mutation.
+The current Work Contract slice persists immutable WorkItem contract digests, hash-chained lifecycle events, immutable versioned verification profiles, and verifier execution/evidence receipts in SQLite. State changes use atomic expected-status transitions. The API and `rocksoul-work` CLI expose contract management, profile registration, verification, execution trace linkage, and event-chain readback.
 
-A WorkItem may only enter `ACCEPTED` from `VERIFYING` with a registered profile version, matching criterion method, PASS outcome, and structured evidence metadata. This validates a trusted-caller attestation contract only. The system does not yet execute verifier adapters, re-hash artifact bytes, or cryptographically authenticate the verifier. Therefore `ACCEPTED` at this stage must be interpreted as an operator-attested lifecycle state, not independent machine certification. The next gate is executable adapters and artifact-bound receipts, followed by ExecutionEngine correlation.
+The built-in verifier executes `artifact_digest` and a bounded JSON Schema subset against the exact bytes supplied by the caller. Acceptance is possible only from `VERIFYING`, after the latest persisted verifier result for every required criterion is PASS and the receipt/event chain validates. Caller-supplied PASS strings are rejected. Optional WorkItem execution linkage records provider transport outcome separately and never auto-accepts the task.
+
+Hard boundary: the verifier does not prove that the supplied source URI is truthful or authenticate a remote artifact/verifier identity. `pytest`, `http_contract`, and `source_provenance` remain unimplemented adapter declarations. Native execution_runs linkage and Console workflow remain open. Arena production quality certification remains `NOT_CERTIFIED`.
 
 ## 9. Delivery strategy
 
