@@ -422,3 +422,39 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - The verifier hashes the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact.
 - Console WorkItem creation/readback, profile registration, bounded artifact verification UI, and server-signed administrator approval are implemented. Approval is bound to a configured principal and credential, not a verified natural person; SSO, individual identity proof, and separation of duties remain open. Independent artifact acquisition, signed external evidence, and authenticated external verifier identity also remain open.
 - Existing F1–F7 execution, Mesh, Arena, API, and Console contracts remain compatibility requirements.
+
+
+## Stage 9 — WorkGraph composition foundation
+
+### RS-F10-001 — Strict deterministic WorkGraph DAG contract
+- Status: `FOUNDATION` — pure contract and deterministic planning helpers implemented; integration is not complete.
+- Implementation: `g4f/rocksoul_work_graph.py`.
+- Scope: versioned graph/node schema, strict identifiers and fields, unique node/WorkItem references, dependency validation, deterministic topological layers, readiness calculation from an explicit completed-node set, transitive descendants, canonical digest.
+- Safety limits: maximum 256 nodes, 2,048 edges, 64 dependencies per node, and 64 topological layers; cycles and unknown dependencies fail closed.
+- Tests: `tests/test_rocksoul_work_graph.py` covers ordering, readiness, descendants, digest stability, round-trip, duplicate IDs, missing dependencies, cycles, depth/size bounds, and malformed inputs.
+- Trust boundary: readiness is structural only. Caller-supplied completed IDs are not WorkItem acceptance proof. No persistence, scheduler, budget aggregation, cancellation, or execution dispatch is included.
+- Design: [WorkGraph contract and integration gates](rocksoul-work-graph.md).
+
+### RS-F10-002 — Persistent graph registry and event ledger
+- Status: `TODO`
+- Acceptance: immutable graph versions, idempotent registration, hash-chained graph events, integrity verification, bounded pagination, and safe migration of existing SQLite databases.
+
+### RS-F10-003 — Authoritative dependency resolver
+- Status: `TODO`
+- Acceptance: readiness derives from actual WorkItem states and required artifact digests; a dependency cannot be considered complete merely because a caller submits its ID.
+
+### RS-F10-004 — Graph budget and authority composition
+- Status: `TODO`
+- Acceptance: aggregate wall-time/attempt/token/cost ceilings are enforced without expanding any child WorkItem budget or permission; approval gates remain per child.
+
+### RS-F10-005 — Graph lifecycle, cancellation, and failure propagation
+- Status: `TODO`
+- Acceptance: bounded retries, deadlines, cancellation, optional-node semantics, uncertain/blocked propagation, and no implicit restart of terminal WorkItems.
+
+### RS-F10-006 — WorkGraph API, CLI, and Console
+- Status: `TODO`
+- Acceptance: authenticated graph operations, idempotency and expected-version concurrency, operator readback, graph visualization, and end-to-end tests proving child approval/verification gates cannot be bypassed.
+
+### Stage 9 completion rule
+- Stage 9 is not complete until RS-F10-002 through RS-F10-006 are implemented and CI-certified on the exact final `main` commit.
+- The current WorkGraph module is a deterministic DAG contract foundation only; it is not an autonomous multi-agent scheduler.
