@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -158,12 +159,14 @@ class WorkItemStoreTests(unittest.TestCase):
         self.assertEqual(result["reason"], "verification_record_tampered")
     def test_event_chain_detects_immutable_contract_mutation(self):
         self.store.create(item())
+        changed = item().to_dict()
+        changed["goal"] = "tampered but schema-valid"
         with self.db.connect() as conn:
             conn.execute("UPDATE rocksoul_work_items SET contract_json=? WHERE work_id=?",
-                         ('{"schema_version":1,"work_id":"work-store-1","goal":"tampered"}', "work-store-1"))
+                         (json.dumps(changed), "work-store-1"))
         result = self.store.verify_event_chain("work-store-1")
         self.assertFalse(result["ok"])
-        self.assertEqual(result["reason"], "contract_invalid")
+        self.assertEqual(result["reason"], "contract_tampered")
     def test_event_chain_detects_tampering(self):
         self.store.create(item())
         self.store.transition("work-store-1", WorkStatus.PLANNING, expected_status=WorkStatus.PENDING)
