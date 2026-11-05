@@ -119,6 +119,18 @@ class WorkItemStoreTests(unittest.TestCase):
                 payload={"verification_results": verified_result()},
             )
 
+    def test_event_chain_detects_tampering(self):
+        self.store.create(item())
+        self.store.transition("work-store-1", WorkStatus.PLANNING, expected_status=WorkStatus.PENDING)
+        with self.db.connect() as conn:
+            conn.execute(
+                "UPDATE rocksoul_work_events SET payload_json=? WHERE work_id=? AND sequence=1",
+                ('{"contract_digest":"tampered","schema_version":1}', "work-store-1"),
+            )
+        result = self.store.verify_event_chain("work-store-1")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["failed_sequence"], 1)
+
     def test_event_payload_must_be_json_safe(self):
         self.store.create(item())
         with self.assertRaises(WorkItemStoreError):
