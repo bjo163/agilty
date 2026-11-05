@@ -402,10 +402,10 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Remaining: `pytest`, `http_contract`, and `source_provenance` adapter execution, external source authenticity, and cryptographically authenticated verifier identity.
 
 ### RS-F9-008 — ExecutionEngine correlation and outcome separation
-- Status: `FOUNDATION` — API-level correlation delivered.
-- Scope: optional WorkItem ID is linked to the persisted execution request ID and transport outcome through an immutable WorkItem event; legacy execution requests remain unchanged.
+- Status: `DONE` — API, event ledger, and native execution row correlation.
+- Scope: optional WorkItem ID is linked to the persisted execution request ID and transport outcome through an immutable WorkItem event and `execution_runs.work_id`; legacy execution requests remain unchanged.
 - Acceptance: provider transport success cannot auto-transition a WorkItem to ACCEPTED; explicit verifier execution and a separate transition are required.
-- Remaining: native `execution_runs.work_id` column and Console outcome cockpit are not yet implemented.
+- Migration: existing SQLite databases receive the nullable `work_id` column and index idempotently.
 
 ### RS-F9-009 — Console WorkItem & Evidence Cockpit
 - Status: `DONE` — read-only operator cockpit foundation.
