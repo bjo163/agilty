@@ -245,7 +245,7 @@ def create_app(db: RocksoulDB | None = None):
         limit=max(1,min(limit,200)); offset=max(0,min(offset,100000))
         with database.connect() as conn:
             rows=conn.execute("""SELECT r.request_id,r.model,r.started_at,r.finished_at,r.status,r.attempt_count,
-                r.final_error_class,p.name selected_provider FROM execution_runs r
+                r.final_error_class,r.work_id,p.name selected_provider FROM execution_runs r
                 LEFT JOIN providers p ON p.id=r.selected_provider_id
                 ORDER BY r.started_at DESC,r.request_id DESC LIMIT ? OFFSET ?""",(limit,offset)).fetchall()
             total=int(conn.execute("SELECT COUNT(*) FROM execution_runs").fetchone()[0])
