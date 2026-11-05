@@ -96,9 +96,10 @@ python -m g4f.rocksoul_db_cli discover
 python -m g4f.rocksoul_mesh_cli --help
 python -m g4f.rocksoul_arena_cli --help
 python -m g4f.rocksoul_arena_production_cli --help
+python -m g4f.rocksoul_work_cli --help
 ```
 
-The `rocksoul`, `rocksoul-db`, `rocksoul-mesh`, `rocksoul-arena`, `rocksoul-arena-production`, and `rocksoul-legacy` console scripts are also registered by `setup.py` when the package is installed. Live provider probes and Mesh node mutations are explicit operator actions; unit tests and CI use local deterministic fixtures by default.
+The `rocksoul`, `rocksoul-db`, `rocksoul-mesh`, `rocksoul-arena`, `rocksoul-arena-production`, `rocksoul-work`, and `rocksoul-legacy` console scripts are also registered by `setup.py` when the package is installed. Live provider probes and Mesh node mutations are explicit operator actions; unit tests and CI use local deterministic fixtures by default.
 
 The production-evidence registry has a separate operator CLI. Validation, registration, listing, readback, and the synthetic fixture campaign remain offline. Stage 4 adds a separately gated live command: it requires both `--confirm-live` and `ROCKSOUL_ALLOW_LIVE_ARENA=1`, a previously registered pack, an exact confirmed digest, repeat dataset hash verification, explicit provider/model/runtime revisions, network mode and region, and a hard request-count budget. It is not run by CI or automatically. Validate a manifest first, then register it only with the exact local dataset artifact whose SHA-256 is declared in that manifest:
 
@@ -113,7 +114,7 @@ python -m g4f.rocksoul_arena_production_cli campaign-report --pack-digest <pack-
 
 The CLI does not invoke providers or make network calls. Its built-in `fixture-campaign` runs only synthetic offline cases. The registered pack is immutable by name/version; changing content requires a version bump. See [production CLI manifest and workflow](docs/rocksoul-arena-production-cli.md).
 
-The product direction, narrative, strategic blueprint, future roadmap, security boundaries, release gates, and granular implementation backlog are documented in [`docs/rocksoul-product.md`](docs/rocksoul-product.md), [`docs/rocksoul-narrative.md`](docs/rocksoul-narrative.md), [`docs/rocksoul-blueprint.md`](docs/rocksoul-blueprint.md), [`docs/rocksoul-future-roadmap.md`](docs/rocksoul-future-roadmap.md), and [`docs/rocksoul-todo.md`](docs/rocksoul-todo.md). ROCKSOUL's strategic direction is evidence-driven execution and task-specific verification—not a claim of AGI or certified general intelligence.
+The WorkItem contract, immutable verification-profile registry, SQLite lifecycle/event store, authenticated API endpoints, and `rocksoul-work` operator CLI are documented in [`docs/rocksoul-work-contracts.md`](docs/rocksoul-work-contracts.md). Profile identifiers are contracts only: executable verifier adapters and artifact-bound receipts remain future work. The product direction, narrative, strategic blueprint, future roadmap, security boundaries, release gates, and granular implementation backlog are documented in [`docs/rocksoul-product.md`](docs/rocksoul-product.md), [`docs/rocksoul-narrative.md`](docs/rocksoul-narrative.md), [`docs/rocksoul-blueprint.md`](docs/rocksoul-blueprint.md), [`docs/rocksoul-future-roadmap.md`](docs/rocksoul-future-roadmap.md), and [`docs/rocksoul-todo.md`](docs/rocksoul-todo.md). ROCKSOUL's strategic direction is evidence-driven execution and task-specific verification—not a claim of AGI or certified general intelligence.
 
 ---
 
