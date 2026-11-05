@@ -38,6 +38,9 @@ The production server listens on `PORT` and `HOSTNAME` (default Next.js values).
 | `ROCKSOUL_CONSOLE_ADMIN_PASSWORD` | Administrator login password |
 | `ROCKSOUL_CONSOLE_OPERATOR_PASSWORD` | Operator login password |
 | `ROCKSOUL_CONSOLE_SESSION_SECRET` | HMAC session signing secret; minimum 32 characters |
+| `ROCKSOUL_CONSOLE_ADMIN_ID` | Stable configured principal ID for signed administrator approvals |
+| `ROCKSOUL_CONSOLE_OPERATOR_ID` | Stable configured operator principal ID |
+| `ROCKSOUL_APPROVAL_SIGNING_SECRET` | Separate HMAC key shared only by Console server and API; minimum 32 characters |
 | `ROCKSOUL_CONSOLE_COOKIE_SECURE` | Optional explicit Secure-cookie override; default is enabled in production |
 | `PORT` | Console listen port; default `3000` |
 
@@ -48,12 +51,15 @@ Use unique high-entropy secrets in production. Do not commit real credentials or
 - Password login creates a signed HTTP-only, SameSite=Strict session cookie.
 - Sessions expire after 12 hours.
 - Operator sessions may execute bounded requests.
-- Administrator sessions may additionally change provider and Mesh control state.
+- Administrator sessions may additionally change provider and Mesh control state, and may issue signed approvals for governed WorkItems.
+- Approval signatures bind the decision to the immutable WorkItem contract digest, configured administrator principal, timestamp, and one-time nonce. The API enforces a five-minute signature window and records approvals in the hash-chained event ledger.
+- High/critical WorkItems cannot transition to `RUNNING` or execute until an approved signature is recorded. Rejections remain visible and do not authorize execution.
+- Configure `ROCKSOUL_CONSOLE_ADMIN_ID` and `ROCKSOUL_APPROVAL_SIGNING_SECRET` identically on the Console/API trust boundary, use a distinct high-entropy signing secret, and sign in again after changing principal configuration.
 - The server-side proxy checks the session and role before forwarding API calls.
 - The ROCKSOUL API key remains on the server and is attached only to upstream POST requests.
 - Logout clears the session cookie.
 
-This is a single-instance, environment-configured operator login. It is not an SSO or multi-tenant identity provider.
+This is a single-instance, environment-configured operator login. The configured principal ID identifies the administrator credential/session, not a verified natural person. It is not SSO, per-person identity proof, multi-tenant identity, or legal non-repudiation.
 
 ## Console workspaces
 
