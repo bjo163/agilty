@@ -71,7 +71,7 @@ Arena evidence integrity is not a model-quality certification. Reports continue 
 
 The repository root contains `docker-compose.rocksoul.yml`, which runs the API and Console as separate services and persists control-plane state in the `rocksoul-data` volume.
 
-Set the five required secrets listed above in the Compose environment. Deploy the Compose file as a Docker Compose application in Coolify or run:
+Set the four required secrets above in the Compose environment. Deploy the Compose file as a Docker Compose application in Coolify or run:
 
 ```bash
 docker compose -f docker-compose.rocksoul.yml config
