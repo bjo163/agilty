@@ -251,6 +251,33 @@ class WorkItemStore:
                 "duration_ms": execution.duration_ms, "evidence": evidence_payload, "created_at": created_at,
             }
 
+    def attach_execution(self, work_id: str, request_id: str, transport_outcome: str) -> dict[str, Any]:
+        if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 128:
+            raise WorkItemStoreError("request_id must be a non-empty identifier")
+        if not isinstance(transport_outcome, str) or not transport_outcome.strip() or len(transport_outcome) > 64:
+            raise WorkItemStoreError("transport_outcome must be a non-empty identifier")
+        with self.db.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
+            if row is None:
+                raise WorkItemStoreError("WorkItem not found")
+            if row["status"] != WorkStatus.RUNNING.value:
+                raise WorkItemStoreError("execution can only be linked while WorkItem is RUNNING")
+            trace = conn.execute("SELECT request_id FROM execution_runs WHERE request_id=?", (request_id,)).fetchone()
+            if trace is None:
+                raise WorkItemStoreError("execution trace must exist before it can be linked")
+            duplicate = conn.execute(
+                "SELECT 1 FROM rocksoul_work_events WHERE work_id=? AND event_type='work.execution_linked' AND json_extract(payload_json,'$.request_id')=?",
+                (work_id, request_id),
+            ).fetchone()
+            if duplicate:
+                return self.get(work_id, connection=conn)
+            self._append_event(
+                conn, work_id, "work.execution_linked", row["status"], row["status"],
+                {"request_id": request_id, "transport_outcome": transport_outcome},
+            )
+            return self.get(work_id, connection=conn)
+
     def get(self, work_id: str, *, connection: sqlite3.Connection | None = None) -> dict[str, Any] | None:
         if connection is None:
             with self.db.connect() as conn:
@@ -274,6 +301,7 @@ class WorkItemStore:
                         "payload": json.loads(event["payload_json"])} for event in events],
             "verifications": [{**{key: verification[key] for key in ("verification_id","criterion_id","profile_id","profile_version","outcome","verifier_id","verifier_version","independence_group","artifact_digest","duration_ms","created_at")},
                                "result": json.loads(verification["result_json"]), "evidence": json.loads(verification["evidence_json"])} for verification in verifications],
+            "execution_links": [json.loads(event["payload_json"]) for event in events if event["event_type"] == "work.execution_linked"],
         }
 
     def list(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
