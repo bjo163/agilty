@@ -6,6 +6,7 @@ import hashlib
 import json
 import sqlite3
 import uuid
+from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
@@ -13,6 +14,7 @@ from .rocksoul_contracts import WorkItem, WorkStatus, validate_status_transition
 from .rocksoul_db import RocksoulDB
 from .rocksoul_verification import EvidenceRecord, VerificationOutcome, VerificationProfileError, VerificationResult
 from .rocksoul_verification_store import VerificationProfileStore
+from .rocksoul_verifier_engine import VerificationEngine, VerificationExecution
 
 
 WORK_SCHEMA = """
@@ -40,6 +42,25 @@ CREATE TABLE IF NOT EXISTS rocksoul_work_events (
     FOREIGN KEY(work_id) REFERENCES rocksoul_work_items(work_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_rocksoul_work_events_work ON rocksoul_work_events(work_id, sequence);
+CREATE TABLE IF NOT EXISTS rocksoul_work_verifications (
+    verification_id TEXT PRIMARY KEY,
+    work_id TEXT NOT NULL,
+    criterion_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    profile_version INTEGER NOT NULL,
+    outcome TEXT NOT NULL,
+    verifier_id TEXT NOT NULL,
+    verifier_version TEXT NOT NULL,
+    independence_group TEXT NOT NULL,
+    artifact_digest TEXT NOT NULL,
+    duration_ms REAL NOT NULL,
+    result_json TEXT NOT NULL,
+    evidence_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(work_id) REFERENCES rocksoul_work_items(work_id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_rocksoul_work_verifications_latest
+    ON rocksoul_work_verifications(work_id, criterion_id, created_at DESC);
 """
 
 
@@ -131,57 +152,91 @@ class WorkItemStore:
                 raise WorkItemStoreError(f"stale WorkItem status: expected {expected.value}, found {current.value}")
             next_status = validate_status_transition(current, target)
             if next_status is WorkStatus.ACCEPTED:
+                if "verification_results" in event_payload:
+                    raise WorkItemStoreError("caller-supplied PASS values are forbidden; record verifier executions first")
                 contract = WorkItem.from_dict(json.loads(row["contract_json"]))
-                results = event_payload.get("verification_results")
-                if not isinstance(results, dict):
-                    raise WorkItemStoreError("acceptance requires evidence-backed verification_results")
-                required = {criterion.criterion_id: criterion for criterion in contract.acceptance_criteria if criterion.required}
-                known = {criterion.criterion_id for criterion in contract.acceptance_criteria}
-                if not set(results).issubset(known) or not set(required).issubset(results):
-                    raise WorkItemStoreError("acceptance has missing or unknown criterion verification results")
+                required = [criterion for criterion in contract.acceptance_criteria if criterion.required]
                 registry = self.profiles.registry()
-                for criterion_id in required:
-                    result = results[criterion_id]
-                    if not isinstance(result, dict):
-                        raise WorkItemStoreError("each verification result must be an object")
-                    if set(result) - {"outcome", "profile_id", "profile_version", "verifier_id", "verifier_version", "independence_group", "evidence", "findings"}:
-                        raise WorkItemStoreError("verification result contains unknown fields")
+                verification_ids = []
+                for criterion in required:
+                    verified = conn.execute(
+                        """SELECT verification_id,profile_id,profile_version,outcome,evidence_json
+                           FROM rocksoul_work_verifications
+                           WHERE work_id=? AND criterion_id=?
+                           ORDER BY created_at DESC,verification_id DESC LIMIT 1""",
+                        (work_id, criterion.criterion_id),
+                    ).fetchone()
+                    if verified is None or verified["outcome"] != VerificationOutcome.PASS.value:
+                        raise WorkItemStoreError(f"required criterion has no latest PASS verifier execution: {criterion.criterion_id}")
                     try:
-                        profile = registry.resolve(result.get("profile_id"), result.get("profile_version"))
-                        if profile.adapter_id != required[criterion_id].verification_method:
+                        profile = registry.resolve(verified["profile_id"], verified["profile_version"])
+                        if profile.adapter_id != criterion.verification_method:
                             raise WorkItemStoreError("verification profile adapter does not match acceptance criterion")
-                        if result.get("outcome") != VerificationOutcome.PASS.value:
-                            raise WorkItemStoreError("only PASS verification outcomes can satisfy required criteria")
-                        if result.get("independence_group") != profile.independence_group:
-                            raise WorkItemStoreError("verification independence group does not match registered profile")
-                        raw_evidence = result.get("evidence")
-                        if not isinstance(raw_evidence, list) or not raw_evidence or len(raw_evidence) > 100:
-                            raise WorkItemStoreError("verification evidence must contain 1 to 100 records")
-                        evidence = tuple(EvidenceRecord(**entry) for entry in raw_evidence if isinstance(entry, dict))
-                        if len(evidence) != len(raw_evidence):
-                            raise WorkItemStoreError("verification evidence contains invalid entries")
+                        evidence = tuple(EvidenceRecord(**entry) for entry in json.loads(verified["evidence_json"]))
                         registry.validate_evidence(profile, evidence)
-                        if len({entry.evidence_id for entry in evidence}) != len(evidence):
-                            raise WorkItemStoreError("evidence IDs must be unique within a criterion result")
-                        if any(entry.verifier_id != result.get("verifier_id") or entry.verifier_version != result.get("verifier_version") for entry in evidence):
-                            raise WorkItemStoreError("evidence verifier identity must match the verification result")
-                        findings = result.get("findings", [])
-                        if not isinstance(findings, list):
-                            raise WorkItemStoreError("verification findings must be an array")
-                        VerificationResult(
-                            outcome=VerificationOutcome.PASS, profile_id=profile.profile_id,
-                            profile_version=profile.version, verifier_id=result.get("verifier_id"),
-                            verifier_version=result.get("verifier_version"),
-                            independence_group=result.get("independence_group"),
-                            findings=tuple(findings),
-                        )
                     except (VerificationProfileError, TypeError, ValueError) as exc:
-                        raise WorkItemStoreError(f"required criterion verification is invalid: {exc}") from exc
+                        raise WorkItemStoreError(f"persisted verification evidence is invalid: {exc}") from exc
+                    verification_ids.append(verified["verification_id"])
+                event_payload["verification_ids"] = verification_ids
             now = datetime.now(timezone.utc).isoformat(timespec="microseconds")
             conn.execute("UPDATE rocksoul_work_items SET status=?,updated_at=? WHERE work_id=?",
                          (next_status.value, now, work_id))
             self._append_event(conn, work_id, "work.status_changed", current.value, next_status.value, event_payload)
             return self.get(work_id, connection=conn)
+
+    def record_verification(self, work_id: str, criterion_id: str, execution: VerificationExecution) -> dict[str, Any]:
+        if not isinstance(execution, VerificationExecution):
+            raise WorkItemStoreError("record_verification requires a VerificationEngine execution result")
+        result = execution.result
+        with self.db.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT contract_json,status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
+            if row is None:
+                raise WorkItemStoreError("WorkItem not found")
+            contract = WorkItem.from_dict(json.loads(row["contract_json"]))
+            criterion = next((item for item in contract.acceptance_criteria if item.criterion_id == criterion_id), None)
+            if criterion is None:
+                raise WorkItemStoreError("acceptance criterion not found")
+            profile = self.profiles.resolve(result.profile_id, result.profile_version)
+            if profile.adapter_id != criterion.verification_method:
+                raise WorkItemStoreError("verification profile adapter does not match acceptance criterion")
+            if result.independence_group != profile.independence_group:
+                raise WorkItemStoreError("verification result independence group does not match profile")
+            if result.verifier_id != f"rocksoul.{profile.adapter_id}" or result.verifier_version != VerificationEngine.VERSION:
+                raise WorkItemStoreError("verification result does not match the built-in verifier identity")
+            if result.outcome is VerificationOutcome.PASS:
+                self.profiles.registry().validate_evidence(profile, execution.evidence)
+            elif execution.evidence:
+                self.profiles.registry().validate_evidence(profile, execution.evidence)
+            verification_id = uuid.uuid4().hex
+            created_at = datetime.now(timezone.utc).isoformat(timespec="microseconds")
+            result_payload = {
+                "outcome": result.outcome.value, "profile_id": result.profile_id,
+                "profile_version": result.profile_version, "verifier_id": result.verifier_id,
+                "verifier_version": result.verifier_version, "independence_group": result.independence_group,
+                "findings": list(result.findings),
+            }
+            evidence_payload = [asdict(item) for item in execution.evidence]
+            conn.execute(
+                """INSERT INTO rocksoul_work_verifications
+                   (verification_id,work_id,criterion_id,profile_id,profile_version,outcome,verifier_id,
+                    verifier_version,independence_group,artifact_digest,duration_ms,result_json,evidence_json,created_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (verification_id, work_id, criterion_id, profile.profile_id, profile.version, result.outcome.value,
+                 result.verifier_id, result.verifier_version, result.independence_group, execution.artifact_digest,
+                 execution.duration_ms, self._canonical(result_payload), self._canonical(evidence_payload), created_at),
+            )
+            self._append_event(
+                conn, work_id, "work.verification_recorded", row["status"], row["status"],
+                {"verification_id": verification_id, "criterion_id": criterion_id,
+                 "profile_id": profile.profile_id, "profile_version": profile.version,
+                 "outcome": result.outcome.value, "artifact_digest": execution.artifact_digest},
+            )
+            return {
+                "verification_id": verification_id, "work_id": work_id, "criterion_id": criterion_id,
+                **result_payload, "artifact_digest": execution.artifact_digest,
+                "duration_ms": execution.duration_ms, "evidence": evidence_payload, "created_at": created_at,
+            }
 
     def get(self, work_id: str, *, connection: sqlite3.Connection | None = None) -> dict[str, Any] | None:
         if connection is None:
@@ -194,11 +249,18 @@ class WorkItemStore:
             """SELECT event_id,sequence,event_type,from_status,to_status,payload_json,previous_hash,event_hash,created_at
                FROM rocksoul_work_events WHERE work_id=? ORDER BY sequence""", (work_id,)
         ).fetchall()
+        verifications = connection.execute(
+            """SELECT verification_id,criterion_id,profile_id,profile_version,outcome,verifier_id,
+                      verifier_version,independence_group,artifact_digest,duration_ms,result_json,evidence_json,created_at
+               FROM rocksoul_work_verifications WHERE work_id=? ORDER BY created_at,verification_id""", (work_id,)
+        ).fetchall()
         return {
             "work_id": row["work_id"], "status": row["status"], "contract": json.loads(row["contract_json"]),
             "contract_digest": row["contract_digest"], "created_at": row["created_at"], "updated_at": row["updated_at"],
             "events": [{**{key: event[key] for key in ("event_id","sequence","event_type","from_status","to_status","previous_hash","event_hash","created_at")},
                         "payload": json.loads(event["payload_json"])} for event in events],
+            "verifications": [{**{key: verification[key] for key in ("verification_id","criterion_id","profile_id","profile_version","outcome","verifier_id","verifier_version","independence_group","artifact_digest","duration_ms","created_at")},
+                               "result": json.loads(verification["result_json"]), "evidence": json.loads(verification["evidence_json"])} for verification in verifications],
         }
 
     def list(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
