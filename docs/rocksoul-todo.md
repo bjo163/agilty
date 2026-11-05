@@ -324,15 +324,16 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 
 ## Stage 7 — Next.js Console migration
 
-- [x] Create new Next.js App Router frontend in `frontend/rocksoul-console`.
-- [x] Add TypeScript, React 19, responsive dark operator console shell.
-- [x] Add API-backed status metrics, provider health table and read-only route explanation.
-- [x] Keep legacy HTML GUI routes intact during migration.
-- [x] Document local and production setup and migration boundary.
-- [ ] Add full legacy route parity, Mesh/Arena/trace views and operator actions.
-- [ ] Add session authentication, role-based authorization, localization, theme persistence and browser E2E/accessibility gates.
-- [x] Run Next.js lint and production build in CI (ROCKSOUL Console CI #42059995434, Node 24). Browser E2E smoke coverage remains outstanding.
-- [ ] Add Docker Compose/Coolify frontend/API deployment topology and health checks.
+- [x] Next.js App Router, TypeScript, React 19 and responsive console.
+- [x] Signed HTTP-only sessions, 12-hour expiry, Operator and Administrator roles.
+- [x] Server-side API proxy; API key never enters browser bundle.
+- [x] Overview, provider fleet, route explanation, Mesh nodes/leases, Arena packs/campaigns, trace explorer and bounded execution.
+- [x] Administrator-only provider/Mesh controls; bounded operator execution.
+- [x] Arena campaign verification and NOT_CERTIFIED claim boundary.
+- [x] Persisted light/dark preference and English/Indonesian toggle.
+- [x] Playwright browser smoke tests and Docker Compose health-checked deployment topology.
+- [x] Legacy HTML routes remain available as compatibility surface.
+- [ ] Route-by-route migration of every legacy HTML-only screen remains a separate compatibility backlog.
 
 
 ### Latest-main verification — 2026-11-05
