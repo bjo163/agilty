@@ -48,6 +48,25 @@ class WorkGraphTests(unittest.TestCase):
         self.assertEqual(restored.to_dict(), graph.to_dict())
         self.assertEqual(restored.digest, graph.digest)
 
+    def test_digest_normalizes_dependency_order(self):
+        first = WorkGraph("g", (
+            WorkGraphNode("a", "wa"),
+            WorkGraphNode("b", "wb", ("a",)),
+            WorkGraphNode("c", "wc", ("a", "b")),
+        ))
+        second = WorkGraph("g", (
+            WorkGraphNode("c", "wc", ("b", "a")),
+            WorkGraphNode("b", "wb", ("a",)),
+            WorkGraphNode("a", "wa"),
+        ))
+        self.assertEqual(first.digest, second.digest)
+
+    def test_rejects_non_integer_schema_version_and_string_completed(self):
+        with self.assertRaises(WorkGraphValidationError):
+            WorkGraph.from_dict({"schema_version": 1.0, "graph_id": "g", "nodes": [{"node_id": "a", "work_id": "wa"}]})
+        with self.assertRaises(WorkGraphValidationError):
+            self.graph().ready_nodes("build")
+
     def test_rejects_duplicate_node_and_work_ids(self):
         with self.assertRaises(WorkGraphValidationError):
             WorkGraph("g", (WorkGraphNode("a", "w1"), WorkGraphNode("a", "w2")))
