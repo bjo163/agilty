@@ -290,11 +290,16 @@ class WorkItemStore:
             if trace is None:
                 raise WorkItemStoreError("execution trace must exist before it can be linked")
             existing_links = conn.execute(
-                "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.execution_linked'",
-                (work_id,),
+                "SELECT work_id,payload_json FROM rocksoul_work_events WHERE event_type='work.execution_linked'",
             ).fetchall()
-            duplicate = any(json.loads(event["payload_json"]).get("request_id") == request_id for event in existing_links)
-            if duplicate:
+            for event in existing_links:
+                linked = json.loads(event["payload_json"])
+                if linked.get("request_id") != request_id:
+                    continue
+                if event["work_id"] != work_id:
+                    raise WorkItemStoreError("execution request is already linked to another WorkItem")
+                if linked.get("transport_outcome") != transport_outcome or linked.get("applied_budget", {}) != budget_payload:
+                    raise WorkItemStoreError("execution request was already linked with different outcome or budget")
                 return self.get(work_id, connection=conn)
             self._append_event(
                 conn, work_id, "work.execution_linked", row["status"], row["status"],
