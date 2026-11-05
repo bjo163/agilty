@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
-from .rocksoul_contracts import ContractValidationError, WorkItem, WorkStatus, validate_status_transition
+from .rocksoul_contracts import WorkItem, WorkStatus, validate_status_transition
 from .rocksoul_db import RocksoulDB
 from .rocksoul_verification import EvidenceRecord, VerificationOutcome, VerificationProfileError, VerificationResult
 from .rocksoul_verification_store import VerificationProfileStore
@@ -115,7 +115,9 @@ class WorkItemStore:
         event_payload = dict(payload or {})
         # Payloads are persisted as JSON; reject unserializable values before acquiring a write lock.
         try:
-            self._canonical(event_payload)
+            encoded_payload = self._canonical(event_payload)
+            if len(encoded_payload.encode("utf-8")) > 1_000_000:
+                raise WorkItemStoreError("event payload must not exceed 1 MiB")
         except (TypeError, ValueError) as exc:
             raise WorkItemStoreError("event payload must contain finite JSON values only") from exc
         with self.db.connect() as conn:
@@ -153,8 +155,8 @@ class WorkItemStore:
                         if result.get("independence_group") != profile.independence_group:
                             raise WorkItemStoreError("verification independence group does not match registered profile")
                         raw_evidence = result.get("evidence")
-                        if not isinstance(raw_evidence, list):
-                            raise WorkItemStoreError("verification evidence must be an array")
+                        if not isinstance(raw_evidence, list) or not raw_evidence or len(raw_evidence) > 100:
+                            raise WorkItemStoreError("verification evidence must contain 1 to 100 records")
                         evidence = tuple(EvidenceRecord(**entry) for entry in raw_evidence if isinstance(entry, dict))
                         if len(evidence) != len(raw_evidence):
                             raise WorkItemStoreError("verification evidence contains invalid entries")
@@ -203,16 +205,22 @@ class WorkItemStore:
         limit = max(1, min(int(limit), 200))
         offset = max(0, min(int(offset), 100000))
         with self.db.connect() as conn:
-            rows = conn.execute("SELECT work_id FROM rocksoul_work_items ORDER BY created_at DESC,work_id LIMIT ? OFFSET ?",
-                                (limit, offset)).fetchall()
+            rows = conn.execute(
+                """SELECT work_id,status,contract_digest,created_at,updated_at
+                   FROM rocksoul_work_items ORDER BY created_at DESC,work_id LIMIT ? OFFSET ?""",
+                (limit, offset),
+            ).fetchall()
             total = int(conn.execute("SELECT COUNT(*) FROM rocksoul_work_items").fetchone()[0])
-            items = [self.get(str(row["work_id"]), connection=conn) for row in rows]
-        return {"items": items, "total": total, "limit": limit, "offset": offset}
+        return {"items": [dict(row) for row in rows], "total": total, "limit": limit, "offset": offset}
 
     def verify_event_chain(self, work_id: str) -> dict[str, Any]:
         with self.db.connect() as conn:
+            item = conn.execute("SELECT status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
+            if item is None:
+                return {"ok": False, "verified_events": 0, "failed_sequence": 1, "reason": "work_item_not_found"}
             rows = conn.execute("SELECT * FROM rocksoul_work_events WHERE work_id=? ORDER BY sequence", (work_id,)).fetchall()
         previous = None
+        previous_status = None
         for expected_sequence, row in enumerate(rows, start=1):
             event = {
                 "event_id": row["event_id"], "work_id": row["work_id"], "sequence": row["sequence"],
@@ -220,7 +228,11 @@ class WorkItemStore:
                 "payload": json.loads(row["payload_json"]), "previous_hash": row["previous_hash"],
                 "created_at": row["created_at"],
             }
-            if row["sequence"] != expected_sequence or row["previous_hash"] != previous or self._event_hash(event) != row["event_hash"]:
+            status_discontinuous = expected_sequence > 1 and row["from_status"] != previous_status
+            if row["sequence"] != expected_sequence or row["previous_hash"] != previous or status_discontinuous or self._event_hash(event) != row["event_hash"]:
                 return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence}
             previous = row["event_hash"]
+            previous_status = row["to_status"]
+        if not rows or previous_status != item["status"]:
+            return {"ok": False, "verified_events": len(rows), "failed_sequence": len(rows) + 1, "reason": "lifecycle_head_mismatch"}
         return {"ok": True, "verified_events": len(rows), "head_hash": previous}
