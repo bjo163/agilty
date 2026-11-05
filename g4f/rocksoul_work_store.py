@@ -268,11 +268,19 @@ class WorkItemStore:
                 "duration_ms": execution.duration_ms, "evidence": evidence_payload, "created_at": created_at,
             }
 
-    def attach_execution(self, work_id: str, request_id: str, transport_outcome: str) -> dict[str, Any]:
+    def attach_execution(self, work_id: str, request_id: str, transport_outcome: str, *, applied_budget: Mapping[str, Any] | None = None) -> dict[str, Any]:
         if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 128:
             raise WorkItemStoreError("request_id must be a non-empty identifier")
         if not isinstance(transport_outcome, str) or not transport_outcome.strip() or len(transport_outcome) > 64:
             raise WorkItemStoreError("transport_outcome must be a non-empty identifier")
+        if applied_budget is not None and not isinstance(applied_budget, Mapping):
+            raise WorkItemStoreError("applied_budget must be an object")
+        budget_payload = dict(applied_budget or {})
+        try:
+            if len(self._canonical(budget_payload).encode("utf-8")) > 4096:
+                raise WorkItemStoreError("applied_budget must not exceed 4 KiB")
+        except (TypeError, ValueError) as exc:
+            raise WorkItemStoreError("applied_budget must contain finite JSON values") from exc
         with self.db.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             row = conn.execute("SELECT status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
@@ -290,7 +298,7 @@ class WorkItemStore:
                 return self.get(work_id, connection=conn)
             self._append_event(
                 conn, work_id, "work.execution_linked", row["status"], row["status"],
-                {"request_id": request_id, "transport_outcome": transport_outcome},
+                {"request_id": request_id, "transport_outcome": transport_outcome, "applied_budget": budget_payload},
             )
             return self.get(work_id, connection=conn)
 
