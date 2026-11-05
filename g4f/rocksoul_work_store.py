@@ -237,9 +237,11 @@ class WorkItemStore:
             contract = WorkItem.from_dict(json.loads(row["contract_json"]))
             if not contract.human_approval_required:
                 raise WorkItemStoreError("WorkItem does not require human approval")
-            if row["status"] in {WorkStatus.ACCEPTED.value, WorkStatus.REJECTED.value,
-                                 WorkStatus.CANCELLED.value, WorkStatus.EXPIRED.value}:
-                raise WorkItemStoreError("terminal WorkItem cannot receive an approval")
+            if row["status"] not in {
+                WorkStatus.PENDING.value, WorkStatus.PLANNING.value,
+                WorkStatus.READY.value, WorkStatus.BLOCKED.value,
+            }:
+                raise WorkItemStoreError("approval must be recorded before execution starts")
             events = conn.execute(
                 "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.approval_recorded' ORDER BY sequence ASC",
                 (work_id,),
