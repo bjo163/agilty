@@ -8,7 +8,9 @@ type Context={params:Promise<{workId:string}>};
 export async function POST(req:NextRequest,ctx:Context){
   const session=await currentSession();
   if(!session||session.role!=="admin")return NextResponse.json({detail:"Administrator session required"},{status:403});
-  if(!session.sub||session.sub.length>128)return NextResponse.json({detail:"ROCKSOUL_CONSOLE_ADMIN_ID must be configured; sign in again after configuration"},{status:503});
+  const configuredAdminId=process.env.ROCKSOUL_CONSOLE_ADMIN_ID??"";
+  if(!configuredAdminId)return NextResponse.json({detail:"ROCKSOUL_CONSOLE_ADMIN_ID must be configured"},{status:503});
+  if(!session.sub||session.sub!==configuredAdminId)return NextResponse.json({detail:"Administrator session principal is stale; sign in again"},{status:403});
   const secret=process.env.ROCKSOUL_APPROVAL_SIGNING_SECRET??"";
   const apiKey=process.env.ROCKSOUL_API_KEY??"";
   if(secret.length<32||!apiKey)return NextResponse.json({detail:"Approval signing or API credentials are not configured"},{status:503});
