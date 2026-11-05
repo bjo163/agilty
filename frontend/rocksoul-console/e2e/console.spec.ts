@@ -25,6 +25,9 @@ test("operator can sign in",async({page})=>{
   await expect(page.getByRole("button",{name:"CREATE WORK ITEM"})).toBeDisabled();
   await expect(page.getByRole("button",{name:"REGISTER IMMUTABLE PROFILE"})).toBeDisabled();
   await expect(page.getByRole("button",{name:"VERIFY ARTIFACT"})).toBeDisabled();
+  await page.getByRole("button",{name:"WorkGraph"}).click();
+  await expect(page.getByRole("heading",{name:"WorkGraph"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"WorkGraph registry"})).toBeVisible();
   const session=await page.request.get("/api/auth/session");
   expect(await session.json()).toMatchObject({authenticated:true,role:"operator"});
 });
