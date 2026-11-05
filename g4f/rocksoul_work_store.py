@@ -163,7 +163,7 @@ class WorkItemStore:
                         """SELECT verification_id,profile_id,profile_version,outcome,evidence_json
                            FROM rocksoul_work_verifications
                            WHERE work_id=? AND criterion_id=?
-                           ORDER BY created_at DESC,verification_id DESC LIMIT 1""",
+                           ORDER BY created_at DESC,rowid DESC LIMIT 1""",
                         (work_id, criterion.criterion_id),
                     ).fetchone()
                     if verified is None or verified["outcome"] != VerificationOutcome.PASS.value:
@@ -193,6 +193,8 @@ class WorkItemStore:
             row = conn.execute("SELECT contract_json,status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
             if row is None:
                 raise WorkItemStoreError("WorkItem not found")
+            if row["status"] != WorkStatus.VERIFYING.value:
+                raise WorkItemStoreError("verification can only be recorded while WorkItem is VERIFYING")
             contract = WorkItem.from_dict(json.loads(row["contract_json"]))
             criterion = next((item for item in contract.acceptance_criteria if item.criterion_id == criterion_id), None)
             if criterion is None:
@@ -204,6 +206,12 @@ class WorkItemStore:
                 raise WorkItemStoreError("verification result independence group does not match profile")
             if result.verifier_id != f"rocksoul.{profile.adapter_id}" or result.verifier_version != VerificationEngine.VERSION:
                 raise WorkItemStoreError("verification result does not match the built-in verifier identity")
+            if not isinstance(execution.artifact_digest, str) or len(execution.artifact_digest) != 64:
+                raise WorkItemStoreError("verifier artifact digest is invalid")
+            if any(entry.digest != execution.artifact_digest for entry in execution.evidence):
+                raise WorkItemStoreError("evidence digest must match the verified artifact bytes")
+            if any(entry.verifier_id != result.verifier_id or entry.verifier_version != result.verifier_version for entry in execution.evidence):
+                raise WorkItemStoreError("evidence verifier identity must match the verifier result")
             if result.outcome is VerificationOutcome.PASS:
                 self.profiles.registry().validate_evidence(profile, execution.evidence)
             elif execution.evidence:
@@ -217,6 +225,10 @@ class WorkItemStore:
                 "findings": list(result.findings),
             }
             evidence_payload = [asdict(item) for item in execution.evidence]
+            verification_digest = hashlib.sha256(self._canonical({
+                "result": result_payload, "evidence": evidence_payload,
+                "artifact_digest": execution.artifact_digest, "duration_ms": execution.duration_ms,
+            }).encode("utf-8")).hexdigest()
             conn.execute(
                 """INSERT INTO rocksoul_work_verifications
                    (verification_id,work_id,criterion_id,profile_id,profile_version,outcome,verifier_id,
@@ -230,7 +242,8 @@ class WorkItemStore:
                 conn, work_id, "work.verification_recorded", row["status"], row["status"],
                 {"verification_id": verification_id, "criterion_id": criterion_id,
                  "profile_id": profile.profile_id, "profile_version": profile.version,
-                 "outcome": result.outcome.value, "artifact_digest": execution.artifact_digest},
+                 "outcome": result.outcome.value, "artifact_digest": execution.artifact_digest,
+                 "verification_digest": verification_digest},
             )
             return {
                 "verification_id": verification_id, "work_id": work_id, "criterion_id": criterion_id,
