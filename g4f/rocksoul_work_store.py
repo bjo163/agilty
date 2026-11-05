@@ -294,6 +294,8 @@ class WorkItemStore:
             if item is None:
                 return {"ok": False, "verified_events": 0, "failed_sequence": 1, "reason": "work_item_not_found"}
             rows = conn.execute("SELECT * FROM rocksoul_work_events WHERE work_id=? ORDER BY sequence", (work_id,)).fetchall()
+            verification_rows = conn.execute("SELECT * FROM rocksoul_work_verifications WHERE work_id=?", (work_id,)).fetchall()
+        verification_map = {entry["verification_id"]: entry for entry in verification_rows}
         previous = None
         previous_status = None
         for expected_sequence, row in enumerate(rows, start=1):
@@ -306,6 +308,19 @@ class WorkItemStore:
             status_discontinuous = expected_sequence > 1 and row["from_status"] != previous_status
             if row["sequence"] != expected_sequence or row["previous_hash"] != previous or status_discontinuous or self._event_hash(event) != row["event_hash"]:
                 return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence}
+            if row["event_type"] == "work.verification_recorded":
+                payload = event["payload"]
+                record = verification_map.get(payload.get("verification_id"))
+                if record is None:
+                    return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_missing"}
+                verification_digest = hashlib.sha256(self._canonical({
+                    "result": json.loads(record["result_json"]),
+                    "evidence": json.loads(record["evidence_json"]),
+                    "artifact_digest": record["artifact_digest"],
+                    "duration_ms": record["duration_ms"],
+                }).encode("utf-8")).hexdigest()
+                if verification_digest != payload.get("verification_digest"):
+                    return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_tampered"}
             previous = row["event_hash"]
             previous_status = row["to_status"]
         if not rows or previous_status != item["status"]:
