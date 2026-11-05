@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS rocksoul_work_events (
     FOREIGN KEY(work_id) REFERENCES rocksoul_work_items(work_id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_rocksoul_work_events_work ON rocksoul_work_events(work_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_rocksoul_work_events_type ON rocksoul_work_events(event_type);
 CREATE TABLE IF NOT EXISTS rocksoul_work_verifications (
     verification_id TEXT PRIMARY KEY,
     work_id TEXT NOT NULL,
@@ -70,6 +71,8 @@ class WorkItemStoreError(ValueError):
 
 
 class WorkItemStore:
+    MAX_VERIFICATIONS_PER_CRITERION = 100
+
     def __init__(self, db: RocksoulDB) -> None:
         self.db = db
         self.profiles = VerificationProfileStore(db)
@@ -216,6 +219,12 @@ class WorkItemStore:
             criterion = next((item for item in contract.acceptance_criteria if item.criterion_id == criterion_id), None)
             if criterion is None:
                 raise WorkItemStoreError("acceptance criterion not found")
+            verification_count = int(conn.execute(
+                "SELECT COUNT(*) FROM rocksoul_work_verifications WHERE work_id=? AND criterion_id=?",
+                (work_id, criterion_id),
+            ).fetchone()[0])
+            if verification_count >= self.MAX_VERIFICATIONS_PER_CRITERION:
+                raise WorkItemStoreError("verification attempt limit reached for this criterion")
             if profile.adapter_id != criterion.verification_method:
                 raise WorkItemStoreError("verification profile adapter does not match acceptance criterion")
             if result.independence_group != profile.independence_group:
