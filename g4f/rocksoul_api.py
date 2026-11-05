@@ -22,6 +22,8 @@ from .rocksoul_execution_store import ExecutionTraceStore
 from .rocksoul_intelligence import CapabilityRequirement, ExplainableRouter
 from .rocksoul_contracts import ContractValidationError, WorkItem, WorkStatus
 from .rocksoul_work_store import WorkItemStore, WorkItemStoreError
+from .rocksoul_work_graph import WorkGraph, WorkGraphValidationError
+from .rocksoul_work_graph_store import WorkGraphStore, WorkGraphStoreError
 from .rocksoul_verification import VerificationProfile, VerificationProfileError
 from .rocksoul_verification_store import VerificationProfileStore
 from .rocksoul_verifier_engine import VerificationEngine
@@ -50,6 +52,7 @@ def create_app(db: RocksoulDB | None = None):
     database = db or RocksoulDB()
     traces = ExecutionTraceStore(database)
     work_items = WorkItemStore(database)
+    work_graphs = WorkGraphStore(database)
     verification_profiles = VerificationProfileStore(database)
     app = FastAPI(
         title="ROCKSOUL API",
@@ -156,6 +159,42 @@ def create_app(db: RocksoulDB | None = None):
         if result is None:
             raise HTTPException(status_code=404, detail="Verification profile not found")
         return result
+
+    @app.get("/api/v1/work-graphs")
+    def list_work_graphs(limit: int = 50, offset: int = 0, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        try:
+            return work_graphs.list(limit=limit, offset=offset)
+        except WorkGraphStoreError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/work-graphs")
+    def create_work_graph(body: dict[str, Any], x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        try:
+            graph = WorkGraph.from_dict(body)
+            return work_graphs.create(graph)
+        except WorkGraphValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except WorkGraphStoreError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get("/api/v1/work-graphs/{graph_id}")
+    def get_work_graph(graph_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        try:
+            return work_graphs.get(graph_id)
+        except WorkGraphStoreError as exc:
+            raise HTTPException(status_code=404, detail="WorkGraph not found") from exc
+
+    @app.get("/api/v1/work-graphs/{graph_id}/readiness")
+    def resolve_work_graph_readiness(graph_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        try:
+            return work_graphs.resolve_readiness(graph_id, work_items)
+        except WorkGraphStoreError as exc:
+            code = 404 if str(exc) == "WorkGraph not found" else 409
+            raise HTTPException(status_code=code, detail=str(exc)) from exc
 
     @app.get("/api/v1/work-items")
     def list_work_items(limit: int = 50, offset: int = 0, x_rocksoul_api_key: str | None = Header(default=None)):
