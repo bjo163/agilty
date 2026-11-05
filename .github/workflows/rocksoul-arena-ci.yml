@@ -35,8 +35,12 @@ jobs:
       - name: Install minimal runtime dependencies
         run: python -m pip install -r requirements-min.txt
       - name: Compile Arena implementation
-        run: python -m compileall -q g4f/rocksoul_arena.py g4f/rocksoul_arena_cli.py g4f/rocksoul_arena_production.py
+        run: python -m compileall -q g4f/rocksoul_arena.py g4f/rocksoul_arena_cli.py g4f/rocksoul_arena_production.py g4f/rocksoul_arena_production_cli.py
       - name: Run deterministic benchmark and evidence tests
         run: python -m unittest discover -s tests -p "test_rocksoul_arena*.py" -v
       - name: Smoke-test deterministic fixture
         run: python -m g4f.rocksoul_arena_cli --db .arena-ci.db fixture --target perfect
+      - name: Smoke-test production evidence operator CLI
+        run: |
+          python -m g4f.rocksoul_arena_production_cli --help
+          python -m g4f.rocksoul_arena_production_cli --db .arena-ci-production.db status

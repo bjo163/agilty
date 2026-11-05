@@ -175,8 +175,27 @@ class ArenaProductionStore:
         with self.arena.db.connect() as conn:
             conn.executescript(ARENA_PRODUCTION_SCHEMA)
 
-    @staticmethod
-    def validate_pack(pack: ArenaProductionPack) -> None:
+    def validate_pack(self, pack: ArenaProductionPack) -> None:
+        if not isinstance(pack, ArenaProductionPack):
+            raise ArenaValidationError("pack must be an ArenaProductionPack")
+        if not isinstance(pack.suite, ArenaSuite):
+            raise ArenaValidationError("suite must be ArenaSuite")
+        self.arena.validate_suite(pack.suite)
+        if not all(isinstance(value, str) for value in (pack.name, pack.version, pack.evaluator_revision)):
+            raise ArenaValidationError("pack name, version, and evaluator_revision must be strings")
+        if not isinstance(pack.dataset, ArenaDatasetProvenance):
+            raise ArenaValidationError("dataset must be ArenaDatasetProvenance")
+        if not isinstance(pack.repeat_policy, ArenaRepeatPolicy):
+            raise ArenaValidationError("repeat_policy must be ArenaRepeatPolicy")
+        if not isinstance(pack.environment_requirements, Mapping) or not pack.environment_requirements:
+            raise ArenaValidationError("environment_requirements must be a non-empty object")
+        if not isinstance(pack.network_requirements, Mapping) or not pack.network_requirements:
+            raise ArenaValidationError("network_requirements must be a non-empty object")
+        try:
+            json.dumps(dict(pack.environment_requirements), allow_nan=False)
+            json.dumps(dict(pack.network_requirements), allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ArenaValidationError(f"production requirements must contain only finite JSON values: {exc}") from exc
         if not pack.name.strip():
             raise ArenaValidationError("production pack name must not be empty")
         if not pack.version.strip():
@@ -185,6 +204,10 @@ class ArenaProductionStore:
             raise ArenaValidationError("evaluator_revision must not be empty")
 
         dataset = pack.dataset
+        if not all(isinstance(value, str) for value in (dataset.source, dataset.revision, dataset.sha256, dataset.split_policy, dataset.contamination_review)):
+            raise ArenaValidationError("dataset provenance fields must be strings")
+        if dataset.license is not None and not isinstance(dataset.license, str):
+            raise ArenaValidationError("dataset license must be a string when supplied")
         if not dataset.source.strip():
             raise ArenaValidationError("dataset source must not be empty")
         if not dataset.revision.strip():
@@ -197,9 +220,9 @@ class ArenaProductionStore:
             raise ArenaValidationError("contamination_review must not be empty")
 
         repeat = pack.repeat_policy
-        if repeat.runs < 2 or repeat.runs > 100:
-            raise ArenaValidationError("repeat_policy.runs must be between 2 and 100")
-        if not math.isfinite(repeat.max_score_stddev) or repeat.max_score_stddev < 0:
+        if type(repeat.runs) is not int or repeat.runs < 2 or repeat.runs > 100:
+            raise ArenaValidationError("repeat_policy.runs must be an integer between 2 and 100")
+        if isinstance(repeat.max_score_stddev, bool) or not isinstance(repeat.max_score_stddev, (int, float)) or not math.isfinite(repeat.max_score_stddev) or repeat.max_score_stddev < 0:
             raise ArenaValidationError("repeat_policy.max_score_stddev must be a finite non-negative number")
         if not pack.environment_requirements:
             raise ArenaValidationError("environment_requirements must be explicit for a production pack")
@@ -208,19 +231,26 @@ class ArenaProductionStore:
 
     @staticmethod
     def validate_target(target: ArenaTargetIdentity) -> None:
+        if not isinstance(target, ArenaTargetIdentity):
+            raise ArenaValidationError("target must be ArenaTargetIdentity")
         for field_name, value in target.manifest().items():
-            if not str(value).strip():
-                raise ArenaValidationError(f"target {field_name} must not be empty")
+            if not isinstance(value, str) or not value.strip():
+                raise ArenaValidationError(f"target {field_name} must be a non-empty string")
 
     @staticmethod
     def validate_environment(environment: ArenaEnvironmentEvidence) -> None:
-        if not environment.runtime.strip():
-            raise ArenaValidationError("environment runtime must not be empty")
-        if not environment.os.strip():
-            raise ArenaValidationError("environment os must not be empty")
-        if not environment.python.strip():
-            raise ArenaValidationError("environment python must not be empty")
-        if environment.network_mode not in _ALLOWED_NETWORK_MODES:
+        if not isinstance(environment, ArenaEnvironmentEvidence):
+            raise ArenaValidationError("environment must be ArenaEnvironmentEvidence")
+        for field_name, value in (("runtime", environment.runtime), ("os", environment.os), ("python", environment.python)):
+            if not isinstance(value, str) or not value.strip():
+                raise ArenaValidationError(f"environment {field_name} must be a non-empty string")
+        if not isinstance(environment.region, str) or not isinstance(environment.extra, Mapping):
+            raise ArenaValidationError("environment region must be a string and extra must be an object")
+        try:
+            json.dumps(dict(environment.extra), allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ArenaValidationError(f"environment extra must contain only finite JSON values: {exc}") from exc
+        if not isinstance(environment.network_mode, str) or environment.network_mode not in _ALLOWED_NETWORK_MODES:
             raise ArenaValidationError(f"unsupported network_mode: {environment.network_mode}")
 
     def register_pack(self, pack: ArenaProductionPack, *, now: float | None = None) -> str:
@@ -349,6 +379,44 @@ class ArenaProductionStore:
         value["scores"] = json.loads(value.pop("scores_json"))
         value["variance_accepted"] = bool(value["variance_accepted"])
         return value
+
+    def list_packs(self, *, limit: int = 100) -> list[dict[str, Any]]:
+        limit = max(1, min(int(limit), 1000))
+        with self.arena.db.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM arena_production_packs ORDER BY created_at DESC, digest DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        values: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["manifest"] = json.loads(item.pop("manifest_json"))
+            values.append(item)
+        return values
+
+    def list_campaigns(
+        self, pack_digest: str | None = None, *, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        limit = max(1, min(int(limit), 1000))
+        query = "SELECT * FROM arena_campaigns"
+        params: list[Any] = []
+        if pack_digest:
+            query += " WHERE pack_digest=?"
+            params.append(pack_digest)
+        query += " ORDER BY finished_at DESC, id DESC LIMIT ?"
+        params.append(limit)
+        with self.arena.db.connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+        values: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["target"] = json.loads(item.pop("target_json"))
+            item["environment"] = json.loads(item.pop("environment_json"))
+            item["run_ids"] = json.loads(item.pop("run_ids_json"))
+            item["scores"] = json.loads(item.pop("scores_json"))
+            item["variance_accepted"] = bool(item["variance_accepted"])
+            values.append(item)
+        return values
 
     def status(self) -> dict[str, Any]:
         with self.arena.db.connect() as conn:

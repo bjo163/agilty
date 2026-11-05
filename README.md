@@ -95,9 +95,21 @@ python -m g4f.rocksoul_db_cli status
 python -m g4f.rocksoul_db_cli discover
 python -m g4f.rocksoul_mesh_cli --help
 python -m g4f.rocksoul_arena_cli --help
+python -m g4f.rocksoul_arena_production_cli --help
 ```
 
 The `rocksoul`, `rocksoul-db`, `rocksoul-mesh`, and `rocksoul-arena` console scripts are also registered by `setup.py` when the package is installed. Live provider probes and Mesh node mutations are explicit operator actions; unit tests and CI use local deterministic fixtures by default.
+
+The production-evidence registry has a separate offline-safe operator CLI. Validate a manifest first, then register it only with the exact local dataset artifact whose SHA-256 is declared in that manifest:
+
+```bash
+python -m g4f.rocksoul_arena_production_cli validate-pack pack.json --dataset-file ./dataset.json
+python -m g4f.rocksoul_arena_production_cli register-pack pack.json --dataset-file ./dataset.json
+python -m g4f.rocksoul_arena_production_cli list-packs
+python -m g4f.rocksoul_arena_production_cli list-campaigns
+```
+
+The CLI does not invoke providers or make network calls. Its built-in `fixture-campaign` runs only synthetic offline cases. The registered pack is immutable by name/version; changing content requires a version bump. See [production CLI manifest and workflow](docs/rocksoul-arena-production-cli.md).
 
 Architecture, security boundaries, release gates, migration notes, and the granular backlog are collected under [`docs/rocksoul-product.md`](docs/rocksoul-product.md) and [`docs/rocksoul-todo.md`](docs/rocksoul-todo.md).
 

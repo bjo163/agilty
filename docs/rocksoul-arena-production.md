@@ -69,3 +69,16 @@ The underlying case results remain in the existing Arena tables.
 This contract makes production benchmark evidence structurally enforceable. It does **not** magically create an authoritative live dataset or certify a live provider/model benchmark pack.
 
 Before a real benchmark pack is promoted, the repository still needs an actual versioned dataset/source, its provenance and review record, explicit provider/model revisions, and real repeated execution evidence satisfying this contract.
+
+
+## Operator workflow
+
+Use the separate production evidence CLI for manifest validation and immutable pack registration. The CLI is offline-only; it never probes a provider or starts a campaign against a remote model.
+
+- `validate-pack` checks the schema and the production contract. Without a dataset file it reports the manifest as structurally valid but not ready to register.
+- `validate-pack --dataset-file PATH` streams the local artifact through SHA-256 and compares the exact digest with the manifest.
+- `register-pack --dataset-file PATH` refuses to write any pack unless the artifact digest matches.
+- `list-packs`, `list-campaigns`, and `show-campaign` return persisted evidence.
+- `fixture-campaign` exercises the repeat-run store with an embedded synthetic fixture and an explicitly offline environment.
+
+See [ROCKSOUL Arena production CLI](rocksoul-arena-production-cli.md) for the versioned JSON manifest schema and command contract. A registered manifest proves provenance metadata and artifact identity; it does not independently prove that the dataset's contamination review is correct or that a provider campaign was actually performed.

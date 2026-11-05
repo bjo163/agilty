@@ -122,6 +122,7 @@ setup(
             "rocksoul-db=g4f.rocksoul_db:main",
             "rocksoul-mesh=g4f.rocksoul_mesh_cli:main",
             "rocksoul-arena=g4f.rocksoul_arena_cli:main",
+            "rocksoul-arena-production=g4f.rocksoul_arena_production_cli:main",
             "rocksoul-legacy=g4f.rocksoul_platform:main",
         ],
     },

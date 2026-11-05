@@ -239,6 +239,27 @@ ROCKSOUL is the product/control-plane layer built on top of the existing g4f run
 - Legacy `rocksoul_platform.Arena` remains compatibility-only; canonical F5 authority is `g4f/rocksoul_arena.py`.
 
 
+## Stage 3 — Production evidence integration
+
+### RS-F5-007 — Strict production-pack validation
+- Status: `VERIFYING`
+- Scope: validate the nested Arena suite, typed provenance, finite JSON requirement objects, bounded integer repeat count, exact target identity, and observed environment before persistence.
+- Acceptance: malformed dataclass inputs and invalid nested suites fail with `ArenaValidationError`; no invalid pack reaches storage.
+- Implementation: `g4f/rocksoul_arena_production.py`.
+
+### RS-F5-008 — Offline production evidence operator CLI
+- Status: `VERIFYING`
+- Scope: versioned strict JSON manifests, dataset SHA-256 verification, immutable registration, pack/campaign listing, campaign readback, and an end-to-end synthetic fixture.
+- Acceptance: `register-pack` must hash the exact local artifact and reject a mismatch before database writes; all commands emit machine-readable JSON; no provider/network call is performed.
+- Implementation: `g4f/rocksoul_arena_production_cli.py`.
+- Tests: `tests/test_rocksoul_arena_production_cli.py`.
+
+### RS-F5-009 — Installed package entrypoint verification
+- Status: `VERIFYING`
+- Scope: expose `rocksoul-arena-production` from the active `setup.py` configuration and smoke-test installed console scripts from outside the repository checkout.
+- Acceptance: built wheel installs without dependency resolution and all ROCKSOUL entrypoints start or return help/status successfully.
+- Workflow: `.github/workflows/rocksoul-ci.yml` and `.github/workflows/rocksoul-arena-ci.yml`.
+
 ## Current-main recovery note
 
-The `DONE` and `FOUNDATION` labels above describe the historical implementation and prior release candidates. After recovery onto the evolving g4f `main`, treat the restored code as awaiting fresh current-head CI until `.github/workflows/rocksoul-ci.yml`, `rocksoul-mesh-ci.yml`, and `rocksoul-arena-ci.yml` all pass. Live production benchmark packs remain deferred.
+Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed current-main ROCKSOUL, Mesh, Arena, CodeQL, and general Unittest checks, including wheel/sdist metadata validation. This removes the Stage 2 re-integration hold. Stage 3 tasks RS-F5-007 through RS-F5-009 remain `VERIFYING` until their new exact-main candidate passes the updated Arena, ROCKSOUL, and general repository CI gates. Live production benchmark packs remain deferred.

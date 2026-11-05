@@ -79,4 +79,6 @@ No broad live-provider/model quality claim is certified until the live activatio
 
 The checked boxes and commit/workflow references above are historical evidence for the original release candidate. ROCKSOUL has since been selectively recovered onto the evolving g4f `main` branch. They do not, by themselves, certify the recovered modules against the current runtime revision.
 
-Current-main certification is pending until the dedicated ROCKSOUL, Mesh, and Arena workflows all pass on the exact recovery commit, alongside the general repository Unittest and package build. Keep live remote Mesh activation and authoritative live Arena claims disabled until their separate deployment/evidence gates are satisfied.
+The Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed the dedicated ROCKSOUL, Mesh, and Arena workflows, general repository Unittest, wheel/sdist metadata validation, and CodeQL Advanced on its exact `main` head. Stage 3 adds strict production-evidence manifest validation, dataset-file SHA-256 registration, persisted readback, and installed-wheel console-script tests. The updated Stage 3 exact `main` head must pass the changed Arena/ROCKSOUL workflows, general Unittest, and wheel smoke step before the new items are marked certified.
+
+Keep live remote Mesh activation and authoritative live Arena claims disabled until their separate deployment/evidence gates are satisfied.

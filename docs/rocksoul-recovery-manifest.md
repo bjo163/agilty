@@ -36,7 +36,9 @@ The new workflows verify:
 - independent Arena scoring/provenance/persistence/CLI tests on Ubuntu and Windows;
 - package wheel/sdist build and metadata validation through the current `setup.py` packaging configuration.
 
-Historical v0.2.0/v0.2.1 green checks are retained as historical evidence only. They do not certify the recovered modules against the current g4f runtime. Current-main certification is pending until the new workflow runs pass on the exact recovery commit.
+The Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` is now current-main verified: ROCKSOUL CI (Ubuntu/Windows, Python 3.10/3.13 plus wheel/sdist build), Mesh CI, Arena CI, CodeQL Advanced, and general Unittest all completed successfully. Stage 3 adds the production-evidence CLI, strict dataset artifact verification, persisted evidence readback, and installed-wheel entrypoint verification.
+
+The Stage 3 implementation is not certified until the updated Arena CI, ROCKSOUL CI, general Unittest, and package smoke checks pass on its exact final `main` head. Historical release records remain immutable; live provider campaigns and release publication stay separately gated.
 
 ## Explicitly out of scope
 
@@ -46,3 +48,11 @@ Historical v0.2.0/v0.2.1 green checks are retained as historical evidence only. 
 - Running live provider probes or authoritative live Arena campaigns automatically.
 - Publishing a new package or release.
 - Rewriting the repository history or merging the divergent snapshot branch.
+
+
+## Stage 3 additions
+
+- `g4f/rocksoul_arena_production_cli.py` — offline-only production manifest validation, artifact verification, immutable pack registration, and campaign readback.
+- `tests/test_rocksoul_arena_production_cli.py` — manifest, hash mismatch, registration, fixture campaign, and readback contracts.
+- `docs/rocksoul-arena-production-cli.md` and `docs/rocksoul-stage-3.md` — operator schema, safety boundary, and acceptance record.
+- Built-wheel entrypoint smoke checks prevent source-tree imports from masking packaging errors.

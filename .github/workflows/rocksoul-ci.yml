@@ -50,6 +50,8 @@ jobs:
           python -m g4f.rocksoul_db_cli route-explain rocksoul-ci-synthetic
           python -m g4f.rocksoul_mesh_cli --help
           python -m g4f.rocksoul_arena_cli --help
+          python -m g4f.rocksoul_arena_production_cli --help
+          python -m g4f.rocksoul_arena_production_cli status
 
   package-build:
     name: Build and validate wheel / sdist
@@ -68,3 +70,21 @@ jobs:
         run: python -m build
       - name: Validate package metadata
         run: python -m twine check dist/*
+
+      - name: Install minimal runtime dependencies for entrypoint smoke tests
+        run: python -m pip install -r requirements-min.txt
+
+      - name: Install built wheel and smoke-test console scripts
+        env:
+          LOCALAPPDATA: ${{ runner.temp }}
+        run: |
+          python -m pip install --no-deps dist/*.whl
+          cd "$RUNNER_TEMP"
+          rocksoul status
+          rocksoul-db status
+          rocksoul-mesh --help
+          rocksoul-arena --help
+          rocksoul-arena-production --help
+          rocksoul-legacy --help
+          rocksoul-arena-production --db "$RUNNER_TEMP/rocksoul-wheel-smoke.db" fixture-campaign
+          rocksoul-arena-production --db "$RUNNER_TEMP/rocksoul-wheel-smoke.db" list-campaigns

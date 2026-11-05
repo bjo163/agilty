@@ -78,11 +78,11 @@ F4 is implemented as a new product path in `g4f/rocksoul_mesh.py`; the old `Mesh
 - **RS-F8-004 Release gate / certification truth sync — DONE**
 - **RS-F8-005 F4 Mesh architecture + independent release gate — DONE**
 
-## Future phase gate
+## F5 — Arena production boundary
 
-### F5 — Arena
+The canonical deterministic Arena foundation, production evidence contract, and offline production evidence operator workflow are implemented as a distinct control plane. The operator CLI verifies the exact local dataset artifact SHA-256 before registering an immutable pack and supports persisted pack/campaign readback.
 
-**DEFERRED.** Stable execution/trace/health and Mesh coordination foundations now exist, but Arena is not enabled or certified by v0.2.0. It requires a separate benchmark methodology, reproducibility rules, dataset/model provenance, scoring contract, anti-gaming controls, deterministic fixtures, and its own release gate.
+**Live production benchmark packs remain DEFERRED.** The repository does not invent a real dataset, contamination audit, provider/model revision, production environment, or repeated live campaign. These must be supplied and executed with explicit operator authorization before broad quality claims can be made.
 
 ## Release rule
 
@@ -91,4 +91,4 @@ Do not merge or market a candidate as certified while any mandatory final-head C
 
 ## Current-main recovery note
 
-This backlog preserves the historical implementation map. Recovered functionality must pass the current-main ROCKSOUL, Mesh, Arena, and general repository CI gates before being treated as newly certified on this branch.
+Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed current-main ROCKSOUL, Mesh, Arena, CodeQL, and general Unittest checks. Stage 3 adds strict production evidence registration/readback and installed-package entrypoint checks; its own final-head CI remains the certification authority.
