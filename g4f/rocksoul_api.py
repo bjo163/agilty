@@ -71,6 +71,7 @@ def create_app(db: RocksoulDB | None = None):
         max_total_time: float = Field(default=90.0, gt=0, le=300)
         timeout: float = Field(default=30.0, gt=0, le=120)
         stream: bool = False
+        work_id: str | None = Field(default=None, min_length=1, max_length=128)
 
         @model_validator(mode="after")
         def enforce_payload_budget(self):
@@ -309,6 +310,12 @@ def create_app(db: RocksoulDB | None = None):
         supported = {"streaming", "tools", "structured_output", "vision", "image"}
         if any(item not in supported for item in body.requirements):
             raise HTTPException(status_code=422, detail="Unsupported capability requirement")
+        if body.work_id:
+            linked_work = work_items.get(body.work_id)
+            if linked_work is None:
+                raise HTTPException(status_code=404, detail="WorkItem not found")
+            if linked_work["status"] != WorkStatus.RUNNING.value:
+                raise HTTPException(status_code=409, detail="WorkItem must be RUNNING before execution")
         request = ExecutionRequest(
             model=body.model, messages=body.messages,
             requirements=tuple(body.requirements), providers=tuple(body.providers),
@@ -317,6 +324,8 @@ def create_app(db: RocksoulDB | None = None):
             max_total_time=body.max_total_time, timeout=body.timeout, stream=False,
         )
         result = ExecutionEngine(database).execute(request)
+        if body.work_id:
+            work_items.attach_execution(body.work_id, result.request_id, result.outcome)
         attempts = [{
             "attempt_no": item.attempt_no, "provider": item.provider, "model": item.model,
             "started_at": item.started_at, "finished_at": item.finished_at,
@@ -327,6 +336,8 @@ def create_app(db: RocksoulDB | None = None):
         return {
             "request_id": result.request_id, "ok": result.ok, "model": result.model,
             "provider": result.provider, "outcome": result.outcome,
+            "work_id": body.work_id,
+            "task_outcome": "pending_verification" if body.work_id else None,
             "error_class": result.error_class, "error": result.error,
             "response": _safe_response(result.response), "attempts": attempts,
         }
