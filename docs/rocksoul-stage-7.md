@@ -1,30 +1,30 @@
-# ROCKSOUL Stage 7 — Next.js Console Foundation
+# ROCKSOUL Stage 7 — Operator Console
 
-## Goal
-Introduce a new Next.js frontend without deleting or breaking the existing g4f HTML GUI. The console consumes the Stage 6 HTTP API and is a product-facing operator surface.
+## Delivered
+- [x] Next.js App Router, TypeScript, React 19 and standalone output.
+- [x] Signed HTTP-only SameSite=Strict sessions with 12-hour expiry.
+- [x] Operator and Administrator roles. Operators run bounded executions; administrators manage provider and Mesh node states.
+- [x] Server-side API proxy; API key never reaches browser JavaScript.
+- [x] Overview, provider fleet, route explanation, Mesh nodes/leases, Arena pack/campaign evidence, trace explorer and bounded execution screens.
+- [x] Provider activate/quarantine/probe and Mesh activate/drain/quarantine controls.
+- [x] Arena campaign verification and NOT_CERTIFIED claim boundary.
+- [x] Persisted dark/light preference and English/Indonesian toggle.
+- [x] Playwright browser smoke tests, responsive console and Docker Compose deployment topology.
+- [x] Legacy HTML routes retained as compatibility surface; no duplicate provider runtime.
 
-## Delivered foundation
-- Next.js App Router with TypeScript and React 19.
-- Responsive dark industrial console shell.
-- Live API status and provider inventory.
-- Read-only route explanation.
-- Same-origin Next.js API rewrites to the private API origin.
-- No provider implementation or secrets in the browser bundle.
+## API additions
+GET /api/v1/traces?limit=&offset=; GET /api/v1/mesh; POST /api/v1/mesh/nodes/{node_id}/state; GET /api/v1/arena; GET /api/v1/arena/campaigns/{campaign_id}/verify; GET /api/v1/arena/packs/{pack_digest}/report; POST /api/v1/providers/{provider}/control.
 
-## Migration boundary
-- Existing `g4f/gui/server` HTML routes remain untouched for compatibility.
-- New frontend lives in `frontend/rocksoul-console`.
-- ROCKSOUL API remains a separate service/process.
-- Set `ROCKSOUL_API_INTERNAL_URL` in the Next.js server environment. Never publish `ROCKSOUL_API_KEY` as a frontend variable.
+Mutations require X-ROCKSOUL-API-Key. Next.js server injects the key; provider and Mesh mutations require Administrator role.
 
-## Remaining Stage 7 work
-- Route parity audit for all legacy GUI screens.
-- Mesh node/lease views and operator actions.
-- Arena suites, campaigns, verification and report views.
-- Execution trace explorer and safe operator execution form.
-- Authentication/session management, role-based access and audit UI.
-- Locale routing and persisted light/dark theme.
-- Component, accessibility, browser E2E, responsive and production build gates.
-- Docker Compose/Coolify deployment topology and health checks.
+## Local setup
+Install `pip install -e '.[rocksoul-api]'`, set ROCKSOUL_API_HOST and ROCKSOUL_API_KEY, then run `python -m g4f.rocksoul_api`. In frontend/rocksoul-console run `npm install && npm run dev`. Configure ROCKSOUL_API_INTERNAL_URL, ROCKSOUL_API_KEY, ROCKSOUL_CONSOLE_ADMIN_PASSWORD, ROCKSOUL_CONSOLE_OPERATOR_PASSWORD and ROCKSOUL_CONSOLE_SESSION_SECRET (32+ characters) on the server.
 
-The foundation is not a claim that all legacy GUI features have been migrated.
+## Docker Compose / Coolify
+Configure ROCKSOUL_API_KEY, ROCKSOUL_CONSOLE_ADMIN_PASSWORD, ROCKSOUL_CONSOLE_OPERATOR_PASSWORD and ROCKSOUL_CONSOLE_SESSION_SECRET as deployment secrets. Deploy `docker-compose.rocksoul.yml`. Route the public domain to console port 3000; keep API port 8765 private. Persist and back up rocksoul-data.
+
+## Security and limitations
+Single-tenant environment-configured roles, not enterprise SSO or multi-tenant identity. Keep API private and terminate TLS at reverse proxy. Arena integrity is not dataset licensing, contamination, methodology or model-quality certification; reports remain NOT_CERTIFIED. Execution UI exposes bounded single text messages, not streaming or every multimodal runtime option. Legacy HTML screens remain available while route-by-route parity continues separately.
+
+## Verification
+CI runs Next.js lint/build, Playwright browser smoke tests and Docker Compose configuration validation. Existing ROCKSOUL CI continues to run Python API contract tests.
