@@ -3,6 +3,8 @@
 This adapter composes existing stores, routing and execution services. It does
 not implement or own provider adapters.
 """
+import base64
+import binascii
 import hmac
 import json
 import os
@@ -21,6 +23,7 @@ from .rocksoul_contracts import ContractValidationError, WorkItem, WorkStatus
 from .rocksoul_work_store import WorkItemStore, WorkItemStoreError
 from .rocksoul_verification import VerificationProfile, VerificationProfileError
 from .rocksoul_verification_store import VerificationProfileStore
+from .rocksoul_verifier_engine import VerificationEngine
 
 
 def _safe_response(value: Any) -> Any:
@@ -193,6 +196,37 @@ def create_app(db: RocksoulDB | None = None):
             raise HTTPException(status_code=code, detail=str(exc)) from exc
         except (ContractValidationError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/work-items/{work_id}/criteria/{criterion_id}/verify")
+    def verify_work_item_criterion(
+        work_id: str,
+        criterion_id: str,
+        body: dict[str, Any],
+        x_rocksoul_api_key: str | None = Header(default=None),
+    ):
+        require_operator(x_rocksoul_api_key)
+        allowed = {"profile_id", "profile_version", "artifact_base64", "source", "expected_sha256", "schema"}
+        if set(body) - allowed:
+            raise HTTPException(status_code=422, detail="Unknown verifier request fields")
+        if not all(key in body for key in ("profile_id", "profile_version", "artifact_base64", "source")):
+            raise HTTPException(status_code=422, detail="profile_id, profile_version, artifact_base64, and source are required")
+        try:
+            if not isinstance(body["artifact_base64"], str):
+                raise ValueError("artifact_base64 must be a string")
+            artifact = base64.b64decode(body["artifact_base64"], validate=True)
+            if not artifact or len(artifact) > 1_000_000:
+                raise ValueError("artifact must contain 1 to 1000000 bytes")
+            profile = verification_profiles.resolve(body["profile_id"], body["profile_version"])
+            execution = VerificationEngine().verify(
+                profile, artifact, source=body["source"],
+                expected_sha256=body.get("expected_sha256"), schema=body.get("schema"),
+            )
+            return work_items.record_verification(work_id, criterion_id, execution)
+        except (ValueError, binascii.Error, VerificationProfileError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except WorkItemStoreError as exc:
+            code = 404 if str(exc) in {"WorkItem not found", "acceptance criterion not found"} else 409
+            raise HTTPException(status_code=code, detail=str(exc)) from exc
 
     @app.get("/api/v1/work-items/{work_id}/verify-chain")
     def verify_work_item_chain(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
