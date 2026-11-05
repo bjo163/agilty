@@ -17,6 +17,8 @@ from .rocksoul_db import RocksoulDB
 from .rocksoul_execution import ExecutionEngine, ExecutionRequest
 from .rocksoul_execution_store import ExecutionTraceStore
 from .rocksoul_intelligence import CapabilityRequirement, ExplainableRouter
+from .rocksoul_contracts import ContractValidationError, WorkItem, WorkStatus
+from .rocksoul_work_store import WorkItemStore, WorkItemStoreError
 
 
 def _safe_response(value: Any) -> Any:
@@ -41,6 +43,8 @@ def create_app(db: RocksoulDB | None = None):
 
     database = db or RocksoulDB()
     traces = ExecutionTraceStore(database)
+    work_items = WorkItemStore(database)
+    app_work_store = work_items
     app = FastAPI(
         title="ROCKSOUL API",
         version="1.0.0",
@@ -123,6 +127,53 @@ def create_app(db: RocksoulDB | None = None):
             "candidates": ExplainableRouter(database).explain(model, required, allowed),
         }
 
+
+    @app.get("/api/v1/work-items")
+    def list_work_items(limit: int = 50, offset: int = 0):
+        return work_items.list(limit=limit, offset=offset)
+
+    @app.post("/api/v1/work-items")
+    def create_work_item(body: dict[str, Any], x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        try:
+            item = WorkItem.from_dict(body)
+            return work_items.create(item)
+        except ContractValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except WorkItemStoreError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get("/api/v1/work-items/{work_id}")
+    def get_work_item(work_id: str):
+        result = work_items.get(work_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="WorkItem not found")
+        return result
+
+    @app.post("/api/v1/work-items/{work_id}/transitions")
+    def transition_work_item(work_id: str, body: dict[str, Any], x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        if set(body) - {"expected_status", "target_status", "payload"}:
+            raise HTTPException(status_code=422, detail="Unknown transition fields")
+        if not body.get("expected_status") or not body.get("target_status"):
+            raise HTTPException(status_code=422, detail="expected_status and target_status are required")
+        try:
+            return work_items.transition(
+                work_id, body["target_status"], expected_status=body["expected_status"],
+                payload=body.get("payload"),
+            )
+        except (ContractValidationError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except WorkItemStoreError as exc:
+            code = 404 if str(exc) == "WorkItem not found" else 409
+            raise HTTPException(status_code=code, detail=str(exc)) from exc
+
+    @app.get("/api/v1/work-items/{work_id}/verify-chain")
+    def verify_work_item_chain(work_id: str):
+        result = work_items.get(work_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="WorkItem not found")
+        return work_items.verify_event_chain(work_id)
 
     @app.get("/api/v1/traces")
     def list_traces(limit: int = 50, offset: int = 0):
