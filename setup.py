@@ -126,6 +126,7 @@ setup(
             "rocksoul-arena-production=g4f.rocksoul_arena_production_cli:main",
             "rocksoul-legacy=g4f.rocksoul_platform:main",
             "rocksoul-api=g4f.rocksoul_api:main",
+            "rocksoul-work=g4f.rocksoul_work_cli:main",
         ],
     },
     url="https://github.com/xtekky/gpt4free",  # Link to your GitHub repository
