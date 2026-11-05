@@ -431,6 +431,40 @@ class ArenaProductionStore:
                 pack_manifest = {}
                 self._audit_check(checks, "pack_manifest_digest", False, f"pack manifest cannot be decoded: {exc}")
 
+        suite_manifest: dict[str, Any] = {}
+        if pack_row is not None:
+            with self.arena.db.connect() as conn:
+                suite_row = conn.execute(
+                    "SELECT manifest_json FROM arena_suites WHERE digest=?",
+                    (pack_row["suite_digest"],),
+                ).fetchone()
+            if suite_row is None:
+                self._audit_check(checks, "registered_suite_exists", False, "immutable Arena suite is missing")
+            else:
+                try:
+                    suite_manifest = json.loads(suite_row["manifest_json"])
+                    suite_digest_ok = digest_value(suite_manifest) == pack_row["suite_digest"]
+                    suite_identity_ok = (
+                        suite_manifest.get("name") == pack_manifest.get("suite_name")
+                        and suite_manifest.get("version") == pack_manifest.get("suite_version")
+                        and suite_manifest.get("evaluator") == pack_manifest.get("evaluator")
+                    )
+                    self._audit_check(
+                        checks,
+                        "registered_suite_digest",
+                        suite_digest_ok,
+                        "stored suite manifest must reproduce its immutable content digest",
+                    )
+                    self._audit_check(
+                        checks,
+                        "registered_suite_identity",
+                        suite_identity_ok,
+                        "suite name, version, and evaluator must match the production pack",
+                    )
+                except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                    suite_manifest = {}
+                    self._audit_check(checks, "registered_suite_digest", False, f"suite manifest cannot be decoded: {exc}")
+
         target = campaign.get("target")
         environment = campaign.get("environment")
         target_valid = isinstance(target, dict) and all(
@@ -463,7 +497,7 @@ class ArenaProductionStore:
             scores = campaign["scores"]
             policy = pack_manifest.get("repeat_policy", {})
             expected_runs = policy.get("runs")
-            cases = pack_manifest.get("suite", {}).get("cases", [])
+            cases = suite_manifest.get("cases", [])
             pack_digest = campaign["pack_digest"]
             expected_target = target
             expected_environment = environment
