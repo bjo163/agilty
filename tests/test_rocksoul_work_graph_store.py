@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
@@ -10,6 +11,8 @@ from g4f.rocksoul_work_graph import WorkGraph, WorkGraphNode
 from g4f.rocksoul_work_graph_store import WorkGraphStore, WorkGraphStoreError
 from g4f.rocksoul_contracts import AcceptanceCriterion, WorkItem
 from g4f.rocksoul_work_store import WorkItemStore
+from g4f.rocksoul_verification import VerificationProfile
+from g4f.rocksoul_verifier_engine import VerificationEngine
 
 
 class WorkGraphStoreTests(unittest.TestCase):
@@ -108,6 +111,50 @@ class WorkGraphStoreTests(unittest.TestCase):
         states = {item["node_id"]: item for item in result["nodes"]}
         self.assertEqual(states["build"]["state"], "ready")
         self.assertEqual(states["test"]["waiting_for"], ["build"])
+
+    def test_only_accepted_verified_dependency_unblocks_downstream(self):
+        work_store = WorkItemStore(self.db)
+        for work_id, criterion_id, method in (
+            ("work-build", "artifact", "artifact_digest"),
+            ("work-test", "tests", "pytest"),
+        ):
+            work_store.create(WorkItem(
+                work_id=work_id,
+                goal="Complete " + work_id,
+                acceptance_criteria=(AcceptanceCriterion(
+                    criterion_id=criterion_id, description="Verified output",
+                    verification_method=method,
+                ),),
+            ))
+        profile = VerificationProfile.from_dict({
+            "schema_version": 1, "profile_id": "graph.artifact", "version": 1,
+            "adapter_id": "artifact_digest",
+            "evidence_requirements": [{
+                "evidence_type": "artifact_digest", "minimum_count": 1,
+                "require_digest": True, "require_source": True,
+            }],
+            "severity": "error", "independence_group": "graph-tests",
+            "deterministic": True, "side_effect_free": True, "timeout_seconds": 5,
+        })
+        work_store.profiles.register(profile)
+        for current, target in (
+            ("pending", "planning"), ("planning", "ready"),
+            ("ready", "running"), ("running", "verifying"),
+        ):
+            work_store.transition("work-build", target, expected_status=current)
+        artifact = b"verified-build-output"
+        execution = VerificationEngine().verify(
+            profile, artifact, source="artifact://graph-tests/build",
+            expected_sha256=hashlib.sha256(artifact).hexdigest(),
+        )
+        work_store.record_verification("work-build", "artifact", execution)
+        work_store.transition("work-build", "accepted", expected_status="verifying")
+
+        result = self.store.resolve_readiness("pipeline", work_store)
+        states = {item["node_id"]: item for item in result["nodes"]}
+        self.assertEqual(states["build"]["state"], "accepted")
+        self.assertEqual(states["test"]["state"], "ready")
+        self.assertEqual(result["ready_nodes"], ["test"])
 
     def test_readiness_blocks_missing_work_items(self):
         result = self.store.resolve_readiness("pipeline", WorkItemStore(self.db))
