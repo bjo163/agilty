@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import sqlite3
 import uuid
 from dataclasses import asdict
@@ -152,6 +153,9 @@ class WorkItemStore:
                 raise WorkItemStoreError(f"stale WorkItem status: expected {expected.value}, found {current.value}")
             next_status = validate_status_transition(current, target)
             if next_status is WorkStatus.ACCEPTED:
+                chain = self.verify_event_chain(work_id)
+                if not chain["ok"]:
+                    raise WorkItemStoreError("WorkItem evidence chain is invalid; acceptance is blocked")
                 if "verification_results" in event_payload:
                     raise WorkItemStoreError("caller-supplied PASS values are forbidden; record verifier executions first")
                 contract = WorkItem.from_dict(json.loads(row["contract_json"]))
@@ -206,8 +210,10 @@ class WorkItemStore:
                 raise WorkItemStoreError("verification result independence group does not match profile")
             if result.verifier_id != f"rocksoul.{profile.adapter_id}" or result.verifier_version != VerificationEngine.VERSION:
                 raise WorkItemStoreError("verification result does not match the built-in verifier identity")
-            if not isinstance(execution.artifact_digest, str) or len(execution.artifact_digest) != 64:
+            if not isinstance(execution.artifact_digest, str) or len(execution.artifact_digest) != 64 or any(char not in "0123456789abcdef" for char in execution.artifact_digest):
                 raise WorkItemStoreError("verifier artifact digest is invalid")
+            if isinstance(execution.duration_ms, bool) or not isinstance(execution.duration_ms, (int, float)) or not math.isfinite(execution.duration_ms) or execution.duration_ms < 0:
+                raise WorkItemStoreError("verifier duration must be finite and non-negative")
             if any(entry.digest != execution.artifact_digest for entry in execution.evidence):
                 raise WorkItemStoreError("evidence digest must match the verified artifact bytes")
             if any(entry.verifier_id != result.verifier_id or entry.verifier_version != result.verifier_version for entry in execution.evidence):
