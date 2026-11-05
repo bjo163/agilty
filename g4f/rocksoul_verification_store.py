@@ -52,6 +52,8 @@ class VerificationProfileStore:
             return self.get(profile.profile_id, profile.version, connection=conn)
 
     def get(self, profile_id: str, version: int, *, connection=None) -> dict[str, Any] | None:
+        if not isinstance(profile_id, str) or not profile_id.strip():
+            raise VerificationProfileError("profile_id must be a non-empty string")
         if isinstance(version, bool) or not isinstance(version, int) or version < 1:
             raise VerificationProfileError("profile version must be a positive integer")
         if connection is None:
