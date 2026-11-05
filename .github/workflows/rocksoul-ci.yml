@@ -54,6 +54,7 @@ jobs:
           python -m g4f.rocksoul_arena_cli --help
           python -m g4f.rocksoul_arena_production_cli --help
           python -m g4f.rocksoul_arena_production_cli status
+          python -m g4f.rocksoul_work_cli --help
 
   package-build:
     name: Build and validate wheel / sdist
@@ -87,6 +88,7 @@ jobs:
           rocksoul-mesh --help
           rocksoul-arena --help
           rocksoul-arena-production --help
+          rocksoul-work --help
           rocksoul-legacy --help
           rocksoul-arena-production --db "$RUNNER_TEMP/rocksoul-wheel-smoke.db" fixture-campaign
           rocksoul-arena-production --db "$RUNNER_TEMP/rocksoul-wheel-smoke.db" list-campaigns
