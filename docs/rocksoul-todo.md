@@ -385,30 +385,32 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Safety: SQLite `BEGIN IMMEDIATE` serializes transitions; secrets must not be placed in goal/evidence/event payloads. Hash chaining detects accidental or unsophisticated mutation; it is not an external signature or WORM guarantee.
 
 ### RS-F9-005 — WorkItem API integration without false transport success
-- Status: `FOUNDATION` — WorkItem and profile APIs are wired; ExecutionEngine correlation remains open.
-- Scope implemented: authenticated WorkItem create/list/read/transition/event-chain endpoints; profile register/list/read endpoints; legacy execution endpoint unchanged.
-- Acceptance: lifecycle acceptance requires a registered profile version, matching criterion adapter identifier, PASS outcome, and evidence records with source, SHA-256 digest, timestamp, and consistent verifier identity.
-- Critical boundary: submitted verification results are trusted-caller attestations. The server validates their structure and profile/evidence contract but does not independently execute the named verifier or authenticate the artifact behind a digest. Therefore this is not independent task certification.
-- Remaining: attach WorkItem ID to ExecutionEngine traces, expose transport outcome separately from task outcome in a WorkItem execution workflow, and add adapter execution receipts.
+- Status: `DONE` — API foundation and execution trace linkage.
+- Scope implemented: authenticated WorkItem create/list/read/transition/event-chain endpoints; profile register/list/read endpoints; per-criterion verifier execution endpoint; optional `work_id` on legacy-compatible `POST /api/v1/execute`.
+- Acceptance: execution trace is linked to a WorkItem only after the WorkItem is RUNNING; response keeps provider transport outcome separate and reports `task_outcome=pending_verification`; provider success never auto-accepts work.
+- Remaining: direct Console workflow and stronger execution_runs-level foreign-key correlation are future enhancements.
 
 ### RS-F9-006 — WorkItem CLI and operator readback
-- Status: `DONE` — operator CLI foundation.
-- Implementation: `python -m g4f.rocksoul_work_cli` supports `create`, `get`, `list`, `transition`, and `verify-chain`.
-- Acceptance: JSON output; read-only inspection commands do not mutate state; state changes require explicit expected and target statuses.
+- Status: `DONE` — operator CLI and local artifact verification.
+- Implementation: `rocksoul-work` / `python -m g4f.rocksoul_work_cli` supports `create`, `get`, `list`, `transition`, `verify`, and `verify-chain`.
+- Acceptance: JSON output; verification reads exact local artifact bytes; state changes require explicit expected and target statuses.
 
 ### RS-F9-007 — Executable verifier adapters and authenticated evidence receipts
-- Status: `TODO`
-- Scope: implement bounded built-in adapters for selected deterministic task classes; each adapter must produce a verifiable receipt, enforce profile timeout, bind evidence digest to actual artifact bytes, and record adapter/runtime version.
-- Acceptance: no caller-supplied PASS string or unverifiable digest can independently certify a criterion; unsupported methods fail closed.
+- Status: `FOUNDATION` — two deterministic built-in adapters implemented.
+- Implementation: `g4f/rocksoul_verifier_engine.py` implements `artifact_digest` and a bounded JSON Schema subset. It computes SHA-256 from supplied bytes, caps artifact/schema sizes and schema complexity, emits provenance-bearing evidence, and fails closed for unimplemented adapter identifiers.
+- Persistence: verifier result/evidence rows are linked into the WorkItem event chain by a canonical receipt digest; acceptance checks the latest result for every required criterion.
+- Remaining: `pytest`, `http_contract`, and `source_provenance` adapter execution, external source authenticity, and cryptographically authenticated verifier identity.
 
 ### RS-F9-008 — ExecutionEngine correlation and outcome separation
-- Status: `TODO`
-- Scope: connect WorkItem ID to execution requests/traces without changing legacy API behavior; represent provider transport success separately from verification outcome.
-- Acceptance: provider success can never auto-transition a WorkItem to ACCEPTED; cancellation/deadline/budget semantics remain bounded.
+- Status: `FOUNDATION` — API-level correlation delivered.
+- Scope: optional WorkItem ID is linked to the persisted execution request ID and transport outcome through an immutable WorkItem event; legacy execution requests remain unchanged.
+- Acceptance: provider transport success cannot auto-transition a WorkItem to ACCEPTED; explicit verifier execution and a separate transition are required.
+- Remaining: native `execution_runs.work_id` column and Console outcome cockpit are not yet implemented.
 
 ### Stage 8 verification boundary
-- WorkItem contracts, profile definitions, profile persistence, lifecycle storage, API readback, and operator CLI are implemented.
-- Profile and evidence payload validation is implemented; executable verifier adapters are not.
-- A trusted operator/API caller can submit a structured verification attestation; this is not independently verified proof until RS-F9-007 is complete.
-- WorkItem execution is not yet correlated with ExecutionEngine traces; Console integration remains open.
+- WorkItem contracts, profile definitions/persistence, lifecycle storage, authenticated API, operator CLI, execution trace linkage, and two deterministic verifier adapters are implemented.
+- Only `artifact_digest` and the bounded `json_schema` subset execute. Other allowlisted identifiers return `ERROR`.
+- Acceptance requires a latest persisted built-in verifier PASS for every required criterion and a valid event/receipt hash chain; caller-supplied PASS payloads are rejected.
+- The verifier hashes the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact.
+- Console integration, additional verifier adapters, native execution_runs correlation, and signed external evidence remain open.
 - Existing F1–F7 execution, Mesh, Arena, API, and Console contracts remain compatibility requirements.
