@@ -13,7 +13,7 @@ from typing import Any, Mapping
 
 from .rocksoul_contracts import WorkItem, WorkStatus, validate_status_transition
 from .rocksoul_db import RocksoulDB
-from .rocksoul_verification import EvidenceRecord, VerificationOutcome, VerificationProfileError
+from .rocksoul_verification import EvidenceRecord, VerificationOutcome, VerificationProfileError, VerificationProfileRegistry
 from .rocksoul_verification_store import VerificationProfileStore
 from .rocksoul_verifier_engine import VerificationEngine, VerificationExecution
 
@@ -136,7 +136,9 @@ class WorkItemStore:
             raise WorkItemStoreError("event payload must be an object")
         event_payload = dict(payload or {})
         # Payloads are persisted as JSON; reject unserializable values before acquiring a write lock.
-        if target is WorkStatus.ACCEPTED or target == WorkStatus.ACCEPTED.value:
+        accepting = target is WorkStatus.ACCEPTED or target == WorkStatus.ACCEPTED.value
+        registry = self.profiles.registry() if accepting else None
+        if accepting:
             chain = self.verify_event_chain(work_id)
             if not chain["ok"]:
                 raise WorkItemStoreError("WorkItem evidence chain is invalid; acceptance is blocked")
@@ -161,7 +163,6 @@ class WorkItemStore:
                     raise WorkItemStoreError("caller-supplied PASS values are forbidden; record verifier executions first")
                 contract = WorkItem.from_dict(json.loads(row["contract_json"]))
                 required = [criterion for criterion in contract.acceptance_criteria if criterion.required]
-                registry = self.profiles.registry()
                 verification_ids = []
                 for criterion in required:
                     verified = conn.execute(
@@ -193,6 +194,10 @@ class WorkItemStore:
         if not isinstance(execution, VerificationExecution):
             raise WorkItemStoreError("record_verification requires a VerificationEngine execution result")
         result = execution.result
+        if self.get(work_id) is None:
+            raise WorkItemStoreError("WorkItem not found")
+        profile = self.profiles.resolve(result.profile_id, result.profile_version)
+        registry = VerificationProfileRegistry((profile,))
         with self.db.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             row = conn.execute("SELECT contract_json,status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
@@ -204,7 +209,6 @@ class WorkItemStore:
             criterion = next((item for item in contract.acceptance_criteria if item.criterion_id == criterion_id), None)
             if criterion is None:
                 raise WorkItemStoreError("acceptance criterion not found")
-            profile = self.profiles.resolve(result.profile_id, result.profile_version)
             if profile.adapter_id != criterion.verification_method:
                 raise WorkItemStoreError("verification profile adapter does not match acceptance criterion")
             if result.independence_group != profile.independence_group:
@@ -222,9 +226,9 @@ class WorkItemStore:
             if any(entry.verifier_id != result.verifier_id or entry.verifier_version != result.verifier_version for entry in execution.evidence):
                 raise WorkItemStoreError("evidence verifier identity must match the verifier result")
             if result.outcome is VerificationOutcome.PASS:
-                self.profiles.registry().validate_evidence(profile, execution.evidence)
+                registry.validate_evidence(profile, execution.evidence)
             elif execution.evidence:
-                self.profiles.registry().validate_evidence(profile, execution.evidence)
+                registry.validate_evidence(profile, execution.evidence)
             verification_id = uuid.uuid4().hex
             created_at = datetime.now(timezone.utc).isoformat(timespec="microseconds")
             result_payload = {
