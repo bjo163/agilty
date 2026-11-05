@@ -24,7 +24,9 @@ The WorkItem remains the authority boundary:
 - canonical serialization and SHA-256 graph digest;
 - hard limits: 256 nodes, 2,048 edges, 64 dependencies per node, and 64 topological layers.
 
-The implementation is a pure contract/planning primitive. It does not persist graphs, create WorkItems, inspect WorkItem status, reserve budgets, dispatch execution, or propagate cancellation. Do not describe those capabilities as shipped.
+The graph contract is persisted by `g4f/rocksoul_work_graph_store.py` in the existing SQLite control-plane database. Registration is idempotent for the same immutable graph digest and rejects reuse of a graph ID with changed content. Graph creation is recorded in a hash-chained event table; the verifier checks canonical graph integrity, sequence continuity, previous hashes, event hashes, and the creation event. Listing is bounded to 100 records per page.
+
+The implementation still does not create WorkItems, inspect WorkItem status, reserve budgets, dispatch execution, or propagate cancellation. Persistence makes graph definitions durable; it does not make them executable. Do not describe those capabilities as shipped.
 
 ## Scheduling semantics
 
@@ -44,7 +46,7 @@ The initial graph model intentionally avoids implicit fan-out and dynamic graph 
 
 ## Next integration gates
 
-- persistent graph store with immutable graph versions and hash-chained events;
+- [x] persistent graph registry with immutable graph IDs, idempotent registration, bounded listing, and hash-chained creation events;
 - API/CLI read and write endpoints with idempotent create and expected-version updates;
 - authoritative readiness calculation from WorkItem statuses and dependency outputs;
 - graph-level budget reservation that cannot exceed child WorkItem budgets;
