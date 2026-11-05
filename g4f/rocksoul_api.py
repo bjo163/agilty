@@ -289,7 +289,10 @@ def create_app(db: RocksoulDB | None = None):
         item = work_items.get(work_id)
         if item is None:
             raise HTTPException(status_code=404, detail="WorkItem not found")
-        grouped: dict[str, list[dict[str, Any]]] = {}
+        integrity = work_items.verify_event_chain(work_id)
+        if not integrity.get("ok"):
+            raise HTTPException(status_code=409, detail="WorkItem event chain is invalid; evidence diff is unavailable")
+        grouped: dict[str, list[dict[str, Any]]] = {};
         for verification in item["verifications"]:
             grouped.setdefault(verification["criterion_id"], []).append(verification)
         criteria = {}
@@ -312,7 +315,7 @@ def create_app(db: RocksoulDB | None = None):
                 "findings_added": sorted(latest_findings - previous_findings),
                 "findings_resolved": sorted(previous_findings - latest_findings),
             }
-        return {"work_id": work_id, "criteria": criteria, "total_criteria_with_evidence": len(criteria)}
+        return {"work_id": work_id, "criteria": criteria, "total_criteria_with_evidence": len(criteria), "integrity": integrity}
 
     @app.get("/api/v1/work-items/{work_id}/evidence-bundle")
     def work_item_evidence_bundle(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
