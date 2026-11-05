@@ -432,7 +432,7 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Scope: versioned graph/node schema, strict identifiers and fields, unique node/WorkItem references, dependency validation, deterministic topological layers, readiness calculation from an explicit completed-node set, transitive descendants, canonical digest.
 - Safety limits: maximum 256 nodes, 2,048 edges, 64 dependencies per node, and 64 topological layers; cycles and unknown dependencies fail closed.
 - Tests: `tests/test_rocksoul_work_graph.py` covers ordering, readiness, descendants, digest stability, round-trip, duplicate IDs, missing dependencies, cycles, depth/size bounds, and malformed inputs.
-- Trust boundary: readiness is structural only. Caller-supplied completed IDs are not WorkItem acceptance proof. No persistence, scheduler, budget aggregation, cancellation, or execution dispatch is included.
+- Trust boundary: the pure helper readiness is structural only. Caller-supplied completed IDs are not WorkItem acceptance proof. Authoritative store-level readiness is tracked under RS-F10-003.
 - Design: [WorkGraph contract and integration gates](rocksoul-work-graph.md).
 
 ### RS-F10-002 — Persistent graph registry and event ledger
@@ -443,8 +443,11 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Remaining: schema migration is create-if-not-exists only; no graph update/versioning API exists. Exact-main CI must pass before this item can be marked DONE.
 
 ### RS-F10-003 — Authoritative dependency resolver
-- Status: `TODO`
-- Acceptance: readiness derives from actual WorkItem states and required artifact digests; a dependency cannot be considered complete merely because a caller submits its ID.
+- Status: `FOUNDATION` — read-only resolver implemented; CI certification and atomic dispatch-time recheck remain pending.
+- Implementation: `WorkGraphStore.resolve_readiness(graph_id, WorkItemStore)`.
+- Acceptance implemented: every referenced WorkItem must exist and pass its event/evidence-chain integrity check; only `accepted` dependencies satisfy downstream nodes; missing/terminal-failed dependencies block descendants; pending dependencies produce waiting nodes; corrupted chains fail closed.
+- Tests: `tests/test_rocksoul_work_graph_store.py` and `tests/test_rocksoul_api.py` cover pending/waiting, missing WorkItems, corrupted evidence chain, API authentication, and immutable conflict.
+- Boundary: read-only readiness snapshot; it does not reserve/claim a child or eliminate the check/use race. Dispatcher must re-check atomically before execution.
 
 ### RS-F10-004 — Graph budget and authority composition
 - Status: `TODO`
@@ -455,9 +458,13 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Acceptance: bounded retries, deadlines, cancellation, optional-node semantics, uncertain/blocked propagation, and no implicit restart of terminal WorkItems.
 
 ### RS-F10-006 — WorkGraph API, CLI, and Console
-- Status: `TODO`
-- Acceptance: authenticated graph operations, idempotency and expected-version concurrency, operator readback, graph visualization, and end-to-end tests proving child approval/verification gates cannot be bypassed.
+- Status: `FOUNDATION` — authenticated API registry/readiness and offline operator CLI implemented; Console visualization and execution dispatch remain TODO.
+- API: `GET|POST /api/v1/work-graphs`, `GET /api/v1/work-graphs/{graph_id}`, `GET /api/v1/work-graphs/{graph_id}/readiness`; all require operator API key.
+- CLI: `rocksoul-work-graph` / `python -m g4f.rocksoul_work_graph_cli` supports create/list/get/verify/readiness.
+- Packaging/CI: console entrypoint added to `setup.py`; ROCKSOUL CI smoke-tests module and installed command.
+- Tests: API auth/create/idempotency/readiness/immutable conflict and CLI create/list/verify/readiness.
+- Remaining: Console graph visualization, expected-version graph revisions, atomic scheduler claims, and end-to-end proof that child approval/verification gates cannot be bypassed.
 
 ### Stage 9 completion rule
-- Stage 9 is not complete until RS-F10-002 through RS-F10-006 are implemented and CI-certified on the exact final `main` commit. RS-F10-001 and RS-F10-002 currently have foundation implementations; no scheduler or API/Console orchestration is claimed.
-- The current WorkGraph module is a deterministic DAG contract foundation only; it is not an autonomous multi-agent scheduler.
+- Stage 9 is not complete until RS-F10-002 through RS-F10-006 are implemented and CI-certified on the exact final `main` commit. RS-F10-001 through RS-F10-003 have foundation implementations; RS-F10-006 has API/CLI foundations only.
+- No worker scheduler, aggregate budget enforcement, cancellation/recovery orchestration, or Console graph visualization is claimed.
