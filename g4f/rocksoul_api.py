@@ -19,6 +19,8 @@ from .rocksoul_execution_store import ExecutionTraceStore
 from .rocksoul_intelligence import CapabilityRequirement, ExplainableRouter
 from .rocksoul_contracts import ContractValidationError, WorkItem, WorkStatus
 from .rocksoul_work_store import WorkItemStore, WorkItemStoreError
+from .rocksoul_verification import VerificationProfile, VerificationProfileError
+from .rocksoul_verification_store import VerificationProfileStore
 
 
 def _safe_response(value: Any) -> Any:
@@ -44,7 +46,7 @@ def create_app(db: RocksoulDB | None = None):
     database = db or RocksoulDB()
     traces = ExecutionTraceStore(database)
     work_items = WorkItemStore(database)
-    app_work_store = work_items
+    verification_profiles = VerificationProfileStore(database)
     app = FastAPI(
         title="ROCKSOUL API",
         version="1.0.0",
@@ -127,6 +129,26 @@ def create_app(db: RocksoulDB | None = None):
             "candidates": ExplainableRouter(database).explain(model, required, allowed),
         }
 
+
+    @app.get("/api/v1/verification-profiles")
+    def list_verification_profiles(limit: int = 100):
+        return verification_profiles.list(limit=limit)
+
+    @app.post("/api/v1/verification-profiles")
+    def register_verification_profile(body: dict[str, Any], x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        try:
+            profile = VerificationProfile.from_dict(body)
+            return verification_profiles.register(profile)
+        except VerificationProfileError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/verification-profiles/{profile_id}/{version}")
+    def get_verification_profile(profile_id: str, version: int):
+        result = verification_profiles.get(profile_id, version)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Verification profile not found")
+        return result
 
     @app.get("/api/v1/work-items")
     def list_work_items(limit: int = 50, offset: int = 0):
