@@ -34,7 +34,7 @@ OpenAPI docs: `/api/docs`.
 WorkItem and verification-profile endpoints require the operator API key for both reads and writes. Unknown request fields are rejected. Message count, attempt count, timeout and total duration are bounded. Arbitrary provider objects are never accepted. Streaming is rejected by this JSON endpoint to avoid partial-response replay ambiguity. API keys are compared in constant time and never returned. Do not expose execution publicly without user/session and tenant authorization.
 
 ## Deployment
-Keep the API on a private network. The Next.js console proxies browser requests through same-origin `/api/*` rewrites to `ROCKSOUL_API_INTERNAL_URL`; the API key must remain server-side and must never use a `NEXT_PUBLIC_*` variable.
+Keep the API on a private network. The Next.js console proxies browser requests through same-origin server routes to `ROCKSOUL_API_INTERNAL_URL`; the API key and approval HMAC secret must remain server-side and must never use a `NEXT_PUBLIC_*` variable. Set the same `ROCKSOUL_APPROVAL_SIGNING_SECRET` (minimum 32 characters) in the API and Console, plus a stable `ROCKSOUL_CONSOLE_ADMIN_ID`; existing sessions must sign in again after principal configuration changes.
 
 ## Work Contract boundary
 
