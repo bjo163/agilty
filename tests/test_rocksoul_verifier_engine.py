@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import unittest
 
 from g4f.rocksoul_verification import EvidenceRequirement, VerificationOutcome, VerificationProfile
@@ -162,6 +163,35 @@ class VerificationEngineTests(unittest.TestCase):
                 result = self.engine.verify(profile, report, source="ci://invalid")
                 self.assertNotEqual(result.result.outcome, VerificationOutcome.PASS)
 
+
+
+    def test_http_contract_receipt_checks_https_status_and_body_schema(self):
+        profile = self.profile("http_contract", "http_contract_receipt")
+        schema = {"type": "object", "required": ["ok"], "properties": {"ok": {"type": "boolean"}}}
+        receipt = b'{"method":"GET","url":"https://api.example.test/v1/health","status_code":200,"expected_status":200,"body":{"ok":true}}'
+        passed = self.engine.verify(profile, receipt, source="capture://http/1", schema=schema)
+        self.assertEqual(passed.result.outcome, VerificationOutcome.PASS)
+        self.assertEqual(passed.evidence[0].evidence_type, "http_contract_receipt")
+        mismatch = receipt.replace(b'"status_code":200', b'"status_code":503')
+        failed = self.engine.verify(profile, mismatch, source="capture://http/2", schema=schema)
+        self.assertEqual(failed.result.outcome, VerificationOutcome.FAIL)
+
+    def test_http_contract_rejects_untrusted_urls_and_invalid_body(self):
+        profile = self.profile("http_contract", "http_contract_receipt")
+        schema = {"type": "object", "required": ["ok"], "properties": {"ok": {"type": "boolean"}}}
+        for url, body in (
+            ("http://api.example.test/health", {"ok": True}),
+            ("https://user:secret@api.example.test/health", {"ok": True}),
+            ("https://api.example.test/health#fragment", {"ok": True}),
+            ("https://api.example.test/health", {"ok": "yes"}),
+        ):
+            receipt = json.dumps({
+                "method": "GET", "url": url, "status_code": 200,
+                "expected_status": 200, "body": body,
+            }).encode()
+            with self.subTest(url=url, body=body):
+                result = self.engine.verify(profile, receipt, source="capture://http/invalid", schema=schema)
+                self.assertEqual(result.result.outcome, VerificationOutcome.FAIL)
 
 
 if __name__ == "__main__":
