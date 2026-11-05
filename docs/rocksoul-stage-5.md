@@ -52,3 +52,10 @@ The auditor is read-only. It never edits or repairs historical evidence. A rejec
 ## Remaining separate production certification requirements
 
 A real benchmark pack still needs an authentic versioned dataset, license/use review, independent contamination/leakage review, evaluator review, exact live target revisions, actual execution-environment evidence, repeated authorized campaigns, and final CI/release-gate review. Stage 5 does not bypass these requirements.
+
+
+## Stage completion
+
+**Stage 5 implementation and offline release gate: COMPLETE.**
+
+All Stage 5 acceptance checks above are implemented and regression-tested. This completion refers to campaign integrity verification and deterministic evidence reporting only. The separate production benchmark-pack certification gate remains deferred until authentic dataset provenance, licensing, evaluator review, contamination/leakage review, target revisions and authorized repeated live evidence are independently supplied. Every report therefore continues to return `quality_certification=NOT_CERTIFIED`.

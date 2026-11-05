@@ -88,6 +88,7 @@ EXTRA_REQUIRE = {
         "cairosvg",
         "python-xlib; sys_platform == 'linux'",
     ],
+    "rocksoul-api": ["fastapi", "uvicorn"],
     "tracing": ["langfuse"],
     "wasmtime": [
         "wasmtime",
@@ -124,6 +125,7 @@ setup(
             "rocksoul-arena=g4f.rocksoul_arena_cli:main",
             "rocksoul-arena-production=g4f.rocksoul_arena_production_cli:main",
             "rocksoul-legacy=g4f.rocksoul_platform:main",
+            "rocksoul-api=g4f.rocksoul_api:main",
         ],
     },
     url="https://github.com/xtekky/gpt4free",  # Link to your GitHub repository

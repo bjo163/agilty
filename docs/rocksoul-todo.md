@@ -302,3 +302,34 @@ ROCKSOUL is the product/control-plane layer built on top of the existing g4f run
 ## Current-main recovery note
 
 Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its current-main verification. Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed Arena CI [#42030958020](https://github.com/bjo163/agilty/actions/runs/42030958020), ROCKSOUL CI plus package/wheel smoke [#42030958117](https://github.com/bjo163/agilty/actions/runs/42030958117), general Unittest on Python 3.10 and 3.15 [#42030958126](https://github.com/bjo163/agilty/actions/runs/42030958126), and CodeQL Advanced [#42030958006](https://github.com/bjo163/agilty/actions/runs/42030958006). The dedicated Mesh CI remained green from Stage 2 [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726); Stage 3 changed no Mesh implementation, and the broad ROCKSOUL suite re-ran offline Mesh contracts across all four OS/Python lanes. The final Stage 3 implementation outcome was 13 successful checks, 2 intentionally skipped distribution-publication checks, zero failures, and zero pending checks. Live production benchmark packs remain deferred. Stage 5 verifies stored campaign integrity and produces per-target reports, but does not independently certify dataset licensing, contamination, methodology, or model quality.
+
+
+## Stage 5 completion record
+
+- Stage status: `COMPLETE` for immutable campaign verification, deterministic per-target reporting, and offline regression/release-gate coverage.
+- Acceptance: RS-F5-013, RS-F5-014 and RS-F5-015 are all `DONE`.
+- Explicit exclusion: RS-F5-006 remains `DEFERRED`. Production benchmark quality certification is not claimed and reports must continue to state `quality_certification=NOT_CERTIFIED`.
+- Evidence contract: see [Stage 5](rocksoul-stage-5.md) and [Arena production contract](rocksoul-arena-production.md).
+
+## Stage 6 — Product API & Integration
+
+- [x] Add versioned FastAPI product adapter over existing ROCKSOUL stores/router/execution engine.
+- [x] Add health, status, provider inventory, route explanation, trace lookup and bounded execution endpoints.
+- [x] Require operator API key for execution; require a key for non-loopback bind.
+- [x] Reject unknown request fields and bound request size, attempts and time budgets.
+- [x] Add optional `rocksoul-api` install extra and `rocksoul-api` console entrypoint.
+- [x] Add API contract tests and CI dependencies.
+- [x] Document API boundaries, OpenAPI, deployment safety and unsupported features.
+- [ ] Run current-main CI and wheel/package verification after implementation commit.
+
+## Stage 7 — Next.js Console migration
+
+- [x] Create new Next.js App Router frontend in `frontend/rocksoul-console`.
+- [x] Add TypeScript, React 19, responsive dark operator console shell.
+- [x] Add API-backed status metrics, provider health table and read-only route explanation.
+- [x] Keep legacy HTML GUI routes intact during migration.
+- [x] Document local and production setup and migration boundary.
+- [ ] Add full legacy route parity, Mesh/Arena/trace views and operator actions.
+- [ ] Add session authentication, role-based authorization, localization, theme persistence and browser E2E/accessibility gates.
+- [ ] Run Next.js production build and browser smoke tests in CI.
+- [ ] Add Docker Compose/Coolify frontend/API deployment topology and health checks.
