@@ -372,29 +372,43 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Tests: happy path, illegal jumps, terminal-state enforcement, uncertain/unverified re-verification, blocked-work resumption.
 
 ### RS-F9-003 — Verification profile registry
-- Status: `TODO`
-- Scope: versioned profiles map acceptance criteria to registered verifier implementations, required evidence, severity, and independent-review policy.
-- Boundary: method identifiers in WorkItem are declarations only; they do not execute or certify a verifier.
+- Status: `DONE` — registry contract and persistence only.
+- Scope: strict versioned profiles, allowlisted adapter identifiers, evidence requirements, severity, independence group, deterministic/side-effect flags, bounded timeout, and immutable SQLite registration.
+- Implementation: `g4f/rocksoul_verification.py`, `g4f/rocksoul_verification_store.py`.
+- API: authenticated profile register/list/read endpoints.
+- Boundary: adapter identifiers are declarations; no dynamic imports, arbitrary callables, or verifier execution are provided. An allowlisted identifier does not mean its adapter is implemented.
 
 ### RS-F9-004 — Persisted work contract and lifecycle store
-- Status: `TODO`
-- Scope: SQLite-backed work item records, immutable contract revisions, append-only lifecycle events, idempotent creation, and atomic state transitions.
-- Safety: no secrets in contract payloads; explicit retention/redaction policy; concurrent transition protection.
+- Status: `DONE` — immutable contract records and append-only lifecycle history.
+- Scope: SQLite WorkItem records, immutable contract digest, idempotent creation, atomic expected-state transitions, append-only hash-chained events, readback, and event-chain verification.
+- Implementation: `g4f/rocksoul_work_store.py`.
+- Safety: SQLite `BEGIN IMMEDIATE` serializes transitions; secrets must not be placed in goal/evidence/event payloads. Hash chaining detects accidental or unsophisticated mutation; it is not an external signature or WORM guarantee.
 
-### RS-F9-005 — Execution/API integration without false acceptance
-- Status: `TODO`
-- Scope: attach WorkItem identity to execution traces and API responses while preserving legacy request compatibility.
-- Acceptance: provider transport success is represented separately from task outcome; an execution result alone can never create `ACCEPTED`; no implicit verifier is invented.
-- Tests: legacy API compatibility, correlation integrity, false-success regression cases.
+### RS-F9-005 — WorkItem API integration without false transport success
+- Status: `FOUNDATION` — WorkItem and profile APIs are wired; ExecutionEngine correlation remains open.
+- Scope implemented: authenticated WorkItem create/list/read/transition/event-chain endpoints; profile register/list/read endpoints; legacy execution endpoint unchanged.
+- Acceptance: lifecycle acceptance requires a registered profile version, matching criterion adapter identifier, PASS outcome, and evidence records with source, SHA-256 digest, timestamp, and consistent verifier identity.
+- Critical boundary: submitted verification results are trusted-caller attestations. The server validates their structure and profile/evidence contract but does not independently execute the named verifier or authenticate the artifact behind a digest. Therefore this is not independent task certification.
+- Remaining: attach WorkItem ID to ExecutionEngine traces, expose transport outcome separately from task outcome in a WorkItem execution workflow, and add adapter execution receipts.
 
 ### RS-F9-006 — WorkItem CLI and operator readback
+- Status: `DONE` — operator CLI foundation.
+- Implementation: `python -m g4f.rocksoul_work_cli` supports `create`, `get`, `list`, `transition`, and `verify-chain`.
+- Acceptance: JSON output; read-only inspection commands do not mutate state; state changes require explicit expected and target statuses.
+
+### RS-F9-007 — Executable verifier adapters and authenticated evidence receipts
 - Status: `TODO`
-- Scope: inspect and validate contracts, show lifecycle history, and explain why a work item is blocked/unverified/uncertain.
-- Acceptance: JSON output is stable; read-only commands do not mutate state; permission secrets are never displayed.
+- Scope: implement bounded built-in adapters for selected deterministic task classes; each adapter must produce a verifiable receipt, enforce profile timeout, bind evidence digest to actual artifact bytes, and record adapter/runtime version.
+- Acceptance: no caller-supplied PASS string or unverifiable digest can independently certify a criterion; unsupported methods fail closed.
+
+### RS-F9-008 — ExecutionEngine correlation and outcome separation
+- Status: `TODO`
+- Scope: connect WorkItem ID to execution requests/traces without changing legacy API behavior; represent provider transport success separately from verification outcome.
+- Acceptance: provider success can never auto-transition a WorkItem to ACCEPTED; cancellation/deadline/budget semantics remain bounded.
 
 ### Stage 8 verification boundary
-- The schema/lifecycle foundation is implemented and contract-tested.
-- The contract is not yet persisted and is not wired into execution, API, or Console.
-- No task outcome is certified by this stage.
-- The next release gate is verifier-profile definition and persistent WorkItem lifecycle storage.
+- WorkItem contracts, profile definitions, profile persistence, lifecycle storage, API readback, and operator CLI are implemented.
+- Profile and evidence payload validation is implemented; executable verifier adapters are not.
+- A trusted operator/API caller can submit a structured verification attestation; this is not independently verified proof until RS-F9-007 is complete.
+- WorkItem execution is not yet correlated with ExecutionEngine traces; Console integration remains open.
 - Existing F1–F7 execution, Mesh, Arena, API, and Console contracts remain compatibility requirements.
