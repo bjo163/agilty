@@ -338,10 +338,14 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 
 ### Latest-main verification — 2026-11-05
 
-- HEAD: `e4cd7c3b11abff511e2605c6a94c4a7f7411b54d`.
-- Stage 7 implementation commits are on `main`; no feature branch or PR was created.
-- ROCKSOUL Console CI #42066121542: queued at last check; includes lint, standalone production build, Playwright Chromium browser smoke tests and Docker Compose configuration validation.
-- General Unittest #42066121871 and CodeQL Advanced #42066121777: queued at last check.
-- PyPI publication was skipped because no release publication event was requested.
-- Vercel status check is failing for this repository; Vercel deployment is not the Stage 7 target. The supported deployment topology is Docker Compose/Coolify and has not yet been runtime-deployed.
-- Stage 7 feature implementation is committed. Final acceptance remains pending successful current-main CI; do not mark release verification green until the queued checks complete.
+- HEAD: `15512baa1c72654522a4ff5f4ff5d9bed2502671`.
+- All Stage 7 implementation and follow-up fixes are committed directly to `main`; no feature branches or PRs.
+- Previous Console CI run #42066121542 failed at lint. Root causes: malformed Playwright URL regex, explicit `any` lint error, and raw anchor navigation to logout. These have been corrected on main.
+- Next.js/React security updates: Next.js and eslint-config-next pinned to 15.5.29, the official November 3, 2026 Maintenance LTS security release. React and React DOM pinned to 19.1.2.
+- Latest Console CI #42068250365: queued (includes lint, production build, Playwright Chromium smoke tests, Docker Compose config validation).
+- Latest Unittest #42068250134: queued. Previous Unittest #42066242622: in progress at last inspection.
+- ROCKSOUL CI #42066242548: all four Windows/Ubuntu Python 3.10/3.13 test lanes passed; wheel/sdist validation passed.
+- CodeQL #42068257466: queued.
+- PyPI distribution publication skipped (no release publication requested).
+- Vercel deployment is not the deployment target. Docker Compose/Coolify runtime deployment remains unperformed; Compose config validation is in CI.
+- Do not mark Stage 7 release acceptance green until latest Console CI, Unittest and CodeQL complete successfully.
