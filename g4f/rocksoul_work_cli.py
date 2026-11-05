@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+
+from .rocksoul_verifier_engine import VerificationEngine
 from typing import Any
 
 from .rocksoul_contracts import WorkItem, WorkStatus
@@ -36,6 +38,16 @@ def main() -> None:
     transition.add_argument("target_status", choices=[x.value for x in WorkStatus])
     transition.add_argument("--payload", default="{}", help="JSON event payload")
 
+    run_verify = commands.add_parser("verify", help="Execute a registered deterministic verifier against a local artifact")
+    run_verify.add_argument("work_id")
+    run_verify.add_argument("criterion_id")
+    run_verify.add_argument("profile_id")
+    run_verify.add_argument("profile_version", type=int)
+    run_verify.add_argument("artifact", type=Path)
+    run_verify.add_argument("--source", required=True, help="Stable artifact provenance reference")
+    run_verify.add_argument("--expected-sha256")
+    run_verify.add_argument("--schema", type=Path, help="JSON schema file for json_schema profiles")
+
     verify = commands.add_parser("verify-chain", help="Verify append-only event hash chain")
     verify.add_argument("work_id")
 
@@ -58,6 +70,14 @@ def main() -> None:
             raise SystemExit("--payload must be a JSON object")
         _print(store.transition(args.work_id, args.target_status,
                                 expected_status=args.expected_status, payload=payload))
+    elif args.command == "verify":
+        profile = store.profiles.resolve(args.profile_id, args.profile_version)
+        schema = json.loads(args.schema.read_text(encoding="utf-8")) if args.schema else None
+        execution = VerificationEngine().verify(
+            profile, args.artifact.read_bytes(), source=args.source,
+            expected_sha256=args.expected_sha256, schema=schema,
+        )
+        _print(store.record_verification(args.work_id, args.criterion_id, execution))
     elif args.command == "verify-chain":
         _print(store.verify_event_chain(args.work_id))
 
