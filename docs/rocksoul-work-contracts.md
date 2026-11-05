@@ -89,6 +89,9 @@ Create requests contain the complete WorkItem JSON contract. Transition requests
 ## Operator CLI
 
 ```bash
+rocksoul-work profile-register artifact-profile.json
+rocksoul-work profile-list
+rocksoul-work profile-get artifact.integrity 1
 rocksoul-work create work-item.json
 rocksoul-work list --limit 50
 rocksoul-work get work-001
