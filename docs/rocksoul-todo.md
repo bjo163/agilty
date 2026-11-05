@@ -396,7 +396,7 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Acceptance: JSON output; verification reads exact local artifact bytes; state changes require explicit expected and target statuses.
 
 ### RS-F9-007 — Executable verifier adapters and authenticated evidence receipts
-- Status: `FOUNDATION` — two deterministic built-in adapters implemented.
+- Status: `FOUNDATION` — all five allowlisted deterministic built-in adapters implemented; external trust remains open.
 - Implementation: `g4f/rocksoul_verifier_engine.py` implements all five allowlisted deterministic adapters: `artifact_digest`, bounded `json_schema`, pytest JUnit XML receipts, captured HTTPS contract receipts, and content-addressed `source_provenance`. It computes SHA-256 from supplied bytes, caps artifact/schema sizes and schema complexity, emits provenance-bearing evidence, and fails closed for unimplemented adapter identifiers.
 - Persistence: verifier result/evidence rows are linked into the WorkItem event chain by a canonical receipt digest; acceptance checks the latest result for every required criterion.
 - Remaining: external source authenticity, independent acquisition, and cryptographically authenticated verifier identity.
@@ -416,9 +416,9 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Remaining: WorkItem creation, lifecycle mutation, profile registration, artifact upload/verification UI, and rich evidence diff remain TODO.
 
 ### Stage 8 verification boundary
-- WorkItem contracts, profile definitions/persistence, lifecycle storage, authenticated API, operator CLI, execution trace linkage, and two deterministic verifier adapters are implemented.
+- WorkItem contracts, profile definitions/persistence, lifecycle storage, authenticated API, operator CLI, execution trace linkage, native execution correlation, read-only Console WorkItem cockpit, and five deterministic verifier adapters are implemented.
 - All five allowlisted adapter identifiers execute through bounded built-in code. HTTP receipts and pytest reports are caller-supplied captures; source provenance proves digest binding only. None establishes remote source authenticity or cryptographically authenticated verifier identity.
 - Acceptance requires a latest persisted built-in verifier PASS for every required criterion and a valid event/receipt hash chain; caller-supplied PASS payloads are rejected.
 - The verifier hashes the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact.
-- Console read-only WorkItem cockpit is implemented. Console creation/mutation/verification workflows, additional verifier adapters, native execution_runs correlation, and signed external evidence remain open.
+- Console read-only WorkItem cockpit is implemented. Console creation/mutation/verification workflows, independent artifact acquisition, signed external evidence, and authenticated verifier identity remain open.
 - Existing F1–F7 execution, Mesh, Arena, API, and Console contracts remain compatibility requirements.
