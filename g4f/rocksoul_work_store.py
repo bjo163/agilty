@@ -136,6 +136,10 @@ class WorkItemStore:
             raise WorkItemStoreError("event payload must be an object")
         event_payload = dict(payload or {})
         # Payloads are persisted as JSON; reject unserializable values before acquiring a write lock.
+        if target is WorkStatus.ACCEPTED or target == WorkStatus.ACCEPTED.value:
+            chain = self.verify_event_chain(work_id)
+            if not chain["ok"]:
+                raise WorkItemStoreError("WorkItem evidence chain is invalid; acceptance is blocked")
         try:
             encoded_payload = self._canonical(event_payload)
             if len(encoded_payload.encode("utf-8")) > 1_000_000:
@@ -153,9 +157,6 @@ class WorkItemStore:
                 raise WorkItemStoreError(f"stale WorkItem status: expected {expected.value}, found {current.value}")
             next_status = validate_status_transition(current, target)
             if next_status is WorkStatus.ACCEPTED:
-                chain = self.verify_event_chain(work_id)
-                if not chain["ok"]:
-                    raise WorkItemStoreError("WorkItem evidence chain is invalid; acceptance is blocked")
                 if "verification_results" in event_payload:
                     raise WorkItemStoreError("caller-supplied PASS values are forbidden; record verifier executions first")
                 contract = WorkItem.from_dict(json.loads(row["contract_json"]))
