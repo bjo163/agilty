@@ -277,8 +277,8 @@ The flywheel must not learn from unverified outputs as if they were ground truth
 | Mesh | Authenticated nodes, leases, isolation | Attestation, sandbox scheduling, data locality |
 | Arena | Deterministic foundation and campaign integrity verifier | Provenance-rich suites, adversarial tests, held-out evaluations |
 | API | Versioned product API with authenticated WorkItem lifecycle and verification-profile registry endpoints | Execution-correlated evidence, verifier execution receipts, policy lifecycle APIs |
-| Console | Operator console foundation | Outcome cockpit, approval queue, policy lab |
-| Verification | Executable artifact SHA-256 and bounded JSON Schema adapters with persisted evidence receipts | Code/test, HTTP-contract, source-provenance and independent evaluators; authenticated external receipts |
+| Console | WorkItem outcome cockpit, immutable profile registration, bounded artifact upload and per-criterion verification | Cryptographically attributable approval queue, rich evidence diff/export, policy lab |
+| Verification | Five bounded deterministic adapters with persisted evidence receipts | Independent artifact acquisition, signed external evidence/verifier identity, independent evaluators |
 | Learning | Evidence exists; adaptive policy is not yet certified | Offline learning, shadow tests, controlled promotion |
 
 Do not represent planned capabilities as shipped. Current Arena reports remain `quality_certification=NOT_CERTIFIED` until production dataset and methodology gates are satisfied.
