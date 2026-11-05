@@ -40,6 +40,8 @@ F5 Arena is certified independently from the execution and Mesh control planes. 
 - Post-merge `main` passed `ROCKSOUL Arena CI`, `ROCKSOUL Mesh CI`, `ROCKSOUL CI`, and general `Unittest` again.
 
 ## Production evidence-contract gate
+The versioned manifest parser rejects duplicate keys at all depths, non-finite values, unknown fields, and unsupported schema versions before any pack is registered.
+
 
 `g4f/rocksoul_arena_production.py` makes the evidence needed for a production benchmark structurally enforceable. A production pack/campaign must provide:
 

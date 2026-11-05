@@ -29,6 +29,23 @@ class ManifestError(ValueError):
     """A production-pack manifest is incomplete or invalid."""
 
 
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ManifestError(f"manifest contains duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def _json_value(value: Any, label: str) -> Any:
+    try:
+        json.dumps(value, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        raise ManifestError(f"{label} must contain only finite JSON values: {exc}") from exc
+    return value
+
+
 def _emit(value: Any) -> None:
     print(json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True, default=str))
 
@@ -79,15 +96,16 @@ def _json_object(value: Any, label: str) -> dict[str, Any]:
 def load_pack_manifest(path: str | Path) -> ArenaProductionPack:
     manifest_path = Path(path)
     try:
-        size = manifest_path.stat().st_size
+        with manifest_path.open("rb") as handle:
+            raw_bytes = handle.read(MAX_MANIFEST_BYTES + 1)
     except OSError as exc:
-        raise ManifestError(f"cannot stat manifest {manifest_path}: {exc}") from exc
-    if size <= 0 or size > MAX_MANIFEST_BYTES:
+        raise ManifestError(f"cannot read manifest {manifest_path}: {exc}") from exc
+    if not raw_bytes or len(raw_bytes) > MAX_MANIFEST_BYTES:
         raise ManifestError(f"manifest size must be between 1 and {MAX_MANIFEST_BYTES} bytes")
     try:
-        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ManifestError(f"cannot read manifest {manifest_path}: {exc}") from exc
+        raw = json.loads(raw_bytes.decode("utf-8"), object_pairs_hook=_unique_object)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ManifestError(f"cannot parse manifest {manifest_path}: {exc}") from exc
     root = _object(raw, "manifest")
     _keys(
         root,
@@ -126,6 +144,8 @@ def load_pack_manifest(path: str | Path) -> ArenaProductionPack:
             allowed={"case_id", "input", "expected", "weight", "tags"},
             label=label,
         )
+        _json_value(case["input"], f"{label}.input")
+        _json_value(case["expected"], f"{label}.expected")
         weight = _number(case.get("weight", 1.0), f"{label}.weight")
         tags_value = case.get("tags", [])
         if not isinstance(tags_value, list) or any(not isinstance(tag, str) for tag in tags_value):

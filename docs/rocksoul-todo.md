@@ -250,7 +250,7 @@ ROCKSOUL is the product/control-plane layer built on top of the existing g4f run
 ### RS-F5-008 — Offline production evidence operator CLI
 - Status: `VERIFYING`
 - Scope: versioned strict JSON manifests, dataset SHA-256 verification, immutable registration, pack/campaign listing, campaign readback, and an end-to-end synthetic fixture.
-- Acceptance: `register-pack` must hash the exact local artifact and reject a mismatch before database writes; all commands emit machine-readable JSON; no provider/network call is performed.
+- Acceptance: duplicate JSON keys, non-finite values, and unknown fields fail closed; `register-pack` must hash the exact local artifact and reject a mismatch before database writes; all commands emit machine-readable JSON; no provider/network call is performed.
 - Implementation: `g4f/rocksoul_arena_production_cli.py`.
 - Tests: `tests/test_rocksoul_arena_production_cli.py`.
 

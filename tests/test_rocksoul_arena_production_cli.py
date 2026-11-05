@@ -117,6 +117,23 @@ class RocksoulArenaProductionCliTests(unittest.TestCase):
         self.assertEqual(code, 3)
         self.assertFalse(payload["found"])
 
+    def test_manifest_rejects_duplicate_keys_and_non_finite_case_values(self) -> None:
+        self.manifest.write_text(
+            '{"schema_version":1,"schema_version":1,"pack":{}}',
+            encoding="utf-8",
+        )
+        code, payload = self.invoke("validate-pack", str(self.manifest))
+        self.assertEqual(code, 2)
+        self.assertIn("duplicate JSON key", payload["error"])
+
+        self.write_manifest()
+        value = json.loads(self.manifest.read_text(encoding="utf-8"))
+        value["pack"]["suite"]["cases"][0]["input"] = float("nan")
+        self.manifest.write_text(json.dumps(value), encoding="utf-8")
+        code, payload = self.invoke("validate-pack", str(self.manifest))
+        self.assertEqual(code, 2)
+        self.assertIn("finite JSON values", payload["error"])
+
     def test_manifest_rejects_unknown_or_unsupported_schema(self) -> None:
         self.write_manifest(schema_version=2)
         code, payload = self.invoke("validate-pack", str(self.manifest))

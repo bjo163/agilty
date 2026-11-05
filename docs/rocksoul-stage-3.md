@@ -17,7 +17,7 @@ Complete the missing operator and packaging path around the already recovered ex
    - retain exact target/environment/run/score evidence when reading a campaign.
 3. Add the offline `rocksoul-arena-production` operator CLI:
    - versioned strict JSON manifest parser;
-   - reject unknown or missing fields and unsupported schema versions;
+   - reject duplicate JSON keys, non-finite values, unknown or missing fields, and unsupported schema versions;
    - stream dataset artifacts in bounded 1 MiB chunks for SHA-256 verification;
    - require a matching local dataset file before registration;
    - expose status, validate, register, list, show, and synthetic fixture commands.

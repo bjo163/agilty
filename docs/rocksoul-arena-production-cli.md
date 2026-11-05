@@ -72,7 +72,7 @@ A manifest is UTF-8 JSON, at most 5 MiB, with exactly these top-level keys:
 
 Allowed split policies are `public_only`, `public_and_held_out`, `held_out_only`, and `not_applicable`. Allowed network modes for a campaign's observed environment are `offline`, `restricted`, and `online`. Repeat count must be an integer from 2 through 100; score standard deviation must be finite and non-negative.
 
-Unknown fields are rejected so a misspelled evidence field cannot silently disappear. Suite and production pack identities are immutable by their respective name/version pairs. Any content change requires a version bump.
+Duplicate JSON keys are rejected at every nesting level; non-finite numbers and unknown fields are rejected so ambiguous or misspelled evidence cannot silently disappear. Suite and production pack identities are immutable by their respective name/version pairs. Any content change requires a version bump.
 
 ## Safe registration workflow
 
