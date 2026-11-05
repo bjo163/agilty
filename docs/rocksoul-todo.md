@@ -469,3 +469,13 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 ### Stage 9 completion rule
 - Stage 9 is not complete until RS-F10-002 through RS-F10-006 are implemented and CI-certified on the exact final `main` commit. RS-F10-001 through RS-F10-003 have foundation implementations; RS-F10-006 has API/CLI foundations only.
 - The read-only Console graph visualization is shipped. No worker scheduler, aggregate budget enforcement, atomic dispatch claims, or cancellation/recovery orchestration is claimed.
+
+
+## Latest-main continuation note — 2026-11-06
+
+- WorkGraph now has a bounded DAG contract, immutable SQLite registry, hash-chain verification, snapshot-consistent authoritative readiness resolver, authenticated API, offline CLI, and read-only Console registry/readiness cockpit.
+- The resolver only treats a dependency as satisfied when the referenced WorkItem is `accepted` and its event/evidence chain verifies. It does not dispatch tasks or reserve budgets.
+- Added unit/API/CLI tests, including a positive path where a real built-in verifier PASS and WorkItem acceptance unlocks the downstream node.
+- Added package entrypoint and ROCKSOUL CI smoke coverage for `rocksoul-work-graph`; Console Playwright navigation coverage was also extended.
+- All changes were committed directly to `main`; no branch or PR was created.
+- CI certification on the exact final HEAD is still pending/unconfirmed. The visible Vercel status is a build-rate-limit failure and is not a ROCKSOUL unit-test result.
