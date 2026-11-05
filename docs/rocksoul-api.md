@@ -24,6 +24,7 @@ Defaults to loopback `127.0.0.1:8765`. Binding beyond loopback requires `ROCKSOU
 - `GET|POST /api/v1/work-graphs` — authenticated WorkGraph list/create; graph IDs are immutable and repeated identical creates are idempotent.
 - `GET /api/v1/work-graphs/{graph_id}` — authenticated graph contract and audit-event readback.
 - `GET /api/v1/work-graphs/{graph_id}/readiness` — authenticated read-only readiness snapshot based on referenced WorkItem status and verified event/evidence chains.
+- `GET /api/v1/work-graphs/{graph_id}/verify-chain` — authenticated graph contract and hash-chain integrity verification.
 - `GET|POST /api/v1/work-items` — authenticated WorkItem list/create.
 - `GET /api/v1/work-items/{work_id}` — authenticated contract and lifecycle readback.
 - `POST /api/v1/work-items/{work_id}/transitions` — authenticated expected-state lifecycle transition.
