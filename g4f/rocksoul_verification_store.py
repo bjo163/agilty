@@ -65,7 +65,10 @@ class VerificationProfileStore:
         ).fetchone()
         if row is None:
             return None
-        return {"profile": json.loads(row["profile_json"]), "digest": row["profile_digest"], "created_at": row["created_at"]}
+        profile = VerificationProfile.from_dict(json.loads(row["profile_json"]))
+        if profile.digest != row["profile_digest"]:
+            raise VerificationProfileError("stored verification profile digest mismatch")
+        return {"profile": profile.to_dict(), "digest": row["profile_digest"], "created_at": row["created_at"]}
 
     def resolve(self, profile_id: str, version: int) -> VerificationProfile:
         record = self.get(profile_id, version)
@@ -84,7 +87,12 @@ class VerificationProfileStore:
                 (limit,),
             ).fetchall()
             total = int(conn.execute("SELECT COUNT(*) FROM rocksoul_verification_profiles").fetchone()[0])
-        items = [{"profile": json.loads(row["profile_json"]), "digest": row["profile_digest"], "created_at": row["created_at"]} for row in rows]
+        items = []
+        for row in rows:
+            profile = VerificationProfile.from_dict(json.loads(row["profile_json"]))
+            if profile.digest != row["profile_digest"]:
+                raise VerificationProfileError("stored verification profile digest mismatch")
+            items.append({"profile": profile.to_dict(), "digest": row["profile_digest"], "created_at": row["created_at"]})
         return {"items": items, "total": total}
 
     def registry(self) -> VerificationProfileRegistry:
