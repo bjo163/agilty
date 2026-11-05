@@ -6,6 +6,9 @@ import argparse
 import hashlib
 import json
 import math
+import os
+import platform
+import sys
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -278,6 +281,22 @@ def build_parser() -> argparse.ArgumentParser:
     show.add_argument("campaign_id")
     show.set_defaults(action="show-campaign")
 
+    campaign = sub.add_parser("run-campaign", help="run an explicitly authorized campaign against one exact provider/model")
+    campaign.add_argument("manifest", help="the exact registered pack manifest")
+    campaign.add_argument("--dataset-file", required=True, help="local dataset artifact matching the registered SHA-256")
+    campaign.add_argument("--provider", required=True, help="one exact g4f provider name; provider chains are rejected")
+    campaign.add_argument("--model", required=True)
+    campaign.add_argument("--provider-revision", required=True, help="exact provider/model revision identifier")
+    campaign.add_argument("--runtime-revision", required=True, help="exact g4f/ROCKSOUL runtime commit or build identifier")
+    campaign.add_argument("--network-mode", choices=["offline", "restricted", "online"], required=True)
+    campaign.add_argument("--region", required=True)
+    campaign.add_argument("--timeout", type=float, default=30.0, help="provider timeout hint in seconds")
+    campaign.add_argument("--max-tokens", type=int, default=256)
+    campaign.add_argument("--max-requests", type=int, default=100, help="hard cap across cases multiplied by repeat runs (maximum 1000)")
+    campaign.add_argument("--confirm-live", action="store_true", help="explicitly confirm that this command may invoke the configured provider")
+    campaign.add_argument("--confirm-pack-digest", required=True, help="must exactly match the registered immutable pack digest")
+    campaign.set_defaults(action="run-campaign")
+
     fixture = sub.add_parser("fixture-campaign", help="run a synthetic offline end-to-end contract fixture")
     fixture.set_defaults(action="fixture-campaign")
     return parser
@@ -318,6 +337,183 @@ def _fixture_pack() -> tuple[ArenaProductionPack, bytes]:
         network_requirements={"required": False, "mode": "offline"},
     )
     return pack, artifact
+
+
+def _live_case_messages(value: Any, label: str) -> list[dict[str, str]]:
+    """Validate a deliberately small, text-only live Arena input contract."""
+    if isinstance(value, str):
+        messages = [{"role": "user", "content": value}]
+    elif isinstance(value, dict) and set(value).issubset({"prompt", "system"}) and "prompt" in value:
+        if not isinstance(value["prompt"], str):
+            raise ManifestError(f"{label}.input.prompt must be a string")
+        messages = []
+        system = value.get("system")
+        if system is not None:
+            if not isinstance(system, str):
+                raise ManifestError(f"{label}.input.system must be a string")
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": value["prompt"]})
+    elif isinstance(value, dict) and set(value) == {"messages"} and isinstance(value["messages"], list):
+        messages = []
+        for index, item in enumerate(value["messages"]):
+            if not isinstance(item, dict) or set(item) != {"role", "content"}:
+                raise ManifestError(f"{label}.input.messages[{index}] must contain only role and content")
+            role, text_value = item["role"], item["content"]
+            if role not in {"system", "user", "assistant"} or not isinstance(text_value, str):
+                raise ManifestError(f"{label}.input.messages[{index}] has an unsupported role or non-text content")
+            messages.append({"role": role, "content": text_value})
+    else:
+        raise ManifestError(f"{label}.input must be text or a prompt/messages object")
+    if not messages or not any(item["role"] == "user" for item in messages):
+        raise ManifestError(f"{label}.input must contain at least one user message")
+    if any(len(item["content"]) > 65536 for item in messages):
+        raise ManifestError(f"{label}.input message exceeds the 65536-character live safety limit")
+    return messages
+
+
+def _resolve_live_provider(provider_name: str) -> Any:
+    """Resolve one exact provider through the existing g4f provider registry."""
+    try:
+        from .client.service import convert_to_provider
+        from .providers.retry_provider import IterListProvider
+        provider = convert_to_provider(provider_name)
+    except Exception as exc:
+        raise ManifestError(f"cannot resolve provider {provider_name!r}: {type(exc).__name__}: {exc}") from exc
+    if isinstance(provider, IterListProvider) or isinstance(provider, str):
+        raise ManifestError("run-campaign requires one exact provider; provider chains are not allowed")
+    return provider
+
+
+def _provider_label(provider: Any) -> str:
+    return str(getattr(provider, "__name__", type(provider).__name__))
+
+
+def _live_executor(provider: Any, model: str, timeout: float, max_tokens: int):
+    """Build a lazy g4f Client executor; creating it does not send a request."""
+    from .client import Client
+    client = Client()
+
+    def execute(case: ArenaCase) -> Any:
+        messages = _live_case_messages(case.input, f"case {case.case_id}")
+        response = client.chat.completions.create(
+            messages=messages,
+            model=model,
+            provider=provider,
+            stream=False,
+            timeout=timeout,
+            max_tokens=max_tokens,
+        )
+        if isinstance(response, str):
+            output = response
+        else:
+            choices = response.get("choices") if isinstance(response, dict) else getattr(response, "choices", None)
+            if not choices:
+                raise ValueError("provider returned no completion choices")
+            first = choices[0]
+            message = first.get("message") if isinstance(first, dict) else getattr(first, "message", None)
+            output = message.get("content") if isinstance(message, dict) else getattr(message, "content", None)
+        if not isinstance(output, str):
+            raise ValueError("provider completion content must be text")
+        if isinstance(case.expected, str):
+            return output
+        try:
+            return json.loads(output)
+        except json.JSONDecodeError as exc:
+            raise ValueError("case expects JSON output but provider returned invalid JSON") from exc
+
+    return execute
+
+
+def _run_authorized_campaign(args: Any, store: ArenaProductionStore) -> dict[str, Any]:
+    """Perform all local checks before the first provider call."""
+    if not args.confirm_live:
+        raise ManifestError("live campaign refused: pass --confirm-live explicitly")
+    if os.environ.get("ROCKSOUL_ALLOW_LIVE_ARENA") != "1":
+        raise ManifestError("live campaign refused: set ROCKSOUL_ALLOW_LIVE_ARENA=1 in the operator environment")
+    for field_name in ("provider", "model", "provider_revision", "runtime_revision", "region"):
+        if not isinstance(getattr(args, field_name), str) or not getattr(args, field_name).strip():
+            raise ManifestError(f"{field_name.replace('_', '-')} must be a non-empty exact identifier")
+    if not math.isfinite(args.timeout) or args.timeout <= 0 or args.timeout > 300:
+        raise ManifestError("timeout must be finite and between 0 and 300 seconds")
+    if args.max_tokens < 1 or args.max_tokens > 4096:
+        raise ManifestError("max-tokens must be between 1 and 4096")
+    if args.max_requests < 1 or args.max_requests > 1000:
+        raise ManifestError("max-requests must be between 1 and 1000")
+
+    pack = load_pack_manifest(args.manifest)
+    store.validate_pack(pack)
+    if args.confirm_pack_digest != pack.digest:
+        raise ManifestError("confirmed pack digest does not match the manifest")
+    registered = next(
+        (item for item in store.list_packs(limit=1000) if item.get("digest") == pack.digest),
+        None,
+    )
+    if registered is None:
+        raise ManifestError("production pack is not registered; verify and register it before running a campaign")
+    actual_digest = sha256_file(args.dataset_file)
+    if actual_digest != pack.dataset.sha256:
+        raise ManifestError(f"dataset SHA-256 mismatch: expected {pack.dataset.sha256}, got {actual_digest}")
+
+    network = dict(pack.network_requirements)
+    declared_mode = network.get("mode")
+    required_network = network.get("required")
+    if type(required_network) is not bool or declared_mode not in {"offline", "restricted", "online"}:
+        raise ManifestError("pack.network_requirements must declare boolean required and a supported mode")
+    if declared_mode != args.network_mode:
+        raise ManifestError(f"observed network mode {args.network_mode!r} does not match pack requirement {declared_mode!r}")
+    if required_network and args.network_mode == "offline":
+        raise ManifestError("pack requires network access but campaign was declared offline")
+
+    env_requirements = dict(pack.environment_requirements)
+    python_requirement = env_requirements.get("python")
+    current_python = f"{sys.version_info.major}.{sys.version_info.minor}"
+    if python_requirement not in (None, "any", "declared") and str(python_requirement) != current_python:
+        raise ManifestError(f"current Python {current_python} does not match pack requirement {python_requirement!r}")
+    os_requirement = env_requirements.get("operating_system", env_requirements.get("os"))
+    current_os = platform.system().lower()
+    if os_requirement not in (None, "any", "declared") and str(os_requirement).lower() not in {current_os, platform.platform().lower()}:
+        raise ManifestError(f"current OS {platform.system()} does not match pack requirement {os_requirement!r}")
+
+    request_count = len(pack.suite.cases) * pack.repeat_policy.runs
+    if request_count > args.max_requests:
+        raise ManifestError(f"campaign requires {request_count} provider requests, above max-requests={args.max_requests}")
+    for case in pack.suite.cases:
+        _live_case_messages(case.input, f"case {case.case_id}")
+        if not isinstance(case.expected, (str, dict, list, int, float, bool)) and case.expected is not None:
+            raise ManifestError(f"case {case.case_id} expected value is not JSON-compatible")
+
+    provider = _resolve_live_provider(args.provider)
+    provider_name = _provider_label(provider)
+    executor = _live_executor(provider, args.model, args.timeout, args.max_tokens)
+    campaign = store.run_campaign(
+        pack,
+        ArenaTargetIdentity(
+            provider=provider_name,
+            model=args.model,
+            revision=args.provider_revision,
+            runtime_revision=args.runtime_revision,
+        ),
+        ArenaEnvironmentEvidence(
+            runtime="g4f.client.Client",
+            os=platform.platform(),
+            python=sys.version.split()[0],
+            network_mode=args.network_mode,
+            region=args.region,
+            extra={"timeout_hint_seconds": args.timeout, "max_tokens": args.max_tokens, "max_provider_requests": args.max_requests},
+        ),
+        executor,
+    )
+    return {
+        **campaign_to_dict(campaign),
+        "ok": campaign.variance_accepted,
+        "campaign_kind": "operator-authorized-live",
+        "artifact_verified": True,
+        "dataset_sha256": actual_digest,
+        "provider_requests": request_count,
+        "network_calls": True,
+        "note": "Campaign evidence is not an independent dataset license, contamination, or scientific-quality audit.",
+    }
+
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -392,6 +588,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             _emit(campaign)
             return 0
 
+        if args.action == "run-campaign":
+            payload = _run_authorized_campaign(args, store)
+            _emit(payload)
+            return 0 if payload["variance_accepted"] else 4
+
         if args.action == "fixture-campaign":
             pack, _artifact = _fixture_pack()
             campaign = store.run_campaign(
@@ -419,7 +620,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
         parser.error(f"unsupported command: {args.action}")
-    except (ArenaError, ManifestError, OSError, TypeError, ValueError) as exc:
+    except (ArenaError, ManifestError, OSError, TypeError, ValueError, ImportError) as exc:
         _emit({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
         return 2
     return 2

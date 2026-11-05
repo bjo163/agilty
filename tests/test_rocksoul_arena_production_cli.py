@@ -3,10 +3,13 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from g4f.rocksoul_arena_production_cli import main
 
@@ -164,6 +167,91 @@ class RocksoulArenaProductionCliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("unknown fields", payload["error"])
 
+
+    def test_live_campaign_requires_both_explicit_opt_ins_before_provider_resolution(self) -> None:
+        self.write_manifest()
+        value = json.loads(self.manifest.read_text(encoding="utf-8"))
+        for case in value["pack"]["suite"]["cases"]:
+            case["input"] = {"prompt": "return the word pass"}
+            case["expected"] = "pass"
+        value["pack"]["network_requirements"] = {"required": True, "mode": "online"}
+        value["pack"]["environment_requirements"] = {"python": "any", "operating_system": "any"}
+        self.manifest.write_text(json.dumps(value), encoding="utf-8")
+        code, payload = self.invoke("run-campaign", str(self.manifest), "--dataset-file", str(self.dataset),
+            "--provider", "FakeProvider", "--model", "fake-model", "--provider-revision", "rev-1",
+            "--runtime-revision", "runtime-1", "--network-mode", "online", "--region", "test",
+            "--confirm-pack-digest", "not-the-real-digest")
+        self.assertEqual(code, 2)
+        self.assertIn("--confirm-live", payload["error"])
+
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "g4f.rocksoul_arena_production_cli._resolve_live_provider"
+        ) as resolve:
+            code, payload = self.invoke("run-campaign", str(self.manifest), "--dataset-file", str(self.dataset),
+                "--provider", "FakeProvider", "--model", "fake-model", "--provider-revision", "rev-1",
+                "--runtime-revision", "runtime-1", "--network-mode", "online", "--region", "test",
+                "--confirm-live", "--confirm-pack-digest", "not-the-real-digest")
+        self.assertEqual(code, 2)
+        self.assertIn("ROCKSOUL_ALLOW_LIVE_ARENA=1", payload["error"])
+        resolve.assert_not_called()
+
+    def test_live_campaign_requires_registered_hash_verified_pack(self) -> None:
+        self.write_manifest()
+        value = json.loads(self.manifest.read_text(encoding="utf-8"))
+        for case in value["pack"]["suite"]["cases"]:
+            case["input"] = {"prompt": "return pass"}
+            case["expected"] = "pass"
+        value["pack"]["network_requirements"] = {"required": True, "mode": "online"}
+        value["pack"]["environment_requirements"] = {"python": "any", "operating_system": "any"}
+        self.manifest.write_text(json.dumps(value), encoding="utf-8")
+        from g4f.rocksoul_arena_production_cli import load_pack_manifest
+        digest = load_pack_manifest(self.manifest).digest
+        with patch.dict(os.environ, {"ROCKSOUL_ALLOW_LIVE_ARENA": "1"}), patch(
+            "g4f.rocksoul_arena_production_cli._resolve_live_provider"
+        ) as resolve:
+            code, payload = self.invoke("run-campaign", str(self.manifest), "--dataset-file", str(self.dataset),
+                "--provider", "FakeProvider", "--model", "fake-model", "--provider-revision", "rev-1",
+                "--runtime-revision", "runtime-1", "--network-mode", "online", "--region", "test",
+                "--confirm-live", "--confirm-pack-digest", digest)
+        self.assertEqual(code, 2)
+        self.assertIn("not registered", payload["error"])
+        resolve.assert_not_called()
+
+    def test_live_campaign_runs_only_after_registration_and_persists_exact_evidence(self) -> None:
+        self.write_manifest()
+        value = json.loads(self.manifest.read_text(encoding="utf-8"))
+        for case in value["pack"]["suite"]["cases"]:
+            case["input"] = {"prompt": "return the word pass"}
+            case["expected"] = "pass"
+        value["pack"]["network_requirements"] = {"required": True, "mode": "online"}
+        value["pack"]["environment_requirements"] = {"python": "any", "operating_system": "any"}
+        self.manifest.write_text(json.dumps(value), encoding="utf-8")
+        code, registered = self.invoke("register-pack", str(self.manifest), "--dataset-file", str(self.dataset))
+        self.assertEqual(code, 0)
+        fake_provider = type("FakeProvider", (), {})
+        response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="pass"))])
+        fake_client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **kwargs: response)))
+        from g4f.rocksoul_arena_production_cli import load_pack_manifest
+        digest = load_pack_manifest(self.manifest).digest
+        with patch.dict(os.environ, {"ROCKSOUL_ALLOW_LIVE_ARENA": "1"}), patch(
+            "g4f.rocksoul_arena_production_cli._resolve_live_provider", return_value=fake_provider
+        ), patch("g4f.client.Client", return_value=fake_client):
+            code, payload = self.invoke("run-campaign", str(self.manifest), "--dataset-file", str(self.dataset),
+                "--provider", "FakeProvider", "--model", "fake-model", "--provider-revision", "provider-rev-1",
+                "--runtime-revision", "runtime-rev-1", "--network-mode", "online", "--region", "test-region",
+                "--confirm-live", "--confirm-pack-digest", digest, "--max-requests", "4")
+        self.assertEqual(code, 0)
+        self.assertTrue(payload["variance_accepted"])
+        self.assertTrue(payload["artifact_verified"])
+        self.assertEqual(payload["campaign_kind"], "operator-authorized-live")
+        self.assertEqual(payload["provider_requests"], 4)
+        self.assertEqual(payload["target"]["provider"], "FakeProvider")
+        self.assertEqual(payload["target"]["runtime_revision"], "runtime-rev-1")
+        self.assertEqual(payload["environment"]["network_mode"], "online")
+        self.assertEqual(len(payload["run_ids"]), 2)
+        code, stored = self.invoke("show-campaign", payload["campaign_id"])
+        self.assertEqual(code, 0)
+        self.assertEqual(stored["target"]["model"], "fake-model")
 
 if __name__ == "__main__":
     unittest.main()
