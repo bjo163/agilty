@@ -7,6 +7,7 @@ from pathlib import Path
 from g4f.rocksoul_contracts import AcceptanceCriterion, WorkItem, WorkStatus
 from g4f.rocksoul_db import RocksoulDB
 from g4f.rocksoul_work_store import WorkItemStore, WorkItemStoreError
+from g4f.rocksoul_verification import EvidenceRequirement, VerificationProfile
 
 
 def item(work_id="work-store-1"):
@@ -55,14 +56,14 @@ class WorkItemStoreTests(unittest.TestCase):
 
     def test_acceptance_requires_pass_for_every_required_criterion(self):
         self.store.create(item())
-        for current, target in ((WorkStatus.PENDING, WorkStatus.PLANNING), (WorkStatus.PLANNING, WorkStatus.READY),
+        self.store.profiles.register(VerificationProfile(\n            profile_id="artifact.check", version=1, adapter_id="artifact_digest",\n            evidence_requirements=(EvidenceRequirement("artifact_digest"),),\n            independence_group="artifact_integrity",\n        ))\n        verified = {"artifact": {"outcome": "pass", "profile_id": "artifact.check", "profile_version": 1,\n                    "verifier_id": "artifact-digest-adapter", "verifier_version": "1.0.0",\n                    "independence_group": "artifact_integrity",\n                    "evidence": [{"evidence_id": "ev-1", "evidence_type": "artifact_digest",\n                        "source": "artifact://sha256/abc", "digest": "a" * 64,\n                        "captured_at": "2026-11-06T10:00:00+07:00",\n                        "verifier_id": "artifact-digest-adapter", "verifier_version": "1.0.0"}]}}\n        for current, target in ((WorkStatus.PENDING, WorkStatus.PLANNING), (WorkStatus.PLANNING, WorkStatus.READY),
                                 (WorkStatus.READY, WorkStatus.RUNNING), (WorkStatus.RUNNING, WorkStatus.VERIFYING)):
             self.store.transition("work-store-1", target, expected_status=current)
         with self.assertRaises(WorkItemStoreError):
             self.store.transition("work-store-1", WorkStatus.ACCEPTED, expected_status=WorkStatus.VERIFYING,
-                                  payload={"verification_results": {"artifact": "inconclusive"}})
+                                  payload={"verification_results": {"artifact": {**verified["artifact"], "outcome": "inconclusive"}}})
         accepted = self.store.transition("work-store-1", WorkStatus.ACCEPTED, expected_status=WorkStatus.VERIFYING,
-                                         payload={"verification_results": {"artifact": "pass"}})
+                                         payload={"verification_results": verified})
         self.assertEqual(accepted["status"], "accepted")
 
     def test_event_payload_must_be_json_safe(self):
