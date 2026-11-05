@@ -48,7 +48,7 @@ class WorkGraphNode:
         return {
             "node_id": self.node_id,
             "work_id": self.work_id,
-            "depends_on": list(self.depends_on),
+            "depends_on": sorted(self.depends_on),
             "required": self.required,
         }
 
@@ -87,7 +87,7 @@ class WorkGraph:
     def __post_init__(self) -> None:
         if not isinstance(self.graph_id, str) or not _ID.fullmatch(self.graph_id):
             raise WorkGraphValidationError("graph_id must be a stable identifier")
-        if isinstance(self.schema_version, bool) or self.schema_version != 1:
+        if isinstance(self.schema_version, bool) or not isinstance(self.schema_version, int) or self.schema_version != 1:
             raise WorkGraphValidationError("unsupported WorkGraph schema_version")
         if not isinstance(self.nodes, tuple) or not 1 <= len(self.nodes) <= self.MAX_NODES:
             raise WorkGraphValidationError(f"nodes must contain between 1 and {self.MAX_NODES} entries")
@@ -162,7 +162,15 @@ class WorkGraph:
 
     def ready_nodes(self, completed: Iterable[str] = ()) -> tuple[str, ...]:
         """Return nodes whose dependencies are complete, in stable ID order."""
-        completed_ids = set(completed)
+        if isinstance(completed, (str, bytes)):
+            raise WorkGraphValidationError("completed must be an iterable of node IDs, not a string")
+        try:
+            completed_values = tuple(completed)
+        except TypeError as exc:
+            raise WorkGraphValidationError("completed must be an iterable of node IDs") from exc
+        if any(not isinstance(item, str) or not _ID.fullmatch(item) for item in completed_values):
+            raise WorkGraphValidationError("completed node IDs must be stable identifiers")
+        completed_ids = set(completed_values)
         known = {node.node_id for node in self.nodes}
         unknown = completed_ids - known
         if unknown:
