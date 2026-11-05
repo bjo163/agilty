@@ -1,147 +1,132 @@
 # ROCKSOUL Product
 
-## What it is
+## Product identity
 
-ROCKSOUL is an execution intelligence product for multi-provider AI runtimes.
+**ROCKSOUL is an Evidence-Driven Intelligence & Execution Control Plane.**
 
-It adds a control plane around an existing provider runtime instead of replacing it. The product makes provider execution observable, routable, bounded, recoverable, and explainable.
+It governs how models, tools, agents, and execution nodes are selected, composed, executed, verified, observed, and improved. It is built around the existing g4f runtime substrate and does not duplicate or replace provider implementations.
 
-## Product promise
+## Product thesis
 
-**One request. Many possible providers. One controlled execution path.**
+The next AI infrastructure advantage is not the number of providers connected or tokens generated. It is the ability to turn uncertain model behavior into dependable, bounded, verifiable user outcomes.
 
-ROCKSOUL turns provider variability into a managed execution system:
+**Product promise:** Every decision is explainable. Every execution is traceable. Every outcome is verifiable. Every policy change is reversible.
 
-`request → capability filter → ranked route → bounded execution → trace → health evidence → recovery`
+## What ROCKSOUL does today
+
+The current implementation provides a meaningful control-plane foundation:
+- provider discovery and capability-aware route explanation;
+- bounded execution, retry classification, health evidence, quarantine and recovery;
+- persistent traces and execution history;
+- authenticated Mesh node coordination, leases and failure isolation;
+- deterministic Arena benchmark foundation and immutable campaign-integrity verification;
+- product CLI, versioned FastAPI adapter, and Next.js operator console.
+
+These capabilities are not equivalent to a complete autonomous agent platform. The current Arena production reports explicitly remain `quality_certification=NOT_CERTIFIED`.
+
+## What ROCKSOUL is becoming
+
+The strategic direction expands the control plane from request routing to a full **intent-to-outcome loop**:
+
+```text
+intent → work contract → plan → capability selection → bounded execution
+       → evidence ledger → task-specific verification → outcome
+       → offline learning → controlled policy promotion
+```
+
+The core unit becomes a WorkItem with a goal, constraints, acceptance criteria, permissions, budgets, and evidence requirements—not simply a prompt or completion.
 
 ## Product pillars
 
 ### Route
-Choose eligible providers using model verification, capabilities, health, latency, and deterministic ordering.
+Select eligible models/tools/nodes using verified capabilities, health, historical outcomes, cost, latency, risk, and diversity. Hard policy constraints always precede ranking.
 
 ### Execute
-Run through the existing runtime client. ROCKSOUL owns policy and orchestration, not provider-specific implementation.
+Coordinate work through existing runtime adapters. Enforce total budgets, bounded retries, scoped permissions, idempotency, checkpoints, and safe cancellation.
 
-### Learn
-Convert real execution outcomes into health evidence so routing improves from actual behavior.
+### Verify
+Judge the delivered artifact or postcondition against task-specific acceptance criteria. Use deterministic checks where possible and independent evaluators where necessary. Model confidence and consensus are not proof.
 
 ### Explain
-Expose why a provider was selected or rejected and preserve the decision for later trace inspection.
+Preserve candidate eligibility, rejected alternatives, policy revision, evidence, and counterfactual route rationale.
 
 ### Recover
-Quarantine unhealthy providers, probe them deliberately, and re-admit them only after recovery criteria pass.
+Classify failures, isolate unhealthy resources, retry only with a justified changed hypothesis, and stop or escalate when uncertainty exceeds policy.
 
-### Scale later
-Mesh and Arena are deliberately separate phases. Distributed execution and benchmarking are not allowed to destabilize the local execution core.
+### Learn
+Use verified outcomes to propose offline policy improvements. Replay, evaluate on held-out workloads, stage rollout, monitor, and roll back. No silent production self-modification.
+
+### Coordinate
+Use Mesh for authenticated node identity, bounded leases, capability/capacity selection, and failure isolation. Online status alone does not imply trust.
+
+### Observe
+Expose health, decisions, traces, evidence, campaign results, policy changes, and operator actions through CLI/API/Console.
 
 ## Architecture boundary
 
-```text
-                    ROCKSOUL PRODUCT
-┌──────────────────────────────────────────────────────────┐
-│ Route • Policy • Execute • Trace • Health • Recovery    │
-│ CLI • future API • future Mesh • future Arena            │
-└───────────────────────────┬──────────────────────────────┘
-                            │
-                    existing runtime API
-                            │
-┌───────────────────────────▼──────────────────────────────┐
-│                    g4f runtime substrate                 │
-│       Client • provider adapters • model transports      │
-└──────────────────────────────────────────────────────────┘
-```
+ROCKSOUL owns policy, coordination, evidence, verification contracts, and product interfaces. The underlying runtime owns provider-specific transports and integrations.
 
-### Ownership rule
+ROCKSOUL must not become a second provider registry or fork provider behavior merely to gain execution control.
 
-ROCKSOUL owns the **control plane**. The runtime owns the **provider implementations**.
+## Anti-slop contract
 
-ROCKSOUL must never become a second provider registry, a second HTTP adapter library, or a forked implementation of provider behavior merely to gain execution control.
+ROCKSOUL must not declare success from HTTP 200, non-empty text, a model's self-evaluation, or majority vote alone. Quality is evaluated against the task's acceptance criteria.
 
-## Execution lifecycle
+A work item can finish as:
+- `ACCEPTED` — required checks passed with sufficient evidence;
+- `UNVERIFIED` — output exists but proof is incomplete;
+- `REJECTED` — acceptance criteria failed;
+- `UNCERTAIN` — evidence conflicts or is insufficient;
+- `BLOCKED` — policy, permission, or dependency prevents safe execution;
+- `CANCELLED` / `EXPIRED` — execution stopped by lifecycle rules.
 
-```text
-REQUEST
-  ↓
-NORMALIZE
-  ↓
-CAPABILITY / MODEL ELIGIBILITY
-  ↓
-ROUTE + EXPLAIN
-  ↓
-EXECUTE ATTEMPT #1
-  ├─ success → TRACE → HEALTH EVIDENCE → DONE
-  └─ failure → CLASSIFY → POLICY
-                    ├─ terminal → DONE
-                    ├─ cooldown → NEXT PROVIDER
-                    ├─ recompute → ROUTE AGAIN
-                    └─ bounded retry → RETRY POLICY
-```
+Verification must be task-specific: code requires test/build evidence; factual research requires source-to-claim provenance; data work requires schema and invariant checks; tool workflows require permission and postcondition receipts.
 
-## Reliability contract
+## AGI-ready, not AGI-claiming
 
-Every execution has:
+ROCKSOUL is designed to remain relevant as models become more general, multimodal, persistent, tool-using, and autonomous. This means stable work contracts, capability passports, provenance-aware memory, work graphs, scoped action permissions, long-running checkpoints, multi-agent role separation, and controlled learning.
 
-- a unique request ID;
-- bounded total attempts;
-- bounded total execution time;
-- per-provider retry limits;
-- a deterministic error taxonomy;
-- a persisted attempt history;
-- an explicit terminal outcome.
+These are future architectural targets. ROCKSOUL does not claim AGI, consciousness, or general competence. Any increase in autonomy must be earned through independent evaluation, explicit authority, bounded budgets, sandboxing, auditability, and rollback.
 
-A request must never enter an infinite retry loop.
+## North-star metric
 
-## Provider state
+**Verified Useful Outcome Rate (VUOR):** eligible work items that satisfy their declared acceptance criteria with evidence, within configured cost/time/risk budgets.
 
-The target lifecycle is:
+Report by task family and verifier confidence. Do not collapse correctness, safety, usefulness, evidence quality, and efficiency into one opaque score.
 
-`ACTIVE → DEGRADED → QUARANTINED → PROBING → RE_ADMITTED`
+## Current implementation vs future direction
 
-Health evidence should come from both controlled probes and real execution. Manual quarantine must not require synthetic failures.
-
-## Capability trust levels
-
-Capabilities are intentionally separated into:
-
-`DECLARED → DETECTED → VERIFIED`
-
-Routing that requires a capability should only accept a provider when the capability satisfies the required trust level.
+| Area | Current state | Future direction |
+|---|---|---|
+| Runtime | Existing g4f substrate | Reusable multi-runtime adapters |
+| Routing | Explainable capability-aware foundation | Historical, contextual, step-level routing |
+| Execution | Bounded attempts/time and traceability | Work contracts, checkpoints, scoped tools |
+| Reliability | Health, quarantine, recovery | Drift-aware capability re-verification |
+| Mesh | Authenticated nodes and leases | Attestation, isolation, data locality |
+| Arena | Deterministic foundation and integrity audit | Adversarial, held-out, provenance-rich evaluation |
+| API/Console | Product API and operator console foundation | Work-item, verification, evidence and policy lifecycle |
+| Anti-slop | Deterministic tests and Arena controls | Task-specific verification profiles and independent evaluators |
+| Learning | Evidence capture foundation | Offline learning and controlled policy promotion |
+| Memory/autonomy | Not yet a complete product capability | Provenance-aware memory and bounded long-running workflows |
 
 ## Product roadmap
 
-### F0 — Guardrails
-Freeze boundaries, identity, terminal outcomes, and test rules.
+- **Horizon 0 — Trust:** evidence contracts, capability passports, privacy and anti-slop semantics.
+- **Horizon 1 — Outcomes:** task-specific verification and outcome records.
+- **Horizon 2 — Adaptive intelligence:** historical outcome routing, candidate recall, contextual retrieval, cost/quality cascades.
+- **Horizon 3 — Agentic control:** WorkGraph, step-level routing, checkpoints, scoped tool permissions, verified repair.
+- **Horizon 4 — Controlled autonomy:** provenance-aware memory, Mesh attestation, multimodal and multi-agent governance.
+- **Horizon 5 — General intelligence operations:** only capabilities proven reliable and safe on independent evaluations.
 
-### F1 — Execution
-Introduce request/attempt/result contracts and bounded fallback through the existing client.
+See:
+- [Product narrative and manifesto](rocksoul-narrative.md)
+- [Strategic blueprint](rocksoul-blueprint.md)
+- [Future roadmap and research hypotheses](rocksoul-future-roadmap.md)
+- [Current implementation backlog](rocksoul-todo.md)
+- [API contract](rocksoul-api.md)
+- [Mesh contract](rocksoul-mesh.md)
+- [Arena contract](rocksoul-arena.md)
 
-### F2 — Trace
-Persist runs, attempts, route decisions, and actual execution evidence.
+## Product decision filter
 
-### F3 — Adaptive reliability
-Complete retry policy, cooldown, quarantine, recovery, re-admission, and safe streaming semantics.
-
-### F4 — Mesh
-Local-first node abstraction followed by remote nodes.
-
-### F5 — Arena
-Repeatable benchmarks, metrics, and provider comparison.
-
-### F6 — Product CLI/API
-Stable operator-facing interfaces and machine-readable output.
-
-### F7 — Verification
-Offline tests and release matrix.
-
-### F8 — Product documentation
-Product-facing documentation, contributor rules, compatibility boundary, and release notes.
-
-## Current release rule
-
-F4 Mesh and F5 Arena remain blocked until F1-F3 reliability gates are green. A feature being scaffolded is not equivalent to the release gate being satisfied.
-
-## Relationship to g4f
-
-This repository contains a g4f-based runtime plus the ROCKSOUL product layer. Product documentation should describe ROCKSOUL as the primary control-plane experience while remaining accurate about the underlying runtime and upstream attribution.
-
-Do not claim that ROCKSOUL owns or authored upstream provider implementations that it does not own.
+Every proposed feature must identify its user outcome, evidence of improvement, failure modes, permission and budget boundaries, reproducibility, rollback path, and overlap with the existing runtime. Otherwise it remains research—not production scope.
