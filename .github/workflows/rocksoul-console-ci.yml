@@ -44,6 +44,9 @@ jobs:
           ROCKSOUL_CONSOLE_ADMIN_PASSWORD: test-admin-password
           ROCKSOUL_CONSOLE_OPERATOR_PASSWORD: test-operator-password
           ROCKSOUL_CONSOLE_SESSION_SECRET: ci-test-session-secret-at-least-32-characters-long
+          ROCKSOUL_CONSOLE_ADMIN_ID: ci-admin
+          ROCKSOUL_CONSOLE_OPERATOR_ID: ci-operator
+          ROCKSOUL_APPROVAL_SIGNING_SECRET: ci-test-approval-signing-secret-at-least-32
         run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -55,6 +58,9 @@ jobs:
           ROCKSOUL_CONSOLE_ADMIN_PASSWORD: test-admin-password
           ROCKSOUL_CONSOLE_OPERATOR_PASSWORD: test-operator-password
           ROCKSOUL_CONSOLE_SESSION_SECRET: ci-test-session-secret-at-least-32-characters-long
+          ROCKSOUL_CONSOLE_ADMIN_ID: ci-admin
+          ROCKSOUL_CONSOLE_OPERATOR_ID: ci-operator
+          ROCKSOUL_APPROVAL_SIGNING_SECRET: ci-test-approval-signing-secret-at-least-32
         run: npm run test:e2e
       - name: Validate Docker Compose topology
         working-directory: ${{ github.workspace }}
@@ -63,4 +69,7 @@ jobs:
           ROCKSOUL_CONSOLE_ADMIN_PASSWORD: test-admin-password
           ROCKSOUL_CONSOLE_OPERATOR_PASSWORD: test-operator-password
           ROCKSOUL_CONSOLE_SESSION_SECRET: ci-test-session-secret-at-least-32-characters-long
+          ROCKSOUL_CONSOLE_ADMIN_ID: ci-admin
+          ROCKSOUL_CONSOLE_OPERATOR_ID: ci-operator
+          ROCKSOUL_APPROVAL_SIGNING_SECRET: ci-test-approval-signing-secret-at-least-32
         run: docker compose -f docker-compose.rocksoul.yml config --quiet
