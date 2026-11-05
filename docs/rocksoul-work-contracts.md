@@ -31,7 +31,7 @@ A profile is an immutable versioned declaration containing:
 - deterministic and side-effect-free flags;
 - bounded verifier timeout (50 ms–300 s).
 
-The current allowlisted identifiers are `json_schema`, `artifact_digest`, `pytest`, `http_contract`, and `source_provenance`. The registry never dynamically imports or executes an adapter. Registration does not mean that adapter is implemented.
+The current allowlisted identifiers are `json_schema`, `artifact_digest`, `pytest`, `http_contract`, and `source_provenance`. The registry never dynamically imports or executes an adapter. The bounded built-in engine currently implements `artifact_digest` and a strict JSON Schema subset; the other identifiers remain declarations and return `ERROR` until an adapter is implemented.
 
 Example profile:
 
@@ -57,11 +57,19 @@ Example profile:
 }
 ```
 
-## Acceptance attestation
+## Executed verification and acceptance
 
-For every required criterion, the transition payload must contain a registered profile version, matching adapter/method identifier, `outcome: "pass"`, matching independence group, verifier identity/version, and evidence records. Each evidence record requires a unique ID, type, source, SHA-256 digest, timezone-aware capture timestamp, and matching verifier identity/version.
+Use `POST /api/v1/work-items/{work_id}/criteria/{criterion_id}/verify` or the CLI `rocksoul-work verify` while the WorkItem is in `VERIFYING`. The operator supplies the exact artifact bytes (base64 over API or a local file in CLI), a provenance reference, and the profile-specific input. The engine computes SHA-256 from the actual bytes and runs only a built-in deterministic adapter.
 
-The store validates the profile and evidence metadata before accepting the lifecycle transition. This is currently a **trusted-caller attestation**, not independent verification: the API does not execute the adapter, fetch/re-hash the referenced artifact, or cryptographically authenticate the verifier. Do not treat this stage as machine-certified quality. Executable adapters and artifact-bound receipts are the next release gate.
+Implemented adapters:
+- `artifact_digest`: compares the computed SHA-256 with the operator's expected digest.
+- `json_schema`: validates JSON against a bounded schema subset (types, enum, required fields, properties, additional-properties policy, item/length/numeric bounds).
+
+Other allowlisted adapter IDs return `ERROR`; they do not silently pass. No dynamic import, arbitrary Python callable, or shell execution is permitted. Artifact input is capped at 1 MiB; JSON schema is capped at 64 KiB and 2,000 validation nodes.
+
+The verifier result and evidence records are persisted immutably and linked into the WorkItem event hash chain. Acceptance no longer accepts caller-supplied PASS strings: every required criterion must have a latest persisted `PASS` from a matching registered profile, and the evidence chain must verify. A later FAIL/ERROR supersedes an earlier PASS for that criterion until a new PASS is recorded.
+
+This proves the bytes supplied to the verifier matched the submitted artifact source/digest contract. It does not prove the source URI is truthful, establish external verifier identity through signatures, or independently inspect a remote artifact. Keep artifact acquisition and source authenticity in the trust boundary.
 
 ## API
 
@@ -98,6 +106,7 @@ The CLI reads and writes the same ROCKSOUL SQLite database selected by the exist
 - Contract JSON and SHA-256 digest are immutable for a given WorkItem ID.
 - Repeating create with the same ID and digest is idempotent; reusing the ID with changed content fails.
 - Lifecycle events are append-only at the application layer, ordered per WorkItem, and linked with SHA-256 previous-event hashes.
+- Verifier result/evidence rows are cross-linked from lifecycle events by a canonical receipt digest; chain verification detects altered or missing receipt rows.
 - SQLite `BEGIN IMMEDIATE` protects concurrent transitions.
 - Event-chain verification detects changed, missing, reordered, or disconnected events.
 - Hash chaining is tamper-evident, not a WORM store or external digital signature.
@@ -105,4 +114,4 @@ The CLI reads and writes the same ROCKSOUL SQLite database selected by the exist
 
 ## Explicit non-goals of this stage
 
-No WorkItem-to-ExecutionEngine correlation, automatic verification adapter execution, WorkGraph, checkpoint/resume, policy learning, or Console workflow is claimed as shipped. Provider transport success remains separate from task acceptance.
+WorkItem execution correlation is available through the optional `work_id` field on `POST /api/v1/execute`; it records the trace link but never auto-accepts the task. The verifier engine currently covers artifact digest and a bounded JSON Schema subset only. WorkGraph, checkpoint/resume, policy learning, external source authenticity, and Console workflow remain future work. Provider transport success remains separate from task acceptance.
