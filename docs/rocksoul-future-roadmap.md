@@ -11,9 +11,9 @@ This roadmap converts the strategic blueprint into staged, small work packages. 
 
 ## P0 — Trust & truth
 
-- [ ] Define a canonical WorkItem contract: intent, constraints, acceptance criteria, risk, budgets, deadline, permissions.
-- [ ] Define terminal outcomes: accepted, rejected, uncertain, blocked, cancelled, expired.
-- [ ] Define a versioned verification-profile schema.
+- [x] Define canonical WorkItem contract schema: intent, acceptance criteria, risk, bounded budgets, deadline, exact permissions, and human-approval requirement. Implemented in `g4f/rocksoul_contracts.py`; persistence/API integration remains open.
+- [x] Define WorkItem lifecycle and terminal outcomes: accepted, unverified, rejected, uncertain, blocked, cancelled, expired. `ACCEPTED` requires the `VERIFYING` state.
+- [ ] Define a versioned verification-profile schema and bind each criterion to a registered verifier implementation.
 - [ ] Add explicit provenance references to route, attempt, trace, and Arena evidence.
 - [ ] Define capability passport schema with declared/observed/verified trust states and expiry.
 - [ ] Add candidate-recall metrics before route ranking.
