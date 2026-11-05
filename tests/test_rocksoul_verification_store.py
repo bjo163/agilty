@@ -35,6 +35,16 @@ class VerificationProfileStoreTests(unittest.TestCase):
         with self.assertRaises(VerificationProfileError):
             self.store.register(self.profile(timeout=20))
 
+    def test_registry_rejects_tampered_profile_json(self):
+        self.store.register(self.profile())
+        with self.store.db.connect() as conn:
+            conn.execute(
+                "UPDATE rocksoul_verification_profiles SET profile_json=? WHERE profile_id=? AND version=?",
+                ('{"schema_version":1}', "json.check", 1),
+            )
+        with self.assertRaises(VerificationProfileError):
+            self.store.registry()
+
     def test_registry_loads_persisted_profiles(self):
         self.store.register(self.profile())
         registry = self.store.registry()
