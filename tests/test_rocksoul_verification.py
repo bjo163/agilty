@@ -87,6 +87,16 @@ class VerificationProfileTests(unittest.TestCase):
         with self.assertRaises(VerificationProfileError):
             evidence(source="")
 
+    def test_evidence_timestamp_must_be_timezone_aware(self):
+        with self.assertRaises(VerificationProfileError):
+            evidence(captured_at="2026-11-06T10:00:00")
+        with self.assertRaises(VerificationProfileError):
+            evidence(captured_at="not-a-date")
+
+    def test_profile_schema_version_must_be_integer(self):
+        with self.assertRaises(VerificationProfileError):
+            profile(schema_version=1.0)
+
     def test_only_pass_satisfies_required_criterion(self):
         for outcome in (VerificationOutcome.FAIL, VerificationOutcome.INCONCLUSIVE, VerificationOutcome.ERROR, VerificationOutcome.SKIPPED):
             result = VerificationResult(outcome, "code.tests", 1, "pytest", "1.0", "deterministic_tests")
