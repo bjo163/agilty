@@ -107,6 +107,13 @@ class VerificationEngine:
             except (ET.ParseError, ValueError, RecursionError) as exc:
                 findings.append(str(exc)[:2000])
                 outcome = VerificationOutcome.FAIL
+        elif profile.adapter_id == "source_provenance":
+            evidence_type = "source_provenance"
+            if source != f"sha256:{digest}":
+                findings.append("source provenance must be the exact sha256:<artifact-digest> content address")
+                outcome = VerificationOutcome.FAIL
+            else:
+                outcome = VerificationOutcome.PASS
         elif profile.adapter_id == "http_contract":
             evidence_type = "http_contract_receipt"
             try:
