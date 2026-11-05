@@ -26,6 +26,8 @@ Defaults to loopback `127.0.0.1:8765`. Binding beyond loopback requires `ROCKSOU
 - `POST /api/v1/work-items/{work_id}/transitions` — authenticated expected-state lifecycle transition.
 - `POST /api/v1/work-items/{work_id}/criteria/{criterion_id}/verify` — execute a bounded built-in verifier against supplied artifact bytes.
 - `POST /api/v1/work-items/{work_id}/approval` — record a signed administrator decision; requires `X-ROCKSOUL-Approval-Signature` in addition to the API key.
+- `GET /api/v1/work-items/{work_id}/evidence-diff` — compare the latest and previous verifier receipts per criterion.
+- `GET /api/v1/work-items/{work_id}/evidence-bundle` — export contract, events, approvals, execution links, verifier receipts, and chain result as metadata-only JSON.
 - `GET /api/v1/work-items/{work_id}/verify-chain` — authenticated event hash-chain verification.
 
 OpenAPI docs: `/api/docs`.
