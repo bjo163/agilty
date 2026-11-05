@@ -97,5 +97,68 @@ class RocksoulApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
 
 
+    def test_verification_profile_registry_requires_operator_key(self):
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            missing = self.client.get("/api/v1/verification-profiles")
+            wrong = self.client.get("/api/v1/verification-profiles", headers={"X-ROCKSOUL-API-Key": "wrong"})
+        self.assertEqual(missing.status_code, 401)
+        self.assertEqual(wrong.status_code, 401)
+
+    def test_verification_profile_register_list_and_read_are_immutable(self):
+        profile = {
+            "schema_version": 1,
+            "profile_id": "api.artifact",
+            "version": 1,
+            "adapter_id": "artifact_digest",
+            "evidence_requirements": [{
+                "evidence_type": "artifact_digest",
+                "minimum_count": 1,
+                "require_digest": True,
+                "require_source": True,
+            }],
+            "severity": "error",
+            "independence_group": "api-tests",
+            "deterministic": True,
+            "side_effect_free": True,
+            "timeout_seconds": 5,
+        }
+        headers = {"X-ROCKSOUL-API-Key": "expected"}
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            created = self.client.post("/api/v1/verification-profiles", headers=headers, json=profile)
+            repeated = self.client.post("/api/v1/verification-profiles", headers=headers, json=profile)
+            listed = self.client.get("/api/v1/verification-profiles", headers=headers)
+            fetched = self.client.get("/api/v1/verification-profiles/api.artifact/1", headers=headers)
+            changed = {**profile, "independence_group": "changed"}
+            conflict = self.client.post("/api/v1/verification-profiles", headers=headers, json=changed)
+        self.assertEqual(created.status_code, 200)
+        self.assertEqual(repeated.status_code, 200)
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["total"], 1)
+        self.assertEqual(fetched.status_code, 200)
+        self.assertEqual(created.json()["digest"], fetched.json()["digest"])
+        self.assertEqual(conflict.status_code, 422)
+
+    def test_verification_profile_rejects_non_allowlisted_adapter(self):
+        profile = {
+            "schema_version": 1,
+            "profile_id": "api.unsafe",
+            "version": 1,
+            "adapter_id": "python_eval",
+            "evidence_requirements": [{
+                "evidence_type": "artifact_digest",
+                "minimum_count": 1,
+                "require_digest": True,
+                "require_source": True,
+            }],
+        }
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            response = self.client.post(
+                "/api/v1/verification-profiles",
+                headers={"X-ROCKSOUL-API-Key": "expected"},
+                json=profile,
+            )
+        self.assertEqual(response.status_code, 422)
+
+
 if __name__ == "__main__":
     unittest.main()
