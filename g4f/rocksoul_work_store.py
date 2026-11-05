@@ -211,7 +211,7 @@ class WorkItemStore:
     def record_approval(self, work_id: str, *, decision: str, approver_id: str,
                         approver_role: str, issued_at: int, nonce: str,
                         signed_payload_digest: str, signature_digest: str) -> dict[str, Any]:
-        if decision not in {"approved", "rejected"}:
+        if not isinstance(decision, str) or decision not in {"approved", "rejected"}:
             raise WorkItemStoreError("approval decision must be approved or rejected")
         if not isinstance(approver_id, str) or not approver_id.strip() or len(approver_id) > 128:
             raise WorkItemStoreError("approver identity is invalid")
@@ -246,6 +246,8 @@ class WorkItemStore:
                 "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.approval_recorded' ORDER BY sequence ASC",
                 (work_id,),
             ).fetchall()
+            if len(events) >= 20:
+                raise WorkItemStoreError("approval decision limit reached for this WorkItem")
             if any(json.loads(entry["payload_json"]).get("nonce") == nonce for entry in events):
                 raise WorkItemStoreError("approval nonce has already been used")
             previous = json.loads(events[-1]["payload_json"]) if events else None
