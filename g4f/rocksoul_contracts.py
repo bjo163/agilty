@@ -218,8 +218,8 @@ class WorkItem:
                 raise ContractValidationError("risk must be low, medium, high, or critical") from exc
         if not isinstance(self.budget, ExecutionBudget):
             raise ContractValidationError("budget must be an ExecutionBudget")
-        if not isinstance(self.acceptance_criteria, tuple) or not self.acceptance_criteria:
-            raise ContractValidationError("acceptance_criteria must be a non-empty tuple")
+        if not isinstance(self.acceptance_criteria, tuple) or not self.acceptance_criteria or len(self.acceptance_criteria) > 100:
+            raise ContractValidationError("acceptance_criteria must be a tuple containing 1 to 100 criteria")
         if any(not isinstance(item, AcceptanceCriterion) for item in self.acceptance_criteria):
             raise ContractValidationError("acceptance_criteria must contain AcceptanceCriterion values")
         criterion_ids = [item.criterion_id for item in self.acceptance_criteria]
@@ -227,8 +227,8 @@ class WorkItem:
             raise ContractValidationError("acceptance criterion IDs must be unique")
         if not any(item.required for item in self.acceptance_criteria):
             raise ContractValidationError("at least one acceptance criterion must be required")
-        if not isinstance(self.permissions, tuple):
-            raise ContractValidationError("permissions must be a tuple")
+        if not isinstance(self.permissions, tuple) or len(self.permissions) > 100:
+            raise ContractValidationError("permissions must be a tuple containing at most 100 capabilities")
         normalized_permissions = tuple(_non_empty_string(item, "permission", 128).lower() for item in self.permissions)
         if any(not _PERMISSION_PATTERN.fullmatch(item) for item in normalized_permissions):
             raise ContractValidationError("permissions must be exact lowercase capability identifiers; wildcards are forbidden")
