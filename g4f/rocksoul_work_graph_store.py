@@ -187,11 +187,18 @@ class WorkGraphStore:
                 if row["sequence"] != index or row["previous_hash"] != previous_hash:
                     return {"ok": False, "reason": "event_chain_broken", "failed_sequence": index,
                             "verified_events": index - 1}
-                event = {
-                    "event_id": row["event_id"], "graph_id": graph_id, "sequence": index,
-                    "event_type": row["event_type"], "payload": json.loads(row["payload_json"]),
-                    "previous_hash": row["previous_hash"], "created_at": row["created_at"],
-                }
+                try:
+                    payload = json.loads(row["payload_json"])
+                    if not isinstance(payload, dict):
+                        raise ValueError("event payload must be an object")
+                    event = {
+                        "event_id": row["event_id"], "graph_id": graph_id, "sequence": index,
+                        "event_type": row["event_type"], "payload": payload,
+                        "previous_hash": row["previous_hash"], "created_at": row["created_at"],
+                    }
+                except (TypeError, ValueError):
+                    return {"ok": False, "reason": "event_payload_invalid", "failed_sequence": index,
+                            "verified_events": index - 1}
                 if self._hash(event) != row["event_hash"]:
                     return {"ok": False, "reason": "event_tampered", "failed_sequence": index,
                             "verified_events": index - 1}
