@@ -282,6 +282,54 @@ def create_app(db: RocksoulDB | None = None):
             code = 404 if str(exc) == "WorkItem not found" else 409
             raise HTTPException(status_code=code, detail=str(exc)) from exc
 
+
+    @app.get("/api/v1/work-items/{work_id}/evidence-diff")
+    def work_item_evidence_diff(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        item = work_items.get(work_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="WorkItem not found")
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for verification in item["verifications"]:
+            grouped.setdefault(verification["criterion_id"], []).append(verification)
+        criteria = {}
+        for criterion_id, attempts in grouped.items():
+            attempts.sort(key=lambda entry: (entry["created_at"], entry["verification_id"]))
+            previous = attempts[-2] if len(attempts) > 1 else None
+            latest = attempts[-1]
+            previous_findings = set((previous or {}).get("result", {}).get("findings", []))
+            latest_findings = set(latest.get("result", {}).get("findings", []))
+            criteria[criterion_id] = {
+                "attempt_count": len(attempts),
+                "previous": previous,
+                "latest": latest,
+                "changed": bool(previous and (
+                    previous["outcome"] != latest["outcome"]
+                    or previous["artifact_digest"] != latest["artifact_digest"]
+                    or previous["profile_id"] != latest["profile_id"]
+                    or previous["profile_version"] != latest["profile_version"]
+                )),
+                "findings_added": sorted(latest_findings - previous_findings),
+                "findings_resolved": sorted(previous_findings - latest_findings),
+            }
+        return {"work_id": work_id, "criteria": criteria, "total_criteria_with_evidence": len(criteria)}
+
+    @app.get("/api/v1/work-items/{work_id}/evidence-bundle")
+    def work_item_evidence_bundle(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        item = work_items.get(work_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="WorkItem not found")
+        integrity = work_items.verify_event_chain(work_id)
+        return {
+            "bundle_schema_version": 1,
+            "exported_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "work_item": item,
+            "integrity": integrity,
+            "contents": ["immutable_contract", "lifecycle_events", "execution_links", "verifier_receipts", "approval_events"],
+            "trust_boundary": "Metadata-only export: artifact bytes are not retained; source authenticity and external signatures are not established. Event hash chaining is tamper-evident, not a WORM store or external signature.",
+        }
+
     @app.get("/api/v1/work-items/{work_id}/verify-chain")
     def verify_work_item_chain(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
         require_operator(x_rocksoul_api_key)
