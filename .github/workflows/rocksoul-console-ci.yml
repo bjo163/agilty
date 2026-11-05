@@ -5,16 +5,20 @@ on:
     branches: [main]
     paths:
       - 'frontend/rocksoul-console/**'
+      - 'g4f/rocksoul_api.py'
+      - 'tests/test_rocksoul_api.py'
+      - 'docker-compose.rocksoul.yml'
       - '.github/workflows/rocksoul-console-ci.yml'
   pull_request:
     paths:
       - 'frontend/rocksoul-console/**'
+      - 'g4f/rocksoul_api.py'
+      - 'tests/test_rocksoul_api.py'
+      - 'docker-compose.rocksoul.yml'
       - '.github/workflows/rocksoul-console-ci.yml'
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   build:
     name: Next.js / Node 24
@@ -36,4 +40,26 @@ jobs:
       - name: Production build
         env:
           ROCKSOUL_API_INTERNAL_URL: http://127.0.0.1:8765
+          ROCKSOUL_API_KEY: ci-test-api-key
+          ROCKSOUL_CONSOLE_ADMIN_PASSWORD: test-admin-password
+          ROCKSOUL_CONSOLE_OPERATOR_PASSWORD: test-operator-password
+          ROCKSOUL_CONSOLE_SESSION_SECRET: ci-test-session-secret-at-least-32-characters-long
         run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser smoke tests
+        env:
+          CI: "true"
+          ROCKSOUL_API_INTERNAL_URL: http://127.0.0.1:8765
+          ROCKSOUL_API_KEY: ci-test-api-key
+          ROCKSOUL_CONSOLE_ADMIN_PASSWORD: test-admin-password
+          ROCKSOUL_CONSOLE_OPERATOR_PASSWORD: test-operator-password
+          ROCKSOUL_CONSOLE_SESSION_SECRET: ci-test-session-secret-at-least-32-characters-long
+        run: npm run test:e2e
+      - name: Validate Docker Compose topology
+        env:
+          ROCKSOUL_API_KEY: ci-test-api-key
+          ROCKSOUL_CONSOLE_ADMIN_PASSWORD: test-admin-password
+          ROCKSOUL_CONSOLE_OPERATOR_PASSWORD: test-operator-password
+          ROCKSOUL_CONSOLE_SESSION_SECRET: ci-test-session-secret-at-least-32-characters-long
+        run: docker compose -f docker-compose.rocksoul.yml config --quiet
