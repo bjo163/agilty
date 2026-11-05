@@ -168,6 +168,43 @@ class RocksoulArenaProductionCliTests(unittest.TestCase):
         self.assertIn("unknown fields", payload["error"])
 
 
+
+    def test_verify_campaign_and_campaign_report_commands(self) -> None:
+        code, fixture = self.invoke("fixture-campaign")
+        self.assertEqual(code, 0)
+        code, audit = self.invoke("verify-campaign", fixture["campaign_id"])
+        self.assertEqual(code, 0)
+        self.assertTrue(audit["integrity_verified"])
+        self.assertEqual(audit["quality_certification"], "NOT_CERTIFIED")
+
+        code, report = self.invoke("campaign-report", "--pack-digest", fixture["pack_digest"])
+        self.assertEqual(code, 0)
+        self.assertEqual(report["report_status"], "EVIDENCE_VERIFIED")
+        self.assertEqual(report["campaign_count"], 1)
+        self.assertEqual(report["quality_certification"], "NOT_CERTIFIED")
+
+    def test_verify_campaign_and_campaign_report_fail_closed(self) -> None:
+        code, payload = self.invoke("verify-campaign", "missing-campaign")
+        self.assertEqual(code, 3)
+        self.assertFalse(payload["found"])
+
+        code, report = self.invoke("campaign-report", "--pack-digest", "0" * 64)
+        self.assertEqual(code, 3)
+        self.assertEqual(report["report_status"], "NO_PACK")
+
+        code, fixture = self.invoke("fixture-campaign")
+        self.assertEqual(code, 0)
+        from g4f.rocksoul_db import RocksoulDB
+        with RocksoulDB(Path(self.db)).connect() as conn:
+            run_id = fixture["run_ids"][0]
+            conn.execute("UPDATE arena_runs SET score=0 WHERE id=?", (run_id,))
+        code, audit = self.invoke("verify-campaign", fixture["campaign_id"])
+        self.assertEqual(code, 4)
+        self.assertFalse(audit["integrity_verified"])
+        code, report = self.invoke("campaign-report", "--pack-digest", fixture["pack_digest"])
+        self.assertEqual(code, 4)
+        self.assertEqual(report["report_status"], "EVIDENCE_REJECTED")
+
     def test_live_campaign_requires_both_explicit_opt_ins_before_provider_resolution(self) -> None:
         self.write_manifest()
         value = json.loads(self.manifest.read_text(encoding="utf-8"))

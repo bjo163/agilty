@@ -566,9 +566,11 @@ class ArenaProductionStore:
                     isinstance(item.get("score"), bool)
                     or not math.isfinite(score)
                     or score < 0.0 or score > 1.0
+                    or isinstance(item.get("weight"), bool)
                     or not math.isfinite(weight) or weight <= 0.0
                     or not math.isfinite(latency) or latency < 0.0
                     or not isinstance(item.get("ok"), bool)
+                    or not math.isclose(score, 1.0 if item.get("ok") else 0.0, rel_tol=0.0, abs_tol=1e-12)
                     or (item.get("output_digest") is not None and not _SHA256_RE.fullmatch(str(item.get("output_digest"))))
                 ):
                     result_values_ok = False
@@ -627,16 +629,21 @@ class ArenaProductionStore:
                 "run timestamps must be finite and contained within the campaign time window",
             )
 
-        scores_finite = len(run_scores) == len(run_ids) and all(
-            math.isfinite(float(score)) and 0.0 <= float(score) <= 100.0 for score in scores
-        )
-        scores_match_runs = (
-            len(scores) == len(run_scores)
-            and all(
-                math.isclose(float(scores[index]), run_scores[index], rel_tol=1e-9, abs_tol=1e-8)
-                for index in range(len(run_scores))
+        try:
+            normalized_scores = [float(score) for score in scores]
+            scores_finite = len(run_scores) == len(run_ids) and all(
+                math.isfinite(score) and 0.0 <= score <= 100.0 for score in normalized_scores
             )
-        )
+            scores_match_runs = (
+                len(normalized_scores) == len(run_scores)
+                and all(
+                    math.isclose(normalized_scores[index], run_scores[index], rel_tol=1e-9, abs_tol=1e-8)
+                    for index in range(len(run_scores))
+                )
+            )
+        except (TypeError, ValueError, OverflowError):
+            scores_finite = False
+            scores_match_runs = False
         self._audit_check(
             checks,
             "campaign_scores_match_runs",

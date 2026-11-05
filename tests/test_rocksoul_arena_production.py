@@ -188,6 +188,76 @@ class RocksoulArenaProductionTests(unittest.TestCase):
             with self.assertRaises(ArenaValidationError):
                 store.validate_pack(self.pack(max_score_stddev=invalid_stddev))
 
+
+    def test_campaign_integrity_audit_reconciles_pack_runs_and_statistics(self):
+        store = self.make_store()
+        pack = self.pack(runs=3, max_score_stddev=0.0)
+        campaign = store.run_campaign(pack, self.target(), self.environment(), lambda case: case.expected)
+        audit = store.verify_campaign(campaign.campaign_id)
+        self.assertIsNotNone(audit)
+        self.assertEqual(audit["integrity_status"], "VERIFIED")
+        self.assertTrue(audit["integrity_verified"])
+        self.assertEqual(audit["failed_checks"], [])
+        self.assertEqual(audit["quality_certification"], "NOT_CERTIFIED")
+
+    def test_campaign_integrity_audit_rejects_tampered_arena_run_score(self):
+        store = self.make_store()
+        pack = self.pack(runs=2, max_score_stddev=0.0)
+        campaign = store.run_campaign(pack, self.target(), self.environment(), lambda case: case.expected)
+        with store.arena.db.connect() as conn:
+            conn.execute("UPDATE arena_runs SET score=0 WHERE id=?", (campaign.run_ids[0],))
+        audit = store.verify_campaign(campaign.campaign_id)
+        self.assertFalse(audit["integrity_verified"])
+        self.assertEqual(audit["integrity_status"], "REJECTED")
+        self.assertIn("run_1_case_results", audit["failed_checks"])
+        self.assertIn("campaign_scores_match_runs", audit["failed_checks"])
+
+    def test_campaign_integrity_audit_rejects_metadata_or_missing_run(self):
+        store = self.make_store()
+        campaign = store.run_campaign(self.pack(runs=2), self.target(), self.environment(), lambda case: case.expected)
+        with store.arena.db.connect() as conn:
+            conn.execute(
+                "UPDATE arena_runs SET metadata_json=? WHERE id=?",
+                ('{"production_benchmark":false}', campaign.run_ids[0]),
+            )
+        audit = store.verify_campaign(campaign.campaign_id)
+        self.assertIn("run_1_metadata", audit["failed_checks"])
+        with store.arena.db.connect() as conn:
+            conn.execute("DELETE FROM arena_runs WHERE id=?", (campaign.run_ids[1],))
+        audit = store.verify_campaign(campaign.campaign_id)
+        self.assertIn("run_2_exists", audit["failed_checks"])
+
+    def test_campaign_report_groups_targets_and_never_certifies_quality(self):
+        store = self.make_store()
+        pack = self.pack(runs=2)
+        first = store.run_campaign(pack, self.target(), self.environment(), lambda case: case.expected)
+        other_target = ArenaTargetIdentity("other-provider", "other-model", "rev-2", "runtime-2")
+        second = store.run_campaign(pack, other_target, self.environment(), lambda case: case.expected)
+        report = store.campaign_report(pack.digest)
+        self.assertEqual(report["report_status"], "EVIDENCE_VERIFIED")
+        self.assertEqual(report["campaign_count"], 2)
+        self.assertEqual(len(report["targets"]), 2)
+        self.assertEqual(report["integrity_verified_campaigns"], 2)
+        self.assertEqual(report["quality_certification"], "NOT_CERTIFIED")
+        self.assertEqual(report["report_digest"], store.campaign_report(pack.digest)["report_digest"])
+        filtered = store.campaign_report(pack.digest, first.target_digest)
+        self.assertEqual(filtered["campaign_count"], 1)
+        self.assertEqual(filtered["campaigns"][0]["campaign_id"], first.campaign_id)
+        self.assertEqual(filtered["campaigns"][0]["target_digest"], first.target_digest)
+
+    def test_campaign_report_rejects_tampered_evidence_and_unknown_pack(self):
+        store = self.make_store()
+        pack = self.pack(runs=2)
+        campaign = store.run_campaign(pack, self.target(), self.environment(), lambda case: case.expected)
+        with store.arena.db.connect() as conn:
+            conn.execute("UPDATE arena_results SET weight=99 WHERE run_id=?", (campaign.run_ids[0],))
+        report = store.campaign_report(pack.digest)
+        self.assertEqual(report["report_status"], "EVIDENCE_REJECTED")
+        self.assertEqual(report["integrity_rejected_campaigns"], 1)
+        missing = store.campaign_report("0" * 64)
+        self.assertEqual(missing["report_status"], "NO_PACK")
+        self.assertEqual(missing["quality_certification"], "NOT_CERTIFIED")
+
     def test_target_and_environment_identity_are_required(self):
         store = self.make_store()
         with self.assertRaises(ArenaValidationError):
