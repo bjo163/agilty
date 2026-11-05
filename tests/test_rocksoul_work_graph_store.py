@@ -136,7 +136,7 @@ class WorkGraphStoreTests(unittest.TestCase):
                          (json.dumps({"contract_digest": "0" * 64, "schema_version": 1}), "work-build"))
         result = self.store.resolve_readiness("pipeline", work_store)
         self.assertEqual(result["integrity_error_nodes"], ["build"])
-        self.assertIn("build", result["blocked_nodes"])
+        self.assertEqual(result["integrity_error_nodes"], ["build"])
         self.assertEqual({n["node_id"]: n for n in result["nodes"]}["test"]["state"], "blocked")
 
 
