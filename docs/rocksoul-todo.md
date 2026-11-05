@@ -408,17 +408,17 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Migration: existing SQLite databases receive the nullable `work_id` column and index idempotently.
 
 ### RS-F9-009 — Console WorkItem & Evidence Cockpit
-- Status: `FOUNDATION` — WorkItem creation and readback cockpit delivered.
-- Scope: authenticated Console navigation, administrator-only WorkItem creation with deny-all default permissions and optional exact `model.execute` grant, risk/approval selection, guarded expected-state lifecycle transitions, WorkItem list, outcome counters, contract digest visibility, detail readback, and event-chain integrity checks.
-- Implementation: `frontend/rocksoul-console/src/app/page.tsx` and authenticated API proxy.
-- Security: proxy forwards the API key for protected GET as well as POST routes; API keys remain server-side.
-- Tests: Playwright operator navigation assertion.
-- Remaining: profile registration, artifact upload/verification UI, human-approval workflow, and rich evidence diff remain TODO.
+- Status: `FOUNDATION` — WorkItem cockpit plus immutable verifier profile and bounded artifact verification workflows delivered; awaiting current CI certification.
+- Scope: authenticated Console navigation, administrator-only WorkItem creation with deny-all default permissions and optional exact `model.execute` grant, risk/approval selection, guarded expected-state lifecycle transitions, WorkItem list/outcome counters/digest/detail/event-chain readback, profile registration/listing, bounded artifact upload (1 MiB), browser-side SHA-256, and per-criterion verifier execution.
+- Implementation: `frontend/rocksoul-console/src/app/page.tsx`, authenticated API proxy, `/api/v1/verification-profiles`, and `/api/v1/work-items/{work_id}/criteria/{criterion_id}/verify`.
+- Security: proxy forwards API key for protected GET and POST routes; API keys remain server-side; writes remain administrator-only; profile versions are immutable; artifact size is bounded; no arbitrary verifier code or network fetch is introduced.
+- Tests: Playwright operator navigation assertion plus API profile registry authentication, immutable-version, and allowlist tests. Current final-main CI is the release gate.
+- Remaining: cryptographically attributable human approval, signed external evidence/verifier identity, independent remote artifact acquisition, rich evidence diff, and artifact bundle export.
 
 ### Stage 8 verification boundary
-- WorkItem contracts, profile definitions/persistence, lifecycle storage, authenticated API, operator CLI, execution trace linkage, native execution correlation, read-only Console WorkItem cockpit, and five deterministic verifier adapters are implemented.
+- WorkItem contracts, immutable profile definitions/persistence, lifecycle storage, authenticated API, operator CLI, execution trace linkage, native execution correlation, Console WorkItem cockpit, profile registration, bounded artifact upload/verification UI, and five deterministic verifier adapters are implemented.
 - All five allowlisted adapter identifiers execute through bounded built-in code. HTTP receipts and pytest reports are caller-supplied captures; source provenance proves digest binding only. None establishes remote source authenticity or cryptographically authenticated verifier identity.
 - Acceptance requires a latest persisted built-in verifier PASS for every required criterion and a valid event/receipt hash chain; caller-supplied PASS payloads are rejected.
 - The verifier hashes the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact.
-- Console WorkItem creation and readback foundation is implemented. Console profile registration, artifact upload/verification UI, human-approval workflow, independent artifact acquisition, signed external evidence, and authenticated verifier identity remain open.
+- Console WorkItem creation/readback, profile registration, and bounded artifact verification UI are implemented. A cryptographically attributable human-approval workflow, independent artifact acquisition, signed external evidence, and authenticated external verifier identity remain open. High/critical WorkItems still require approval, and execution remains fail-closed while a trustworthy approval identity/recording path is not available.
 - Existing F1–F7 execution, Mesh, Arena, API, and Console contracts remain compatibility requirements.
