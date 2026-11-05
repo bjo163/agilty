@@ -272,16 +272,23 @@ The flywheel must not learn from unverified outputs as if they were ground truth
 |---|---|---|
 | Runtime substrate | Existing g4f provider/runtime layer | Keep provider execution adapters reusable |
 | Routing | Explainable, capability-aware route foundation | Candidate recall, contextual and step-level routing |
-| Execution | Bounded attempts/time, retry taxonomy, traces; canonical WorkItem schema and lifecycle validation | Persisted work contracts, checkpoints, scoped action capabilities, execution integration |
+| Execution | Bounded attempts/time, retry taxonomy, traces; canonical WorkItem schema, SQLite persistence, append-only lifecycle events, API and operator CLI | WorkItem-to-ExecutionEngine correlation, checkpoints, scoped action capabilities |
 | Health/recovery | Provider lifecycle and quarantine/recovery | Drift detection and verified capability expiry |
 | Mesh | Authenticated nodes, leases, isolation | Attestation, sandbox scheduling, data locality |
 | Arena | Deterministic foundation and campaign integrity verifier | Provenance-rich suites, adversarial tests, held-out evaluations |
-| API | Versioned product API | Work-item, evidence, verifier, policy lifecycle APIs |
+| API | Versioned product API with authenticated WorkItem lifecycle and verification-profile registry endpoints | Execution-correlated evidence, verifier execution receipts, policy lifecycle APIs |
 | Console | Operator console foundation | Outcome cockpit, approval queue, policy lab |
-| Verification | Existing deterministic tests and Arena checks | Task-specific multi-layer verification and anti-slop profiles |
+| Verification | Versioned immutable profile contracts, evidence requirements, trusted-caller attestation validation; executable adapters not yet shipped | Artifact-bound deterministic adapters, independent evaluators, signed/provenance-checked receipts |
 | Learning | Evidence exists; adaptive policy is not yet certified | Offline learning, shadow tests, controlled promotion |
 
 Do not represent planned capabilities as shipped. Current Arena reports remain `quality_certification=NOT_CERTIFIED` until production dataset and methodology gates are satisfied.
+
+
+### Implemented trust foundation and hard boundary
+
+The current Work Contract slice persists immutable WorkItem contract digests and hash-chained lifecycle events in SQLite. State changes use atomic expected-status transitions. Verification profiles are versioned, immutable, persisted, and restricted to declared adapter identifiers; the API and CLI provide operator readback and controlled mutation.
+
+A WorkItem may only enter `ACCEPTED` from `VERIFYING` with a registered profile version, matching criterion method, PASS outcome, and structured evidence metadata. This validates a trusted-caller attestation contract only. The system does not yet execute verifier adapters, re-hash artifact bytes, or cryptographically authenticate the verifier. Therefore `ACCEPTED` at this stage must be interpreted as an operator-attested lifecycle state, not independent machine certification. The next gate is executable adapters and artifact-bound receipts, followed by ExecutionEngine correlation.
 
 ## 9. Delivery strategy
 
