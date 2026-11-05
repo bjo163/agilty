@@ -458,12 +458,13 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Acceptance: bounded retries, deadlines, cancellation, optional-node semantics, uncertain/blocked propagation, and no implicit restart of terminal WorkItems.
 
 ### RS-F10-006 — WorkGraph API, CLI, and Console
-- Status: `FOUNDATION` — authenticated API registry/readiness and offline operator CLI implemented; Console visualization and execution dispatch remain TODO.
+- Status: `FOUNDATION` — authenticated API registry/readiness, offline operator CLI, and read-only Console registry/readiness cockpit implemented; execution dispatch remains TODO.
 - API: `GET|POST /api/v1/work-graphs`, `GET /api/v1/work-graphs/{graph_id}`, `GET /api/v1/work-graphs/{graph_id}/readiness`; all require operator API key.
 - CLI: `rocksoul-work-graph` / `python -m g4f.rocksoul_work_graph_cli` supports create/list/get/verify/readiness.
 - Packaging/CI: console entrypoint added to `setup.py`; ROCKSOUL CI smoke-tests module and installed command.
 - Tests: API auth/create/idempotency/readiness/immutable conflict and CLI create/list/verify/readiness.
-- Remaining: Console graph visualization, expected-version graph revisions, atomic scheduler claims, and end-to-end proof that child approval/verification gates cannot be bypassed.
+- Console: new WorkGraph tab lists immutable graphs, registers graph JSON for administrators, and displays readiness states, dependency blockers, and integrity errors. Playwright operator navigation smoke test added.
+- Remaining: expected-version graph revisions, atomic scheduler claims, and end-to-end proof that child approval/verification gates cannot be bypassed.
 
 ### Stage 9 completion rule
 - Stage 9 is not complete until RS-F10-002 through RS-F10-006 are implemented and CI-certified on the exact final `main` commit. RS-F10-001 through RS-F10-003 have foundation implementations; RS-F10-006 has API/CLI foundations only.
