@@ -72,7 +72,7 @@ class VerificationEngine:
                     raise ValueError("a JSON schema object is required")
                 self._validate_schema(document, schema)
                 outcome = VerificationOutcome.PASS
-            except (UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError) as exc:
+            except (UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError, RecursionError) as exc:
                 findings.append(str(exc)[:2000])
                 outcome = VerificationOutcome.FAIL
         else:
