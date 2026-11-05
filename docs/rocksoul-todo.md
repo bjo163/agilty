@@ -397,9 +397,9 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 
 ### RS-F9-007 — Executable verifier adapters and authenticated evidence receipts
 - Status: `FOUNDATION` — two deterministic built-in adapters implemented.
-- Implementation: `g4f/rocksoul_verifier_engine.py` implements `artifact_digest`, a bounded JSON Schema subset, and a bounded pytest JUnit XML receipt adapter. It computes SHA-256 from supplied bytes, caps artifact/schema sizes and schema complexity, emits provenance-bearing evidence, and fails closed for unimplemented adapter identifiers.
+- Implementation: `g4f/rocksoul_verifier_engine.py` implements `artifact_digest`, a bounded JSON Schema subset, a bounded pytest JUnit XML receipt adapter, and a captured HTTPS contract receipt adapter. It computes SHA-256 from supplied bytes, caps artifact/schema sizes and schema complexity, emits provenance-bearing evidence, and fails closed for unimplemented adapter identifiers.
 - Persistence: verifier result/evidence rows are linked into the WorkItem event chain by a canonical receipt digest; acceptance checks the latest result for every required criterion.
-- Remaining: `http_contract` and `source_provenance` adapter execution, external source authenticity, and cryptographically authenticated verifier identity.
+- Remaining: `source_provenance` adapter execution, external source authenticity, and cryptographically authenticated verifier identity.
 
 ### RS-F9-008 — ExecutionEngine correlation and outcome separation
 - Status: `DONE` — API, event ledger, and native execution row correlation.
@@ -417,7 +417,7 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 
 ### Stage 8 verification boundary
 - WorkItem contracts, profile definitions/persistence, lifecycle storage, authenticated API, operator CLI, execution trace linkage, and two deterministic verifier adapters are implemented.
-- Only `artifact_digest`, the bounded `json_schema` subset, and the bounded `pytest` JUnit XML receipt adapter execute. Other allowlisted identifiers return `ERROR`.
+- Only `artifact_digest`, the bounded `json_schema` subset, the bounded `pytest` JUnit XML receipt adapter, and the captured `http_contract` receipt adapter execute. Other allowlisted identifiers return `ERROR`.
 - Acceptance requires a latest persisted built-in verifier PASS for every required criterion and a valid event/receipt hash chain; caller-supplied PASS payloads are rejected.
 - The verifier hashes the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact.
 - Console read-only WorkItem cockpit is implemented. Console creation/mutation/verification workflows, additional verifier adapters, native execution_runs correlation, and signed external evidence remain open.
