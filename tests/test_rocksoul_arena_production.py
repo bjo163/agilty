@@ -96,6 +96,9 @@ class RocksoulArenaProductionTests(unittest.TestCase):
         store = self.make_store()
         first = self.pack()
         store.register_pack(first)
+        self.assertTrue(store.has_pack(first.digest))
+        self.assertFalse(store.has_pack("not-a-sha256"))
+        self.assertFalse(store.has_pack("0" * 64))
         changed = ArenaProductionPack(
             name=first.name,
             version=first.version,

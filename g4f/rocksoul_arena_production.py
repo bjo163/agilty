@@ -389,6 +389,17 @@ class ArenaProductionStore:
         value["variance_accepted"] = bool(value["variance_accepted"])
         return value
 
+    def has_pack(self, pack_digest: str) -> bool:
+        """Check immutable pack registration by its primary-key digest."""
+        if not isinstance(pack_digest, str) or not _SHA256_RE.fullmatch(pack_digest):
+            return False
+        with self.arena.db.connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM arena_production_packs WHERE digest=?",
+                (pack_digest,),
+            ).fetchone()
+        return row is not None
+
     def list_packs(self, *, limit: int = 100) -> list[dict[str, Any]]:
         limit = max(1, min(int(limit), 1000))
         with self.arena.db.connect() as conn:

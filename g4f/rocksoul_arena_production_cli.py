@@ -444,11 +444,7 @@ def _run_authorized_campaign(args: Any, store: ArenaProductionStore) -> dict[str
     store.validate_pack(pack)
     if args.confirm_pack_digest != pack.digest:
         raise ManifestError("confirmed pack digest does not match the manifest")
-    registered = next(
-        (item for item in store.list_packs(limit=1000) if item.get("digest") == pack.digest),
-        None,
-    )
-    if registered is None:
+    if not store.has_pack(pack.digest):
         raise ManifestError("production pack is not registered; verify and register it before running a campaign")
     actual_digest = sha256_file(args.dataset_file)
     if actual_digest != pack.dataset.sha256:
