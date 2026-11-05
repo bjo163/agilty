@@ -11,10 +11,14 @@ This roadmap converts the strategic blueprint into staged, small work packages. 
 
 ## P0 — Trust & truth
 
-- [x] Define canonical WorkItem contract schema: intent, acceptance criteria, risk, bounded budgets, deadline, exact permissions, and human-approval requirement. Implemented in `g4f/rocksoul_contracts.py`; persistence/API integration remains open.
+- [x] Define canonical WorkItem contract schema: intent, acceptance criteria, risk, bounded budgets, deadline, exact permissions, and human-approval requirement. Implemented in `g4f/rocksoul_contracts.py`; persisted by `g4f/rocksoul_work_store.py`.
 - [x] Define WorkItem lifecycle and terminal outcomes: accepted, unverified, rejected, uncertain, blocked, cancelled, expired. `ACCEPTED` requires the `VERIFYING` state.
-- [ ] Define a versioned verification-profile schema and bind each criterion to a registered verifier implementation.
-- [ ] Add explicit provenance references to route, attempt, trace, and Arena evidence.
+- [x] Define and persist a versioned verification-profile schema with allowlisted adapter identifiers, evidence requirements, immutable versions, and independence metadata. Executable verifier adapters remain a separate TODO; identifiers do not execute code.
+- [ ] Add explicit provenance references to route, attempt, trace, and Arena evidence. WorkItem lifecycle events now carry structured verification attestations and hash-chained event provenance; cross-plane provenance remains open.
+- [x] Persist WorkItem contracts and append-only lifecycle events with idempotent creation, optimistic expected-status checks, SQLite atomic transitions, and event-chain verification.
+- [x] Expose authenticated WorkItem and verification-profile API read/write surfaces plus an operator CLI.
+- [ ] Correlate WorkItem IDs with ExecutionEngine traces and separate transport success from task outcome.
+- [ ] Implement executable verifier adapters and artifact-bound receipts. Current API acceptance validates a trusted-caller attestation structure; it does not independently execute verifiers or authenticate artifact bytes.
 - [ ] Define capability passport schema with declared/observed/verified trust states and expiry.
 - [ ] Add candidate-recall metrics before route ranking.
 - [ ] Add route counterfactual explanation contract.
