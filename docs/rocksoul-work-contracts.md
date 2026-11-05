@@ -31,7 +31,7 @@ A profile is an immutable versioned declaration containing:
 - deterministic and side-effect-free flags;
 - bounded verifier timeout (50 ms–300 s).
 
-The current allowlisted identifiers are `json_schema`, `artifact_digest`, `pytest`, `http_contract`, and `source_provenance`. The registry never dynamically imports or executes an adapter. The bounded built-in engine currently implements `artifact_digest` and a strict JSON Schema subset; the other identifiers remain declarations and return `ERROR` until an adapter is implemented.
+The current allowlisted identifiers are `json_schema`, `artifact_digest`, `pytest`, `http_contract`, and `source_provenance`. The registry never dynamically imports or executes an adapter. The bounded built-in engine implements all five identifiers; each executes deterministic checks against caller-supplied bytes/receipts and does not independently authenticate their origin.
 
 Example profile:
 
@@ -86,6 +86,7 @@ All WorkItem and verification-profile endpoints require `X-ROCKSOUL-API-Key`:
 - `GET /api/v1/work-items/{work_id}`
 - `POST /api/v1/work-items/{work_id}/transitions`
 - `POST /api/v1/work-items/{work_id}/criteria/{criterion_id}/verify` (bounded base64 artifact input; requires a registered profile)
+- `POST /api/v1/work-items/{work_id}/approval` (requires API key plus a Console-server HMAC signature from an administrator session)
 - `GET /api/v1/work-items/{work_id}/verify-chain`
 
 Create requests contain the complete WorkItem JSON contract. Transition requests require `expected_status` and `target_status`; optional event payloads must be finite JSON objects. See `docs/rocksoul-api.md` for API startup and deployment.
@@ -106,7 +107,7 @@ rocksoul-work verify-chain work-001
 python -m g4f.rocksoul_work_cli --help
 ```
 
-The CLI reads and writes the same ROCKSOUL SQLite database selected by the existing `RocksoulDB` path configuration. Transition commands always require explicit expected and target states.
+The CLI reads and writes the same ROCKSOUL SQLite database selected by the existing `RocksoulDB` path configuration. Transition commands always require explicit expected and target states. The CLI cannot mint administrator approval signatures; approval must pass through the authenticated Console server.
 
 ## Persistence and integrity
 
@@ -121,4 +122,4 @@ The CLI reads and writes the same ROCKSOUL SQLite database selected by the exist
 
 ## Explicit non-goals of this stage
 
-WorkItem execution correlation is available through the optional `work_id` field on `POST /api/v1/execute`; it records the trace link but never auto-accepts the task. The verifier engine executes five bounded built-in adapters: artifact digest, JSON Schema, pytest JUnit receipt, captured HTTPS contract, and content-addressed source binding. The Console supports immutable profile registration and bounded artifact upload/verification. WorkGraph, checkpoint/resume, policy learning, independent remote artifact acquisition, external source authenticity, signed verifier identity, and cryptographically attributable human approval remain future work. Provider transport success remains separate from task acceptance.
+WorkItem execution correlation is available through the optional `work_id` field on `POST /api/v1/execute`; it records the trace link but never auto-accepts the task. The verifier engine executes five bounded built-in adapters: artifact digest, JSON Schema, pytest JUnit receipt, captured HTTPS contract, and content-addressed source binding. The Console supports immutable profile registration and bounded artifact upload/verification. High/critical WorkItems require an administrator HMAC approval bound to the contract digest, configured principal ID, timestamp, and one-time nonce. The Console signs only after validating an active administrator session; the API checks signature, timestamp, replay, contract binding, and role, then appends a tamper-evident approval event. The API blocks transition to `RUNNING` and execution until the latest decision is `approved`. This is attributable to the configured administrator credential/principal, not a verified human identity; the single-password deployment is not SSO or non-repudiation. WorkGraph, checkpoint/resume, policy learning, independent remote artifact acquisition, external source authenticity, and signed external verifier identity remain future work. Provider transport success remains separate from task acceptance.
