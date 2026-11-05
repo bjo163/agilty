@@ -11,6 +11,8 @@ from typing import Any, Mapping
 
 from .rocksoul_contracts import ContractValidationError, WorkItem, WorkStatus, validate_status_transition
 from .rocksoul_db import RocksoulDB
+from .rocksoul_verification import EvidenceRecord, VerificationOutcome, VerificationProfileError, VerificationResult
+from .rocksoul_verification_store import VerificationProfileStore
 
 
 WORK_SCHEMA = """
@@ -48,6 +50,7 @@ class WorkItemStoreError(ValueError):
 class WorkItemStore:
     def __init__(self, db: RocksoulDB) -> None:
         self.db = db
+        self.profiles = VerificationProfileStore(db)
         with self.db.connect() as conn:
             conn.executescript(WORK_SCHEMA)
 
@@ -129,12 +132,40 @@ class WorkItemStore:
                 contract = WorkItem.from_dict(json.loads(row["contract_json"]))
                 results = event_payload.get("verification_results")
                 if not isinstance(results, dict):
-                    raise WorkItemStoreError("acceptance requires verification_results for every required criterion")
-                required = {criterion.criterion_id for criterion in contract.acceptance_criteria if criterion.required}
-                if not required.issubset(results):
-                    raise WorkItemStoreError("acceptance is missing required criterion verification results")
-                if any(results[key] != "pass" for key in required):
-                    raise WorkItemStoreError("only PASS verification outcomes can satisfy required criteria")
+                    raise WorkItemStoreError("acceptance requires evidence-backed verification_results")
+                required = {criterion.criterion_id: criterion for criterion in contract.acceptance_criteria if criterion.required}
+                known = {criterion.criterion_id for criterion in contract.acceptance_criteria}
+                if not set(results).issubset(known) or not set(required).issubset(results):
+                    raise WorkItemStoreError("acceptance has missing or unknown criterion verification results")
+                registry = self.profiles.registry()
+                for criterion_id in required:
+                    result = results[criterion_id]
+                    if not isinstance(result, dict):
+                        raise WorkItemStoreError("each verification result must be an object")
+                    try:
+                        profile = registry.resolve(result.get("profile_id"), result.get("profile_version"))
+                        if profile.adapter_id != required[criterion_id].verification_method:
+                            raise WorkItemStoreError("verification profile adapter does not match acceptance criterion")
+                        if result.get("outcome") != VerificationOutcome.PASS.value:
+                            raise WorkItemStoreError("only PASS verification outcomes can satisfy required criteria")
+                        if result.get("independence_group") != profile.independence_group:
+                            raise WorkItemStoreError("verification independence group does not match registered profile")
+                        raw_evidence = result.get("evidence")
+                        if not isinstance(raw_evidence, list):
+                            raise WorkItemStoreError("verification evidence must be an array")
+                        evidence = tuple(EvidenceRecord(**entry) for entry in raw_evidence if isinstance(entry, dict))
+                        if len(evidence) != len(raw_evidence):
+                            raise WorkItemStoreError("verification evidence contains invalid entries")
+                        registry.validate_evidence(profile, evidence)
+                        VerificationResult(
+                            outcome=VerificationOutcome.PASS, profile_id=profile.profile_id,
+                            profile_version=profile.version, verifier_id=result.get("verifier_id"),
+                            verifier_version=result.get("verifier_version"),
+                            independence_group=result.get("independence_group"),
+                            findings=tuple(result.get("findings", [])),
+                        )
+                    except (VerificationProfileError, TypeError, ValueError) as exc:
+                        raise WorkItemStoreError(f"required criterion verification is invalid: {exc}") from exc
             now = datetime.now(timezone.utc).isoformat(timespec="microseconds")
             conn.execute("UPDATE rocksoul_work_items SET status=?,updated_at=? WHERE work_id=?",
                          (next_status.value, now, work_id))
