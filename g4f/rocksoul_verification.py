@@ -56,6 +56,8 @@ class EvidenceRequirement:
             raise VerificationProfileError("minimum_count must be an integer in [1, 100]")
         if not isinstance(self.require_digest, bool) or not isinstance(self.require_source, bool):
             raise VerificationProfileError("evidence requirement flags must be booleans")
+        if not self.require_digest or not self.require_source:
+            raise VerificationProfileError("current evidence records always require both SHA-256 digest and source provenance")
 
     def to_dict(self) -> dict[str, Any]:
         return {"evidence_type": self.evidence_type, "minimum_count": self.minimum_count,
