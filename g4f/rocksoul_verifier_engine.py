@@ -7,6 +7,7 @@ import json
 import math
 import time
 import xml.etree.ElementTree as ET
+from urllib.parse import urlsplit
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
@@ -104,6 +105,36 @@ class VerificationEngine:
                 else:
                     outcome = VerificationOutcome.PASS
             except (ET.ParseError, ValueError, RecursionError) as exc:
+                findings.append(str(exc)[:2000])
+                outcome = VerificationOutcome.FAIL
+        elif profile.adapter_id == "http_contract":
+            evidence_type = "http_contract_receipt"
+            try:
+                receipt = json.loads(artifact.decode("utf-8"))
+                if not isinstance(receipt, dict) or set(receipt) != {"method", "url", "status_code", "expected_status", "body"}:
+                    raise ValueError("HTTP receipt must contain exactly method, url, status_code, expected_status, and body")
+                method = receipt["method"]
+                if not isinstance(method, str) or method.upper() not in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"}:
+                    raise ValueError("HTTP receipt method is invalid")
+                url = receipt["url"]
+                if not isinstance(url, str) or len(url) > 2048:
+                    raise ValueError("HTTP receipt URL is invalid")
+                parsed_url = urlsplit(url)
+                if parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password or parsed_url.fragment:
+                    raise ValueError("HTTP receipt URL must be an absolute HTTPS URL without credentials or fragment")
+                status_code = receipt["status_code"]
+                expected_status = receipt["expected_status"]
+                if any(isinstance(value, bool) or not isinstance(value, int) or not 100 <= value <= 599 for value in (status_code, expected_status)):
+                    raise ValueError("HTTP receipt status codes must be integers in [100, 599]")
+                if not isinstance(schema, Mapping):
+                    raise ValueError("a response-body JSON schema is required for HTTP contract verification")
+                self._validate_schema(receipt["body"], schema)
+                if status_code != expected_status:
+                    findings.append(f"HTTP status {status_code} does not match expected status {expected_status}")
+                    outcome = VerificationOutcome.FAIL
+                else:
+                    outcome = VerificationOutcome.PASS
+            except (UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError, RecursionError) as exc:
                 findings.append(str(exc)[:2000])
                 outcome = VerificationOutcome.FAIL
         else:
