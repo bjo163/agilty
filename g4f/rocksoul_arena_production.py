@@ -723,6 +723,7 @@ class ArenaProductionStore:
                     1 for audit in audits if audit["target_digest"] == digest and audit["integrity_verified"]
                 ),
             })
+        audits_by_id = {item["campaign_id"]: item for item in audits}
         all_verified = bool(audits) and len(audits) == len(campaigns) and all(
             item["integrity_verified"] for item in audits
         )
@@ -743,17 +744,14 @@ class ArenaProductionStore:
             "targets": target_summaries,
             "campaigns": [
                 {
-                    "campaign_id": item["campaign_id"],
+                    "campaign_id": item["id"],
                     "target_digest": item["target_digest"],
                     "score_mean": item["score_mean"],
                     "score_stddev": item["score_stddev"],
-                    "variance_accepted": item["variance_accepted"],
-                    "integrity_status": next(
-                        (audit["integrity_status"] for audit in audits if audit["campaign_id"] == item["campaign_id"]),
-                        "MISSING",
-                    ),
+                    "variance_accepted": bool(item["variance_accepted"]),
+                    "integrity_status": audits_by_id.get(item["id"], {}).get("integrity_status", "MISSING"),
                 }
-                for item in audits
+                for item in campaigns
             ],
             "quality_certification": "NOT_CERTIFIED",
             "claim_boundary": "Integrity verification is not an independent dataset audit or a model-quality certification.",

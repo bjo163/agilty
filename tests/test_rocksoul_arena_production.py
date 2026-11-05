@@ -195,6 +195,7 @@ class RocksoulArenaProductionTests(unittest.TestCase):
         campaign = store.run_campaign(pack, self.target(), self.environment(), lambda case: case.expected)
         audit = store.verify_campaign(campaign.campaign_id)
         self.assertIsNotNone(audit)
+        self.assertEqual(audit["failed_checks"], [], audit["checks"])
         self.assertEqual(audit["integrity_status"], "VERIFIED")
         self.assertTrue(audit["integrity_verified"])
         self.assertEqual(audit["failed_checks"], [])
