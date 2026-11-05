@@ -338,6 +338,7 @@ class WorkItemStore:
         verification_map = {entry["verification_id"]: entry for entry in verification_rows}
         previous = None
         previous_status = None
+        referenced_verification_ids = set()
         for expected_sequence, row in enumerate(rows, start=1):
             event = {
                 "event_id": row["event_id"], "work_id": row["work_id"], "sequence": row["sequence"],
@@ -350,7 +351,9 @@ class WorkItemStore:
                 return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence}
             if row["event_type"] == "work.verification_recorded":
                 payload = event["payload"]
-                record = verification_map.get(payload.get("verification_id"))
+                verification_id = payload.get("verification_id")
+                referenced_verification_ids.add(verification_id)
+                record = verification_map.get(verification_id)
                 if record is None:
                     return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_missing"}
                 verification_digest = hashlib.sha256(self._canonical({
@@ -363,6 +366,8 @@ class WorkItemStore:
                     return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_tampered"}
             previous = row["event_hash"]
             previous_status = row["to_status"]
+        if referenced_verification_ids != set(verification_map):
+            return {"ok": False, "verified_events": len(rows), "failed_sequence": len(rows) + 1, "reason": "orphaned_verification_record"}
         if not rows or previous_status != item["status"]:
             return {"ok": False, "verified_events": len(rows), "failed_sequence": len(rows) + 1, "reason": "lifecycle_head_mismatch"}
         return {"ok": True, "verified_events": len(rows), "head_hash": previous}
