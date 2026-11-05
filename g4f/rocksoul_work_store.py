@@ -342,7 +342,7 @@ class WorkItemStore:
         verification_map = {entry["verification_id"]: entry for entry in verification_rows}
         try:
             contract = WorkItem.from_dict(json.loads(item["contract_json"]))
-        except (TypeError, ValueError, KeyError):
+        except (TypeError, ValueError, KeyError, RecursionError):
             return {"ok": False, "verified_events": 0, "failed_sequence": 0, "reason": "contract_invalid"}
         if contract.contract_digest != item["contract_digest"] or contract.schema_version != item["schema_version"]:
             return {"ok": False, "verified_events": 0, "failed_sequence": 0, "reason": "contract_tampered"}
@@ -352,7 +352,7 @@ class WorkItemStore:
         for expected_sequence, row in enumerate(rows, start=1):
             try:
                 event_payload = json.loads(row["payload_json"])
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, RecursionError):
                 return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "event_payload_invalid"}
             if not isinstance(event_payload, dict):
                 return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "event_payload_invalid"}
@@ -404,7 +404,7 @@ class WorkItemStore:
                         "artifact_digest": record["artifact_digest"], "duration_ms": record["duration_ms"],
                         "result": result_payload, "evidence": evidence_payload, "created_at": record["created_at"],
                     }).encode("utf-8")).hexdigest()
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, RecursionError):
                     return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_invalid"}
                 if verification_digest != payload.get("verification_digest"):
                     return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_tampered"}
