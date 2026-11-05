@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import re
+from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Mapping
@@ -161,8 +162,14 @@ class EvidenceRecord:
         for name, limit in (("evidence_id", 128), ("evidence_type", 64), ("source", 500),
                             ("captured_at", 64), ("verifier_id", 128), ("verifier_version", 64)):
             object.__setattr__(self, name, _text(getattr(self, name), name, limit))
-        if not _DIGEST.fullmatch(self.digest):
+        if not isinstance(self.digest, str) or not _DIGEST.fullmatch(self.digest):
             raise VerificationProfileError("evidence digest must be a lowercase SHA-256 hex digest")
+        try:
+            timestamp = datetime.fromisoformat(self.captured_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise VerificationProfileError("captured_at must be a valid ISO-8601 timestamp") from exc
+        if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+            raise VerificationProfileError("captured_at must include a timezone")
         if not _ID.fullmatch(self.evidence_type.lower()):
             raise VerificationProfileError("evidence_type must be a stable identifier")
 
@@ -180,6 +187,12 @@ class VerificationResult:
     def __post_init__(self) -> None:
         if not isinstance(self.outcome, VerificationOutcome):
             object.__setattr__(self, "outcome", VerificationOutcome(self.outcome))
+        for name, value in (("profile_id", self.profile_id), ("verifier_id", self.verifier_id), ("verifier_version", self.verifier_version), ("independence_group", self.independence_group)):
+            _text(value, name, 128)
+        if isinstance(self.profile_version, bool) or not isinstance(self.profile_version, int) or self.profile_version < 1:
+            raise VerificationProfileError("profile_version must be a positive integer")
+        if not isinstance(self.findings, tuple):
+            raise VerificationProfileError("findings must be a tuple")
         if self.outcome is VerificationOutcome.PASS and self.findings:
             raise VerificationProfileError("PASS results cannot contain unresolved findings")
         if any(not isinstance(item, str) or not item.strip() or len(item) > 2000 for item in self.findings):
