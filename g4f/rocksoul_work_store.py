@@ -239,8 +239,12 @@ class WorkItemStore:
             }
             evidence_payload = [asdict(item) for item in execution.evidence]
             verification_digest = hashlib.sha256(self._canonical({
-                "result": result_payload, "evidence": evidence_payload,
+                "verification_id": verification_id, "work_id": work_id, "criterion_id": criterion_id,
+                "profile_id": profile.profile_id, "profile_version": profile.version,
+                "outcome": result.outcome.value, "verifier_id": result.verifier_id,
+                "verifier_version": result.verifier_version, "independence_group": result.independence_group,
                 "artifact_digest": execution.artifact_digest, "duration_ms": execution.duration_ms,
+                "result": result_payload, "evidence": evidence_payload, "created_at": created_at,
             }).encode("utf-8")).hexdigest()
             conn.execute(
                 """INSERT INTO rocksoul_work_verifications
@@ -372,8 +376,13 @@ class WorkItemStore:
                     result_payload = json.loads(record["result_json"])
                     evidence_payload = json.loads(record["evidence_json"])
                     verification_digest = hashlib.sha256(self._canonical({
-                        "result": result_payload, "evidence": evidence_payload,
+                        "verification_id": record["verification_id"], "work_id": record["work_id"],
+                        "criterion_id": record["criterion_id"], "profile_id": record["profile_id"],
+                        "profile_version": record["profile_version"], "outcome": record["outcome"],
+                        "verifier_id": record["verifier_id"], "verifier_version": record["verifier_version"],
+                        "independence_group": record["independence_group"],
                         "artifact_digest": record["artifact_digest"], "duration_ms": record["duration_ms"],
+                        "result": result_payload, "evidence": evidence_payload, "created_at": record["created_at"],
                     }).encode("utf-8")).hexdigest()
                 except (TypeError, ValueError):
                     return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_invalid"}
