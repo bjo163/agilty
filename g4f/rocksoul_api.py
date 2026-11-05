@@ -339,8 +339,9 @@ def create_app(db: RocksoulDB | None = None):
         return {
             "request_id": result.request_id, "ok": result.ok, "model": result.model,
             "provider": result.provider, "outcome": result.outcome,
+            "transport_outcome": result.outcome,
             "work_id": body.work_id,
-            "task_outcome": "pending_verification" if body.work_id else None,
+            "task_outcome": "unverified" if body.work_id else None,
             "error_class": result.error_class, "error": result.error,
             "response": _safe_response(result.response), "attempts": attempts,
         }
