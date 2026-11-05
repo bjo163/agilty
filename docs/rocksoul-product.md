@@ -24,6 +24,19 @@ The current implementation provides a meaningful control-plane foundation:
 
 These capabilities are not equivalent to a complete autonomous agent platform. The current Arena production reports explicitly remain `quality_certification=NOT_CERTIFIED`.
 
+## Work Contract Foundation — implemented
+
+The first P0 contract foundation is now implemented in `g4f/rocksoul_contracts.py`:
+
+- `WorkItem` captures a stable work ID, goal, required acceptance criteria, risk, budget, exact permissions, creation time, optional deadline, and human-approval requirement.
+- `ExecutionBudget` validates finite wall-time, attempt, repair, token, and optional cost limits.
+- `AcceptanceCriterion` binds a checkable requirement to a stable verification-method identifier.
+- `WorkStatus` and `validate_status_transition` prevent illegal lifecycle jumps; acceptance must pass through `VERIFYING`.
+- Strict dictionary parsing rejects unknown fields. Canonical serialization produces a SHA-256 contract digest.
+- Empty permissions mean no tool capability is authorized. High/critical risk cannot disable human approval.
+
+**Scope boundary:** this is a dependency-free schema and lifecycle foundation with contract tests. It is not yet persisted, exposed through the API/Console, or wired into `ExecutionEngine`; it does not verify provider output or certify task outcomes.
+
 ## What ROCKSOUL is becoming
 
 The strategic direction expands the control plane from request routing to a full **intent-to-outcome loop**:
