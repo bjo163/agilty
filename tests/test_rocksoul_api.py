@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import hmac
+import json
 import os
+import secrets
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -158,6 +162,120 @@ class RocksoulApiTests(unittest.TestCase):
                 json=profile,
             )
         self.assertEqual(response.status_code, 422)
+
+
+    def test_high_risk_work_item_requires_signed_admin_approval_before_running(self):
+        headers = {"X-ROCKSOUL-API-Key": "expected"}
+        contract = {
+            "schema_version": 1,
+            "work_id": "approval-api-work",
+            "goal": "Run a governed high-risk task",
+            "acceptance_criteria": [{
+                "criterion_id": "result",
+                "description": "A verified result exists",
+                "verification_method": "artifact_digest",
+                "required": True,
+            }],
+            "risk": "high",
+            "budget": {
+                "max_wall_time_seconds": 90,
+                "max_attempts": 3,
+                "max_repairs": 0,
+                "max_tokens": None,
+                "max_cost_usd": None,
+            },
+            "permissions": ["model.execute"],
+            "created_at": "2026-11-06T00:00:00+07:00",
+            "deadline_at": None,
+            "human_approval_required": True,
+        }
+        secret = "test-approval-signing-secret-at-least-32"
+        with patch.dict(os.environ, {
+            "ROCKSOUL_API_KEY": "expected",
+            "ROCKSOUL_APPROVAL_SIGNING_SECRET": secret,
+        }, clear=True):
+            created = self.client.post("/api/v1/work-items", headers=headers, json=contract)
+            self.assertEqual(created.status_code, 200, created.text)
+            for current, target in (("pending", "planning"), ("planning", "ready")):
+                moved = self.client.post(
+                    "/api/v1/work-items/approval-api-work/transitions",
+                    headers=headers,
+                    json={"expected_status": current, "target_status": target},
+                )
+                self.assertEqual(moved.status_code, 200, moved.text)
+            blocked = self.client.post(
+                "/api/v1/work-items/approval-api-work/transitions",
+                headers=headers,
+                json={"expected_status": "ready", "target_status": "running"},
+            )
+            self.assertEqual(blocked.status_code, 409)
+            body = {
+                "decision": "approved",
+                "approver_id": "test-admin",
+                "approver_role": "admin",
+                "contract_digest": created.json()["contract_digest"],
+                "issued_at": int(time.time()),
+                "nonce": secrets.token_hex(16),
+            }
+            canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            signature = hmac.new(secret.encode(), canonical.encode(), "sha256").hexdigest()
+            bad = self.client.post(
+                "/api/v1/work-items/approval-api-work/approval",
+                headers={**headers, "X-ROCKSOUL-Approval-Signature": "0" * 64},
+                json=body,
+            )
+            self.assertEqual(bad.status_code, 401)
+            approved = self.client.post(
+                "/api/v1/work-items/approval-api-work/approval",
+                headers={**headers, "X-ROCKSOUL-Approval-Signature": signature},
+                json=body,
+            )
+            self.assertEqual(approved.status_code, 200, approved.text)
+            self.assertEqual(approved.json()["latest_approval"]["approver_id"], "test-admin")
+            replay = self.client.post(
+                "/api/v1/work-items/approval-api-work/approval",
+                headers={**headers, "X-ROCKSOUL-Approval-Signature": signature},
+                json=body,
+            )
+            self.assertEqual(replay.status_code, 409)
+            running = self.client.post(
+                "/api/v1/work-items/approval-api-work/transitions",
+                headers=headers,
+                json={"expected_status": "ready", "target_status": "running"},
+            )
+            self.assertEqual(running.status_code, 200, running.text)
+            detail = self.client.get("/api/v1/work-items/approval-api-work", headers=headers)
+            self.assertTrue(any(event["event_type"] == "work.approval_recorded" for event in detail.json()["events"]))
+            chain = self.client.get("/api/v1/work-items/approval-api-work/verify-chain", headers=headers)
+            self.assertTrue(chain.json()["ok"])
+
+    def test_work_item_list_exposes_risk_and_approval_state(self):
+        contract = {
+            "schema_version": 1,
+            "work_id": "approval-list-work",
+            "goal": "Require approval",
+            "acceptance_criteria": [{
+                "criterion_id": "result",
+                "description": "A result",
+                "verification_method": "artifact_digest",
+                "required": True,
+            }],
+            "risk": "critical",
+            "budget": {"max_wall_time_seconds": 90, "max_attempts": 3, "max_repairs": 0,
+                       "max_tokens": None, "max_cost_usd": None},
+            "permissions": [],
+            "created_at": "2026-11-06T00:00:00+07:00",
+            "deadline_at": None,
+            "human_approval_required": True,
+        }
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            self.client.post("/api/v1/work-items", headers={"X-ROCKSOUL-API-Key": "expected"}, json=contract)
+            response = self.client.get("/api/v1/work-items", headers={"X-ROCKSOUL-API-Key": "expected"})
+        self.assertEqual(response.status_code, 200)
+        listed = next(item for item in response.json()["items"] if item["work_id"] == "approval-list-work")
+        self.assertEqual(listed["risk"], "critical")
+        self.assertTrue(listed["human_approval_required"])
+        self.assertIsNone(listed["latest_approval"])
 
 
 if __name__ == "__main__":
