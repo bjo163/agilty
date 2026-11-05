@@ -48,6 +48,8 @@ def main(argv: list[str] | None = None) -> int:
         db = RocksoulDB(args.db)
         graphs = WorkGraphStore(db)
         if args.command == "create":
+            if args.file.stat().st_size > 1_000_000:
+                raise WorkGraphStoreError("graph JSON file must not exceed 1 MiB")
             raw = json.loads(args.file.read_text(encoding="utf-8"))
             graph = WorkGraph.from_dict(raw)
             _emit(graphs.create(graph))
@@ -62,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "readiness":
             _emit(graphs.resolve_readiness(args.graph_id, WorkItemStore(db)))
         return 0
-    except (OSError, json.JSONDecodeError, WorkGraphValidationError, WorkGraphStoreError, ValueError) as exc:
+    except (OSError, json.JSONDecodeError, WorkGraphValidationError, WorkGraphStoreError, ValueError, RecursionError) as exc:
         print(f"rocksoul-work-graph: {exc}", file=sys.stderr)
         return 2
 
