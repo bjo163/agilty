@@ -314,5 +314,41 @@ class RocksoulApiTests(unittest.TestCase):
         self.assertIsNone(listed["latest_approval"])
 
 
+    def test_evidence_diff_and_bundle_are_authenticated_and_integrity_checked(self):
+        headers = {"X-ROCKSOUL-API-Key": "expected"}
+        contract = {
+            "schema_version": 1,
+            "work_id": "evidence-export-work",
+            "goal": "Export tamper-evident evidence metadata",
+            "acceptance_criteria": [{
+                "criterion_id": "artifact",
+                "description": "An artifact is verified",
+                "verification_method": "artifact_digest",
+                "required": True,
+            }],
+            "risk": "low",
+            "budget": {"max_wall_time_seconds": 90, "max_attempts": 3, "max_repairs": 0,
+                       "max_tokens": None, "max_cost_usd": None},
+            "permissions": [],
+            "created_at": "2026-11-06T00:00:00+07:00",
+            "deadline_at": None,
+            "human_approval_required": False,
+        }
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            created = self.client.post("/api/v1/work-items", headers=headers, json=contract)
+            self.assertEqual(created.status_code, 200)
+            no_auth = self.client.get("/api/v1/work-items/evidence-export-work/evidence-bundle")
+            diff = self.client.get("/api/v1/work-items/evidence-export-work/evidence-diff", headers=headers)
+            bundle = self.client.get("/api/v1/work-items/evidence-export-work/evidence-bundle", headers=headers)
+        self.assertEqual(no_auth.status_code, 401)
+        self.assertEqual(diff.status_code, 200)
+        self.assertEqual(diff.json()["criteria"], {})
+        self.assertEqual(bundle.status_code, 200)
+        self.assertEqual(bundle.json()["bundle_schema_version"], 1)
+        self.assertTrue(bundle.json()["integrity"]["ok"])
+        self.assertIn("verifier_receipts", bundle.json()["contents"])
+        self.assertIn("Metadata-only export", bundle.json()["trust_boundary"])
+
+
 if __name__ == "__main__":
     unittest.main()
