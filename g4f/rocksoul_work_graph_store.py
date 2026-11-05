@@ -184,40 +184,44 @@ class WorkGraphStore:
         graph = WorkGraph.from_dict(record["graph"])
         by_id = {node.node_id: node for node in graph.nodes}
         states: dict[str, dict[str, Any]] = {}
-        for node in graph.nodes:
-            integrity = work_items.verify_event_chain(node.work_id)
-            if integrity.get("reason") == "work_item_not_found":
+        # Use one SQLite read snapshot so status and verified event/evidence
+        # history cannot be observed from different lifecycle moments.
+        with self.db.connect() as conn:
+            conn.execute("BEGIN")
+            for node in graph.nodes:
+                integrity = work_items.verify_event_chain(node.work_id, connection=conn)
+                if integrity.get("reason") == "work_item_not_found":
+                    states[node.node_id] = {
+                        "node_id": node.node_id, "work_id": node.work_id,
+                        "status": "missing", "state": "blocked",
+                        "reason": "work_item_not_found", "dependencies": list(node.depends_on),
+                    }
+                    continue
+                if not integrity.get("ok"):
+                    states[node.node_id] = {
+                        "node_id": node.node_id, "work_id": node.work_id,
+                        "status": None, "state": "integrity_error",
+                        "reason": integrity.get("reason") or "work_item_integrity_invalid",
+                        "dependencies": list(node.depends_on),
+                    }
+                    continue
+                item = work_items.get(node.work_id, connection=conn)
+                if item is None or item.get("contract_digest") is None:
+                    states[node.node_id] = {
+                        "node_id": node.node_id, "work_id": node.work_id,
+                        "status": "missing" if item is None else item.get("status"),
+                        "state": "integrity_error" if item is not None else "blocked",
+                        "reason": "work_item_disappeared_after_integrity_check" if item is None else "work_item_contract_missing",
+                        "dependencies": list(node.depends_on),
+                    }
+                    continue
                 states[node.node_id] = {
                     "node_id": node.node_id, "work_id": node.work_id,
-                    "status": "missing", "state": "blocked",
-                    "reason": "work_item_not_found", "dependencies": list(node.depends_on),
+                    "status": item["status"], "state": "pending",
+                    "reason": None, "dependencies": list(node.depends_on),
+                    "contract_digest": item["contract_digest"],
+                    "required": node.required,
                 }
-                continue
-            if not integrity.get("ok"):
-                states[node.node_id] = {
-                    "node_id": node.node_id, "work_id": node.work_id,
-                    "status": None, "state": "integrity_error",
-                    "reason": integrity.get("reason") or "work_item_integrity_invalid",
-                    "dependencies": list(node.depends_on),
-                }
-                continue
-            item = work_items.get(node.work_id)
-            if item is None or item.get("contract_digest") is None:
-                states[node.node_id] = {
-                    "node_id": node.node_id, "work_id": node.work_id,
-                    "status": "missing" if item is None else item.get("status"),
-                    "state": "integrity_error" if item is not None else "blocked",
-                    "reason": "work_item_disappeared_after_integrity_check" if item is None else "work_item_contract_missing",
-                    "dependencies": list(node.depends_on),
-                }
-                continue
-            states[node.node_id] = {
-                "node_id": node.node_id, "work_id": node.work_id,
-                "status": item["status"], "state": "pending",
-                "reason": None, "dependencies": list(node.depends_on),
-                "contract_digest": item["contract_digest"],
-                "required": node.required,
-            }
 
         terminal_failures = {"rejected", "cancelled", "expired"}
         for node_id in [item for layer in graph.topological_layers() for item in layer]:
