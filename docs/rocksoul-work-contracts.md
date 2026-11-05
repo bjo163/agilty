@@ -62,6 +62,7 @@ Example profile:
 Use `POST /api/v1/work-items/{work_id}/criteria/{criterion_id}/verify` or the CLI `rocksoul-work verify` while the WorkItem is in `VERIFYING`. The operator supplies the exact artifact bytes (base64 over API or a local file in CLI), a provenance reference, and the profile-specific input. The engine computes SHA-256 from the actual bytes and runs only a built-in deterministic adapter.
 
 Implemented adapters:
+- `http_contract`: validates a supplied HTTPS response receipt, exact expected status, and response body against the bounded JSON Schema subset. It does not make a network request or authenticate the capture source.
 - `pytest`: validates bounded JUnit XML receipts; failures produce FAIL, skipped cases produce INCONCLUSIVE, and DTD/entity declarations are rejected.
 - `artifact_digest`: compares the computed SHA-256 with the operator's expected digest.
 - `json_schema`: validates JSON against a bounded schema subset (types, enum, required fields, properties, additional-properties policy, item/length/numeric bounds).
