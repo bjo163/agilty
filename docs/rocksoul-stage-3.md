@@ -43,9 +43,9 @@ Complete the missing operator and packaging path around the already recovered ex
 - [x] Offline fixture covers register/run/persist/readback behavior.
 - [x] No provider/network side effect is present in the operator CLI.
 - [x] Source and package entrypoints are registered and CI-smoke-tested.
-- [ ] Updated Arena CI, ROCKSOUL CI, general Unittest, and wheel smoke pass on the exact final Stage 3 main commit.
-- [ ] Live production packs remain deferred until a real artifact, audit and authorized repeated campaign exist.
+- [x] Updated Arena CI, ROCKSOUL CI, general Unittest, and wheel smoke pass on the exact Stage 3 implementation commit.
+- [x] Live production packs explicitly remain deferred until a real artifact, audit, and authorized repeated campaign exist.
 
 ## Status
 
-Implementation is committed only after the Stage 3 changes land on `main`. The final certification state must be updated from `VERIFYING` to `DONE` only after the exact final commit passes the listed current-main CI gates.
+Stage 3 implementation is committed directly to `main` at `56d9bc11813572cca343f3b556b6042ebc214edd`. Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed Arena CI [#42030958020](https://github.com/bjo163/agilty/actions/runs/42030958020), ROCKSOUL CI plus package/wheel smoke [#42030958117](https://github.com/bjo163/agilty/actions/runs/42030958117), general Unittest on Python 3.10 and 3.15 [#42030958126](https://github.com/bjo163/agilty/actions/runs/42030958126), and CodeQL Advanced [#42030958006](https://github.com/bjo163/agilty/actions/runs/42030958006). The dedicated Mesh CI remained green from Stage 2 [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726); Stage 3 changed no Mesh implementation, and the broad ROCKSOUL suite re-ran offline Mesh contracts across all four OS/Python lanes. The dedicated Mesh gate remained green from Stage 2; no Mesh implementation changed in Stage 3. The two skipped checks were distribution-publication gates, intentionally not invoked. No real provider probe, live campaign, PyPI upload, or release was run.

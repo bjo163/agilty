@@ -86,9 +86,9 @@ The canonical deterministic Arena foundation, production evidence contract, and 
 
 ## Release rule
 
-Do not merge or market a candidate as certified while any mandatory final-head CI gate is red. F4 is certified only when the final candidate is green on dedicated ROCKSOUL Mesh CI, existing ROCKSOUL CI, and general Unittest. Do not treat legacy Mesh/Arena scaffolding as product readiness; F5 becomes available only after its own gate is implemented and verified.
+Do not merge or market a candidate as certified while any mandatory final-head CI gate is red. F4 is certified only when the final candidate is green on dedicated ROCKSOUL Mesh CI, existing ROCKSOUL CI, and general Unittest. Do not treat legacy Mesh/Arena scaffolding as product readiness; F5's deterministic foundation and offline production-evidence operator are verified, while live benchmark activation remains independently gated.
 
 
 ## Current-main recovery note
 
-Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed current-main ROCKSOUL, Mesh, Arena, CodeQL, and general Unittest checks. Stage 3 adds strict production evidence registration/readback and installed-package entrypoint checks; its own final-head CI remains the certification authority.
+Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` and Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` are verified on their exact main heads. Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed Arena CI [#42030958020](https://github.com/bjo163/agilty/actions/runs/42030958020), ROCKSOUL CI plus package/wheel smoke [#42030958117](https://github.com/bjo163/agilty/actions/runs/42030958117), general Unittest on Python 3.10 and 3.15 [#42030958126](https://github.com/bjo163/agilty/actions/runs/42030958126), and CodeQL Advanced [#42030958006](https://github.com/bjo163/agilty/actions/runs/42030958006). The dedicated Mesh CI remained green from Stage 2 [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726); Stage 3 changed no Mesh implementation, and the broad ROCKSOUL suite re-ran offline Mesh contracts across all four OS/Python lanes.

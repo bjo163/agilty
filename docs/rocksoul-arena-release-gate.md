@@ -73,7 +73,7 @@ The contract being implemented does **not** by itself certify a live provider/mo
 
 ## Release decision
 
-The **F5 Arena deterministic foundation is GREEN**. The production evidence contract is the next certification layer and is independently CI-gated.
+The **F5 Arena deterministic foundation and offline production-evidence operator integration are GREEN** on Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd`. Manifest validation, exact artifact hash registration, persisted evidence readback, duplicate-key/non-finite JSON rejection, and installed-wheel command paths passed current-main gates. This does not certify real provider/model quality; live benchmark-pack activation remains deferred until real data, independent review, exact target revision, and repeated authorized campaign evidence exist.
 
 No broad live-provider/model quality claim is certified until the live activation gate is fully satisfied. A production-contract implementation may merge to `main` without creating a new production release or changing the published live benchmark scope.
 
@@ -81,6 +81,6 @@ No broad live-provider/model quality claim is certified until the live activatio
 
 The checked boxes and commit/workflow references above are historical evidence for the original release candidate. ROCKSOUL has since been selectively recovered onto the evolving g4f `main` branch. They do not, by themselves, certify the recovered modules against the current runtime revision.
 
-The Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed the dedicated ROCKSOUL, Mesh, and Arena workflows, general repository Unittest, wheel/sdist metadata validation, and CodeQL Advanced on its exact `main` head. Stage 3 adds strict production-evidence manifest validation, dataset-file SHA-256 registration, persisted readback, and installed-wheel console-script tests. The updated Stage 3 exact `main` head must pass the changed Arena/ROCKSOUL workflows, general Unittest, and wheel smoke step before the new items are marked certified.
+The Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed dedicated Mesh CI [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726). Stage 3 implementation commit `56d9bc11813572cca343f3b556b6042ebc214edd` passed Arena CI [#42030958020](https://github.com/bjo163/agilty/actions/runs/42030958020), ROCKSOUL CI plus package/wheel smoke [#42030958117](https://github.com/bjo163/agilty/actions/runs/42030958117), general Unittest on Python 3.10 and 3.15 [#42030958126](https://github.com/bjo163/agilty/actions/runs/42030958126), and CodeQL Advanced [#42030958006](https://github.com/bjo163/agilty/actions/runs/42030958006). The dedicated Mesh CI remained green from Stage 2 [#42026291726](https://github.com/bjo163/agilty/actions/runs/42026291726); Stage 3 changed no Mesh implementation, and the broad ROCKSOUL suite re-ran offline Mesh contracts across all four OS/Python lanes. No live provider campaign or production release was run.
 
 Keep live remote Mesh activation and authoritative live Arena claims disabled until their separate deployment/evidence gates are satisfied.
