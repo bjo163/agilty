@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 from g4f.rocksoul_contracts import AcceptanceCriterion, WorkItem, WorkStatus
 from g4f.rocksoul_db import RocksoulDB
 from g4f.rocksoul_verification import EvidenceRequirement, VerificationProfile
+from g4f.rocksoul_verifier_engine import VerificationEngine
 from g4f.rocksoul_work_store import WorkItemStore, WorkItemStoreError
 
 
@@ -19,26 +21,24 @@ def item(work_id="work-store-1"):
     )
 
 
-def verified_result(outcome="pass"):
-    return {
-        "artifact": {
-            "outcome": outcome,
-            "profile_id": "artifact.check",
-            "profile_version": 1,
-            "verifier_id": "artifact-digest-adapter",
-            "verifier_version": "1.0.0",
-            "independence_group": "artifact_integrity",
-            "evidence": [{
-                "evidence_id": "ev-1",
-                "evidence_type": "artifact_digest",
-                "source": "artifact://sha256/abc",
-                "digest": "a" * 64,
-                "captured_at": "2026-11-06T10:00:00+07:00",
-                "verifier_id": "artifact-digest-adapter",
-                "verifier_version": "1.0.0",
-            }],
-        }
-    }
+def register_profile(store):
+    return store.profiles.register(VerificationProfile(
+        profile_id="artifact.check",
+        version=1,
+        adapter_id="artifact_digest",
+        evidence_requirements=(EvidenceRequirement("artifact_digest"),),
+        independence_group="artifact_integrity",
+    ))
+
+
+def to_verifying(store, work_id="work-store-1"):
+    for current, target in (
+        (WorkStatus.PENDING, WorkStatus.PLANNING),
+        (WorkStatus.PLANNING, WorkStatus.READY),
+        (WorkStatus.READY, WorkStatus.RUNNING),
+        (WorkStatus.RUNNING, WorkStatus.VERIFYING),
+    ):
+        store.transition(work_id, target, expected_status=current)
 
 
 class WorkItemStoreTests(unittest.TestCase):
@@ -77,47 +77,48 @@ class WorkItemStoreTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["verified_events"], 3)
 
-    def test_acceptance_requires_registered_profile_and_pass_evidence(self):
+    def test_acceptance_requires_latest_executed_pass_and_evidence(self):
         self.store.create(item())
-        self.store.profiles.register(VerificationProfile(
-            profile_id="artifact.check",
-            version=1,
-            adapter_id="artifact_digest",
+        profile = VerificationProfile(
+            profile_id="artifact.check", version=1, adapter_id="artifact_digest",
             evidence_requirements=(EvidenceRequirement("artifact_digest"),),
             independence_group="artifact_integrity",
-        ))
-        for current, target in (
-            (WorkStatus.PENDING, WorkStatus.PLANNING),
-            (WorkStatus.PLANNING, WorkStatus.READY),
-            (WorkStatus.READY, WorkStatus.RUNNING),
-            (WorkStatus.RUNNING, WorkStatus.VERIFYING),
-        ):
-            self.store.transition("work-store-1", target, expected_status=current)
-        with self.assertRaises(WorkItemStoreError):
-            self.store.transition(
-                "work-store-1", WorkStatus.ACCEPTED, expected_status=WorkStatus.VERIFYING,
-                payload={"verification_results": verified_result("inconclusive")},
-            )
-        accepted = self.store.transition(
-            "work-store-1", WorkStatus.ACCEPTED, expected_status=WorkStatus.VERIFYING,
-            payload={"verification_results": verified_result()},
         )
-        self.assertEqual(accepted["status"], "accepted")
-
-    def test_acceptance_rejects_missing_profile_or_evidence(self):
-        self.store.create(item())
-        for current, target in (
-            (WorkStatus.PENDING, WorkStatus.PLANNING),
-            (WorkStatus.PLANNING, WorkStatus.READY),
-            (WorkStatus.READY, WorkStatus.RUNNING),
-            (WorkStatus.RUNNING, WorkStatus.VERIFYING),
-        ):
-            self.store.transition("work-store-1", target, expected_status=current)
+        self.store.profiles.register(profile)
+        to_verifying(self.store)
+        engine = VerificationEngine()
+        artifact = b"the exact artifact bytes"
+        failed = engine.verify(
+            profile, artifact, source="artifact://test/1", expected_sha256="0" * 64,
+        )
+        self.store.record_verification("work-store-1", "artifact", failed)
         with self.assertRaises(WorkItemStoreError):
-            self.store.transition(
-                "work-store-1", WorkStatus.ACCEPTED, expected_status=WorkStatus.VERIFYING,
-                payload={"verification_results": verified_result()},
-            )
+            self.store.transition("work-store-1", WorkStatus.ACCEPTED, expected_status=WorkStatus.VERIFYING)
+        passed = engine.verify(
+            profile, artifact, source="artifact://test/1", expected_sha256=hashlib.sha256(artifact).hexdigest(),
+        )
+        self.store.record_verification("work-store-1", "artifact", passed)
+        accepted = self.store.transition("work-store-1", WorkStatus.ACCEPTED, expected_status=WorkStatus.VERIFYING)
+        self.assertEqual(accepted["status"], "accepted")
+        self.assertEqual(len(accepted["verifications"]), 2)
+        self.assertTrue(self.store.verify_event_chain("work-store-1")["ok"])
+
+    def test_acceptance_rejects_missing_profile_or_verifier_execution(self):
+        self.store.create(item())
+        to_verifying(self.store)
+        with self.assertRaises(WorkItemStoreError):
+            self.store.transition("work-store-1", WorkStatus.ACCEPTED, expected_status=WorkStatus.VERIFYING)
+
+    def test_verification_cannot_be_recorded_before_verifying(self):
+        self.store.create(item())
+        profile = register_profile(self.store)
+        artifact = b"artifact"
+        result = VerificationEngine().verify(
+            VerificationProfile.from_dict(profile["profile"]), artifact,
+            source="artifact://test/2", expected_sha256=hashlib.sha256(artifact).hexdigest(),
+        )
+        with self.assertRaises(WorkItemStoreError):
+            self.store.record_verification("work-store-1", "artifact", result)
 
     def test_event_chain_detects_tampering(self):
         self.store.create(item())
@@ -143,9 +144,7 @@ class WorkItemStoreTests(unittest.TestCase):
         self.store.create(item())
         self.store.transition("work-store-1", WorkStatus.CANCELLED, expected_status=WorkStatus.PENDING)
         with self.assertRaises(Exception):
-            self.store.transition(
-                "work-store-1", WorkStatus.PLANNING, expected_status=WorkStatus.CANCELLED,
-            )
+            self.store.transition("work-store-1", WorkStatus.PLANNING, expected_status=WorkStatus.CANCELLED)
 
 
 if __name__ == "__main__":
