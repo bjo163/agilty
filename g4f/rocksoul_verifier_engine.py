@@ -130,6 +130,18 @@ class VerificationEngine:
                     raise ValueError(f"invalid enum constraint at {path}")
                 if value not in allowed_values:
                     raise ValueError(f"{path} is not one of the allowed enum values")
+            for key in ("minLength", "maxLength", "minItems", "maxItems"):
+                if key in rule and (isinstance(rule[key], bool) or not isinstance(rule[key], int) or not 0 <= rule[key] <= 1_000_000):
+                    raise ValueError(f"{key} must be a bounded non-negative integer at {path}")
+            for key in ("minimum", "maximum"):
+                if key in rule and (isinstance(rule[key], bool) or not isinstance(rule[key], (int, float)) or not math.isfinite(rule[key])):
+                    raise ValueError(f"{key} must be a finite number at {path}")
+            if "minLength" in rule and "maxLength" in rule and rule["minLength"] > rule["maxLength"]:
+                raise ValueError(f"minLength exceeds maxLength at {path}")
+            if "minItems" in rule and "maxItems" in rule and rule["minItems"] > rule["maxItems"]:
+                raise ValueError(f"minItems exceeds maxItems at {path}")
+            if "minimum" in rule and "maximum" in rule and rule["minimum"] > rule["maximum"]:
+                raise ValueError(f"minimum exceeds maximum at {path}")
             expected = rule.get("type")
             types = {
                 "object": dict, "array": list, "string": str, "integer": int,
