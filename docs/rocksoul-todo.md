@@ -445,8 +445,8 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 ### RS-F10-003 — Authoritative dependency resolver
 - Status: `FOUNDATION` — read-only resolver implemented; CI certification and atomic dispatch-time recheck remain pending.
 - Implementation: `WorkGraphStore.resolve_readiness(graph_id, WorkItemStore)`.
-- Acceptance implemented: every referenced WorkItem must exist and pass its event/evidence-chain integrity check; only `accepted` dependencies satisfy downstream nodes; missing/terminal-failed dependencies block descendants; pending dependencies produce waiting nodes; corrupted chains fail closed.
-- Tests: `tests/test_rocksoul_work_graph_store.py` and `tests/test_rocksoul_api.py` cover pending/waiting, missing WorkItems, corrupted evidence chain, API authentication, and immutable conflict.
+- Acceptance implemented: every referenced WorkItem must exist and pass its event/evidence-chain integrity check; status and evidence are read from one SQLite snapshot; only `accepted` dependencies satisfy downstream nodes; missing/terminal-failed dependencies block descendants; pending dependencies produce waiting nodes; corrupted/malformed contracts fail closed.
+- Tests: `tests/test_rocksoul_work_graph_store.py` and `tests/test_rocksoul_api.py` cover pending/waiting, missing WorkItems, malformed/tampered evidence, verified acceptance unlocking downstream nodes, API authentication, and immutable conflict.
 - Boundary: read-only readiness snapshot; it does not reserve/claim a child or eliminate the check/use race. Dispatcher must re-check atomically before execution.
 
 ### RS-F10-004 — Graph budget and authority composition
