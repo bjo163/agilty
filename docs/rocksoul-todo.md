@@ -420,5 +420,5 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - All five allowlisted adapter identifiers execute through bounded built-in code. HTTP receipts and pytest reports are caller-supplied captures; source provenance proves digest binding only. None establishes remote source authenticity or cryptographically authenticated verifier identity.
 - Acceptance requires a latest persisted built-in verifier PASS for every required criterion and a valid event/receipt hash chain; caller-supplied PASS payloads are rejected.
 - The verifier hashes the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact.
-- Console WorkItem creation and readback foundation is implemented. Console creation/mutation/verification workflows, independent artifact acquisition, signed external evidence, and authenticated verifier identity remain open.
+- Console WorkItem creation and readback foundation is implemented. Console profile registration, artifact upload/verification UI, human-approval workflow, independent artifact acquisition, signed external evidence, and authenticated verifier identity remain open.
 - Existing F1–F7 execution, Mesh, Arena, API, and Console contracts remain compatibility requirements.
