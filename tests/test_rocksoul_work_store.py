@@ -156,6 +156,14 @@ class WorkItemStoreTests(unittest.TestCase):
         result = self.store.verify_event_chain("work-store-1")
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "verification_record_tampered")
+    def test_event_chain_detects_immutable_contract_mutation(self):
+        self.store.create(item())
+        with self.db.connect() as conn:
+            conn.execute("UPDATE rocksoul_work_items SET contract_json=? WHERE work_id=?",
+                         ('{"schema_version":1,"work_id":"work-store-1","goal":"tampered"}', "work-store-1"))
+        result = self.store.verify_event_chain("work-store-1")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "contract_invalid")
     def test_event_chain_detects_tampering(self):
         self.store.create(item())
         self.store.transition("work-store-1", WorkStatus.PLANNING, expected_status=WorkStatus.PENDING)
