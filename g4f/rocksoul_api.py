@@ -140,7 +140,7 @@ def create_app(db: RocksoulDB | None = None):
         mesh=MeshStore(database); limit=max(1,min(limit,200))
         with database.connect() as conn:
             leases=conn.execute("SELECT id,request_id,node_id,status,created_at,expires_at,finished_at,error FROM mesh_leases ORDER BY created_at DESC LIMIT ?",(limit,)).fetchall()
-        return {"status":mesh.status(),"nodes":[asdict(node) for node in mesh.list_nodes()],"leases":[dict(row) for row in leases],"events":mesh.events(limit=limit)}
+        return {"status":mesh.status(),"nodes":[{**asdict(node),"score":node.score} for node in mesh.list_nodes()],"leases":[dict(row) for row in leases],"events":mesh.events(limit=limit)}
 
     @app.post("/api/v1/mesh/nodes/{node_id}/state")
     def set_mesh_node_state(node_id: str, body: dict[str, Any], x_rocksoul_api_key: str | None = Header(default=None)):
