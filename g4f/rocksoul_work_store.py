@@ -362,6 +362,7 @@ class WorkItemStore:
         previous = None
         previous_status = None
         referenced_verification_ids = set()
+        created_event_seen = False
         for expected_sequence, row in enumerate(rows, start=1):
             try:
                 event_payload = json.loads(row["payload_json"])
@@ -375,6 +376,15 @@ class WorkItemStore:
                 "payload": event_payload, "previous_hash": row["previous_hash"],
                 "created_at": row["created_at"],
             }
+            if expected_sequence == 1 and (
+                row["event_type"] != "work.created" or row["from_status"] is not None
+                or row["to_status"] != WorkStatus.PENDING.value
+            ):
+                return {"ok": False, "verified_events": 0, "failed_sequence": 1, "reason": "creation_event_invalid"}
+            if row["event_type"] == "work.created":
+                if expected_sequence != 1 or event_payload.get("contract_digest") != item["contract_digest"] or event_payload.get("schema_version") != item["schema_version"]:
+                    return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "creation_contract_mismatch"}
+                created_event_seen = True
             status_discontinuous = expected_sequence > 1 and row["from_status"] != previous_status
             try:
                 computed_event_hash = self._event_hash(event)
@@ -423,6 +433,8 @@ class WorkItemStore:
                     return {"ok": False, "verified_events": expected_sequence - 1, "failed_sequence": expected_sequence, "reason": "verification_record_tampered"}
             previous = row["event_hash"]
             previous_status = row["to_status"]
+        if not created_event_seen:
+            return {"ok": False, "verified_events": len(rows), "failed_sequence": 1, "reason": "creation_event_missing"}
         if referenced_verification_ids != set(verification_map):
             return {"ok": False, "verified_events": len(rows), "failed_sequence": len(rows) + 1, "reason": "orphaned_verification_record"}
         if not rows or previous_status != item["status"]:
