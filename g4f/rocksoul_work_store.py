@@ -165,6 +165,16 @@ class WorkItemStore:
             if current is not expected:
                 raise WorkItemStoreError(f"stale WorkItem status: expected {expected.value}, found {current.value}")
             next_status = validate_status_transition(current, target)
+            if next_status is WorkStatus.RUNNING:
+                contract_for_gate = WorkItem.from_dict(json.loads(row["contract_json"]))
+                if contract_for_gate.human_approval_required:
+                    approval = conn.execute(
+                        "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.approval_recorded' ORDER BY sequence DESC LIMIT 1",
+                        (work_id,),
+                    ).fetchone()
+                    decision = json.loads(approval["payload_json"]).get("decision") if approval else None
+                    if decision != "approved":
+                        raise WorkItemStoreError("human approval is required before WorkItem can enter RUNNING")
             if next_status is WorkStatus.ACCEPTED:
                 if "verification_results" in event_payload:
                     raise WorkItemStoreError("caller-supplied PASS values are forbidden; record verifier executions first")
@@ -195,6 +205,56 @@ class WorkItemStore:
             conn.execute("UPDATE rocksoul_work_items SET status=?,updated_at=? WHERE work_id=?",
                          (next_status.value, now, work_id))
             self._append_event(conn, work_id, "work.status_changed", current.value, next_status.value, event_payload)
+            return self.get(work_id, connection=conn)
+
+
+    def record_approval(self, work_id: str, *, decision: str, approver_id: str,
+                        approver_role: str, issued_at: int, nonce: str,
+                        signed_payload_digest: str, signature_digest: str) -> dict[str, Any]:
+        if decision not in {"approved", "rejected"}:
+            raise WorkItemStoreError("approval decision must be approved or rejected")
+        if not isinstance(approver_id, str) or not approver_id.strip() or len(approver_id) > 128:
+            raise WorkItemStoreError("approver identity is invalid")
+        if approver_role != "admin":
+            raise WorkItemStoreError("only an administrator may approve governed WorkItems")
+        if isinstance(issued_at, bool) or not isinstance(issued_at, int):
+            raise WorkItemStoreError("approval timestamp is invalid")
+        if not isinstance(nonce, str) or len(nonce) != 32 or any(ch not in "0123456789abcdef" for ch in nonce):
+            raise WorkItemStoreError("approval nonce is invalid")
+        for value in (signed_payload_digest, signature_digest):
+            if not isinstance(value, str) or len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+                raise WorkItemStoreError("approval signature digest is invalid")
+        chain = self.verify_event_chain(work_id)
+        if chain.get("reason") == "work_item_not_found":
+            raise WorkItemStoreError("WorkItem not found")
+        if not chain["ok"]:
+            raise WorkItemStoreError("WorkItem evidence chain is invalid; approval is blocked")
+        with self.db.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT contract_json,status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
+            if row is None:
+                raise WorkItemStoreError("WorkItem not found")
+            contract = WorkItem.from_dict(json.loads(row["contract_json"]))
+            if not contract.human_approval_required:
+                raise WorkItemStoreError("WorkItem does not require human approval")
+            if row["status"] in {WorkStatus.ACCEPTED.value, WorkStatus.REJECTED.value,
+                                 WorkStatus.CANCELLED.value, WorkStatus.EXPIRED.value}:
+                raise WorkItemStoreError("terminal WorkItem cannot receive an approval")
+            events = conn.execute(
+                "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.approval_recorded'",
+                (work_id,),
+            ).fetchall()
+            if any(json.loads(entry["payload_json"]).get("nonce") == nonce for entry in events):
+                raise WorkItemStoreError("approval nonce has already been used")
+            previous = json.loads(events[-1]["payload_json"]) if events else None
+            if previous and previous.get("decision") == decision and previous.get("approver_id") == approver_id:
+                raise WorkItemStoreError("identical approval decision is already recorded")
+            payload = {
+                "decision": decision, "approver_id": approver_id, "approver_role": approver_role,
+                "issued_at": issued_at, "nonce": nonce,
+                "signed_payload_digest": signed_payload_digest, "signature_digest": signature_digest,
+            }
+            self._append_event(conn, work_id, "work.approval_recorded", row["status"], row["status"], payload)
             return self.get(work_id, connection=conn)
 
     def record_verification(self, work_id: str, criterion_id: str, execution: VerificationExecution) -> dict[str, Any]:
@@ -362,6 +422,8 @@ class WorkItemStore:
             "verifications": [{**{key: verification[key] for key in ("verification_id","criterion_id","profile_id","profile_version","outcome","verifier_id","verifier_version","independence_group","artifact_digest","duration_ms","created_at")},
                                "result": json.loads(verification["result_json"]), "evidence": json.loads(verification["evidence_json"])} for verification in verifications],
             "execution_links": [json.loads(event["payload_json"]) for event in events if event["event_type"] == "work.execution_linked"],
+            "approvals": [json.loads(event["payload_json"]) for event in events if event["event_type"] == "work.approval_recorded"],
+            "latest_approval": next((json.loads(event["payload_json"]) for event in reversed(events) if event["event_type"] == "work.approval_recorded"), None),
         }
 
     def list(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
