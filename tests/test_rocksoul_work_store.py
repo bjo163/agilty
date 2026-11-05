@@ -135,6 +135,27 @@ class WorkItemStoreTests(unittest.TestCase):
         with self.assertRaises(WorkItemStoreError):
             self.store.record_verification("work-store-1", "artifact", result)
 
+    def test_event_chain_detects_verification_receipt_tampering(self):
+        self.store.create(item())
+        profile = VerificationProfile(
+            profile_id="artifact.check", version=1, adapter_id="artifact_digest",
+            evidence_requirements=(EvidenceRequirement("artifact_digest"),),
+            independence_group="artifact_integrity",
+        )
+        self.store.profiles.register(profile)
+        to_verifying(self.store)
+        artifact = b"tamper-evident artifact"
+        execution = VerificationEngine().verify(
+            profile, artifact, source="artifact://test/receipt",
+            expected_sha256=hashlib.sha256(artifact).hexdigest(),
+        )
+        recorded = self.store.record_verification("work-store-1", "artifact", execution)
+        with self.db.connect() as conn:
+            conn.execute("UPDATE rocksoul_work_verifications SET evidence_json='[]' WHERE verification_id=?",
+                         (recorded["verification_id"],))
+        result = self.store.verify_event_chain("work-store-1")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "verification_record_tampered")
     def test_event_chain_detects_tampering(self):
         self.store.create(item())
         self.store.transition("work-store-1", WorkStatus.PLANNING, expected_status=WorkStatus.PENDING)
