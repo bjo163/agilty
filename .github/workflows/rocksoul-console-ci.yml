@@ -57,7 +57,7 @@ jobs:
           ROCKSOUL_CONSOLE_SESSION_SECRET: ci-test-session-secret-at-least-32-characters-long
         run: npm run test:e2e
       - name: Validate Docker Compose topology
-        working-directory: ../..
+        working-directory: ${{ github.workspace }}
         env:
           ROCKSOUL_API_KEY: ci-test-api-key
           ROCKSOUL_CONSOLE_ADMIN_PASSWORD: test-admin-password
