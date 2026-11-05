@@ -436,8 +436,11 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Design: [WorkGraph contract and integration gates](rocksoul-work-graph.md).
 
 ### RS-F10-002 — Persistent graph registry and event ledger
-- Status: `TODO`
-- Acceptance: immutable graph versions, idempotent registration, hash-chained graph events, integrity verification, bounded pagination, and safe migration of existing SQLite databases.
+- Status: `FOUNDATION` — immutable graph registration, bounded readback, and creation-event integrity checks implemented; CI certification pending.
+- Implementation: `g4f/rocksoul_work_graph_store.py`.
+- Acceptance implemented: idempotent registration for identical graph digest, immutable graph ID conflict rejection, bounded pagination, canonical graph digest verification, sequence/previous-hash/event-hash checks, and malformed-payload fail-closed behavior.
+- Tests: `tests/test_rocksoul_work_graph_store.py` covers idempotency, immutable conflict, readback/pagination, event tampering, graph mutation, and missing graph.
+- Remaining: schema migration is create-if-not-exists only; no graph update/versioning API exists. Exact-main CI must pass before this item can be marked DONE.
 
 ### RS-F10-003 — Authoritative dependency resolver
 - Status: `TODO`
@@ -456,5 +459,5 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Acceptance: authenticated graph operations, idempotency and expected-version concurrency, operator readback, graph visualization, and end-to-end tests proving child approval/verification gates cannot be bypassed.
 
 ### Stage 9 completion rule
-- Stage 9 is not complete until RS-F10-002 through RS-F10-006 are implemented and CI-certified on the exact final `main` commit.
+- Stage 9 is not complete until RS-F10-002 through RS-F10-006 are implemented and CI-certified on the exact final `main` commit. RS-F10-001 and RS-F10-002 currently have foundation implementations; no scheduler or API/Console orchestration is claimed.
 - The current WorkGraph module is a deterministic DAG contract foundation only; it is not an autonomous multi-agent scheduler.
