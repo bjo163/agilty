@@ -184,20 +184,29 @@ class WorkGraphStore:
         by_id = {node.node_id: node for node in graph.nodes}
         states: dict[str, dict[str, Any]] = {}
         for node in graph.nodes:
-            item = work_items.get(node.work_id)
-            if item is None:
+            integrity = work_items.verify_event_chain(node.work_id)
+            if integrity.get("reason") == "work_item_not_found":
                 states[node.node_id] = {
                     "node_id": node.node_id, "work_id": node.work_id,
                     "status": "missing", "state": "blocked",
                     "reason": "work_item_not_found", "dependencies": list(node.depends_on),
                 }
                 continue
-            integrity = work_items.verify_event_chain(node.work_id)
-            if not integrity.get("ok") or item.get("contract_digest") is None:
+            if not integrity.get("ok"):
                 states[node.node_id] = {
                     "node_id": node.node_id, "work_id": node.work_id,
-                    "status": item.get("status"), "state": "integrity_error",
-                    "reason": integrity.get("reason") or "work_item_contract_missing",
+                    "status": None, "state": "integrity_error",
+                    "reason": integrity.get("reason") or "work_item_integrity_invalid",
+                    "dependencies": list(node.depends_on),
+                }
+                continue
+            item = work_items.get(node.work_id)
+            if item is None or item.get("contract_digest") is None:
+                states[node.node_id] = {
+                    "node_id": node.node_id, "work_id": node.work_id,
+                    "status": "missing" if item is None else item.get("status"),
+                    "state": "integrity_error" if item is not None else "blocked",
+                    "reason": "work_item_disappeared_after_integrity_check" if item is None else "work_item_contract_missing",
                     "dependencies": list(node.depends_on),
                 }
                 continue
