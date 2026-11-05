@@ -184,11 +184,11 @@ def create_app(db: RocksoulDB | None = None):
                 work_id, body["target_status"], expected_status=body["expected_status"],
                 payload=body.get("payload"),
             )
-        except (ContractValidationError, ValueError) as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
         except WorkItemStoreError as exc:
             code = 404 if str(exc) == "WorkItem not found" else 409
             raise HTTPException(status_code=code, detail=str(exc)) from exc
+        except (ContractValidationError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/api/v1/work-items/{work_id}/verify-chain")
     def verify_work_item_chain(work_id: str):
