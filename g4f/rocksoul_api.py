@@ -232,6 +232,56 @@ def create_app(db: RocksoulDB | None = None):
         except (ValueError, binascii.Error, VerificationProfileError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+
+    @app.post("/api/v1/work-items/{work_id}/approval")
+    def record_work_item_approval(
+        work_id: str,
+        body: dict[str, Any],
+        x_rocksoul_api_key: str | None = Header(default=None),
+        x_rocksoul_approval_signature: str | None = Header(default=None),
+    ):
+        require_operator(x_rocksoul_api_key)
+        allowed = {"decision", "approver_id", "approver_role", "contract_digest", "issued_at", "nonce"}
+        if set(body) != allowed:
+            raise HTTPException(status_code=422, detail="Approval payload fields are incomplete or unknown")
+        secret = os.environ.get("ROCKSOUL_APPROVAL_SIGNING_SECRET", "")
+        if len(secret) < 32:
+            raise HTTPException(status_code=503, detail="ROCKSOUL_APPROVAL_SIGNING_SECRET must contain at least 32 characters")
+        if not isinstance(x_rocksoul_approval_signature, str) or len(x_rocksoul_approval_signature) != 64:
+            raise HTTPException(status_code=401, detail="Signed administrator approval is required")
+        try:
+            canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail="Approval payload must contain finite JSON values") from exc
+        expected_signature = hmac.new(secret.encode("utf-8"), canonical.encode("utf-8"), "sha256").hexdigest()
+        if not hmac.compare_digest(x_rocksoul_approval_signature, expected_signature):
+            raise HTTPException(status_code=401, detail="Approval signature is invalid")
+        issued_at = body.get("issued_at")
+        if isinstance(issued_at, bool) or not isinstance(issued_at, int) or abs(int(datetime.now(timezone.utc).timestamp()) - issued_at) > 300:
+            raise HTTPException(status_code=401, detail="Approval signature has expired")
+        nonce = body.get("nonce")
+        if not isinstance(nonce, str) or len(nonce) != 32 or any(ch not in "0123456789abcdef" for ch in nonce):
+            raise HTTPException(status_code=422, detail="Approval nonce is invalid")
+        if body.get("approver_role") != "admin":
+            raise HTTPException(status_code=403, detail="Administrator approval is required")
+        current = work_items.get(work_id)
+        if current is None:
+            raise HTTPException(status_code=404, detail="WorkItem not found")
+        if not hmac.compare_digest(str(current["contract_digest"]), str(body.get("contract_digest", ""))):
+            raise HTTPException(status_code=409, detail="Approval targets a different immutable WorkItem contract")
+        import hashlib
+        payload_digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        signature_digest = hashlib.sha256(x_rocksoul_approval_signature.encode("ascii")).hexdigest()
+        try:
+            return work_items.record_approval(
+                work_id, decision=body["decision"], approver_id=body["approver_id"],
+                approver_role=body["approver_role"], issued_at=issued_at, nonce=nonce,
+                signed_payload_digest=payload_digest, signature_digest=signature_digest,
+            )
+        except WorkItemStoreError as exc:
+            code = 404 if str(exc) == "WorkItem not found" else 409
+            raise HTTPException(status_code=code, detail=str(exc)) from exc
+
     @app.get("/api/v1/work-items/{work_id}/verify-chain")
     def verify_work_item_chain(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
         require_operator(x_rocksoul_api_key)
@@ -322,8 +372,8 @@ def create_app(db: RocksoulDB | None = None):
             if linked_work["status"] != WorkStatus.RUNNING.value:
                 raise HTTPException(status_code=409, detail="WorkItem must be RUNNING before execution")
             work_contract = WorkItem.from_dict(linked_work["contract"])
-            if work_contract.human_approval_required:
-                raise HTTPException(status_code=409, detail="WorkItem requires human approval; approval execution is not enabled")
+            if work_contract.human_approval_required and (linked_work.get("latest_approval") or {}).get("decision") != "approved":
+                raise HTTPException(status_code=409, detail="WorkItem requires a verified administrator approval before execution")
             if "model.execute" not in work_contract.permissions:
                 raise HTTPException(status_code=403, detail="WorkItem does not grant model.execute permission")
             if work_contract.deadline_at:
