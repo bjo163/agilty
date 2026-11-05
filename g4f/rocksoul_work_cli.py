@@ -98,9 +98,15 @@ def main() -> None:
             profile, args.artifact.read_bytes(), source=args.source,
             expected_sha256=args.expected_sha256, schema=schema,
         )
-        _print(store.record_verification(args.work_id, args.criterion_id, execution))
+        recorded = store.record_verification(args.work_id, args.criterion_id, execution)
+        _print(recorded)
+        if execution.result.outcome.value != "pass":
+            raise SystemExit(1)
     elif args.command == "verify-chain":
-        _print(store.verify_event_chain(args.work_id))
+        integrity = store.verify_event_chain(args.work_id)
+        _print(integrity)
+        if not integrity["ok"]:
+            raise SystemExit(2)
 
 
 if __name__ == "__main__":
