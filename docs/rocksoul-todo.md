@@ -409,11 +409,11 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 
 ### RS-F9-009 — Console WorkItem & Evidence Cockpit
 - Status: `FOUNDATION` — WorkItem creation and readback cockpit delivered.
-- Scope: authenticated Console navigation, administrator-only WorkItem creation with deny-all default permissions, risk/approval selection, WorkItem list, outcome counters, contract digest visibility, detail readback, and event-chain integrity checks.
+- Scope: authenticated Console navigation, administrator-only WorkItem creation with deny-all default permissions and optional exact `model.execute` grant, risk/approval selection, guarded expected-state lifecycle transitions, WorkItem list, outcome counters, contract digest visibility, detail readback, and event-chain integrity checks.
 - Implementation: `frontend/rocksoul-console/src/app/page.tsx` and authenticated API proxy.
 - Security: proxy forwards the API key for protected GET as well as POST routes; API keys remain server-side.
 - Tests: Playwright operator navigation assertion.
-- Remaining: lifecycle mutation, profile registration, artifact upload/verification UI, and rich evidence diff remain TODO.
+- Remaining: profile registration, artifact upload/verification UI, human-approval workflow, and rich evidence diff remain TODO.
 
 ### Stage 8 verification boundary
 - WorkItem contracts, profile definitions/persistence, lifecycle storage, authenticated API, operator CLI, execution trace linkage, native execution correlation, read-only Console WorkItem cockpit, and five deterministic verifier adapters are implemented.
