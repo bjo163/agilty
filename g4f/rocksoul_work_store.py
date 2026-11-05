@@ -258,6 +258,8 @@ class WorkItemStore:
                 "issued_at": issued_at, "nonce": nonce,
                 "signed_payload_digest": signed_payload_digest, "signature_digest": signature_digest,
             }
+            now = datetime.now(timezone.utc).isoformat(timespec="microseconds")
+            conn.execute("UPDATE rocksoul_work_items SET updated_at=? WHERE work_id=?", (now, work_id))
             self._append_event(conn, work_id, "work.approval_recorded", row["status"], row["status"], payload)
             return self.get(work_id, connection=conn)
 
