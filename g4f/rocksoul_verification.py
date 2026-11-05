@@ -108,7 +108,7 @@ class VerificationProfile:
             raise VerificationProfileError("deterministic and side_effect_free must be booleans")
         if isinstance(self.timeout_seconds, bool) or not isinstance(self.timeout_seconds, (int, float)) or not math.isfinite(self.timeout_seconds) or not 0.05 <= self.timeout_seconds <= 300:
             raise VerificationProfileError("timeout_seconds must be finite and in [0.05, 300]")
-        if isinstance(self.schema_version, bool) or self.schema_version != 1:
+        if isinstance(self.schema_version, bool) or not isinstance(self.schema_version, int) or self.schema_version != 1:
             raise VerificationProfileError("unsupported VerificationProfile schema_version")
         object.__setattr__(self, "profile_id", profile_id)
         object.__setattr__(self, "adapter_id", adapter_id)
@@ -128,7 +128,7 @@ class VerificationProfile:
             raise VerificationProfileError("profile must be an object")
         _strict(value, {"schema_version", "profile_id", "version", "adapter_id", "evidence_requirements",
                         "severity", "independence_group", "deterministic", "side_effect_free", "timeout_seconds"}, "profile")
-        if value.get("schema_version") != 1 or isinstance(value.get("schema_version"), bool):
+        if value.get("schema_version") != 1 or isinstance(value.get("schema_version"), bool) or not isinstance(value.get("schema_version"), int):
             raise VerificationProfileError("profile schema_version=1 is required")
         requirements = value.get("evidence_requirements")
         if not isinstance(requirements, list):
@@ -170,8 +170,10 @@ class EvidenceRecord:
             raise VerificationProfileError("captured_at must be a valid ISO-8601 timestamp") from exc
         if timestamp.tzinfo is None or timestamp.utcoffset() is None:
             raise VerificationProfileError("captured_at must include a timezone")
-        if not _ID.fullmatch(self.evidence_type.lower()):
+        evidence_type = self.evidence_type.lower()
+        if not _ID.fullmatch(evidence_type):
             raise VerificationProfileError("evidence_type must be a stable identifier")
+        object.__setattr__(self, "evidence_type", evidence_type)
 
 
 @dataclass(frozen=True, slots=True)
