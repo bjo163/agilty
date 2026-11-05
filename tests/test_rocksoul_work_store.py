@@ -7,6 +7,7 @@ from pathlib import Path
 
 from g4f.rocksoul_contracts import AcceptanceCriterion, WorkItem, WorkStatus
 from g4f.rocksoul_db import RocksoulDB
+from g4f.rocksoul_execution_store import ExecutionTraceStore
 from g4f.rocksoul_verification import EvidenceRequirement, VerificationProfile
 from g4f.rocksoul_verifier_engine import VerificationEngine
 from g4f.rocksoul_work_store import WorkItemStore, WorkItemStoreError
@@ -103,6 +104,20 @@ class WorkItemStoreTests(unittest.TestCase):
         self.assertEqual(len(accepted["verifications"]), 2)
         self.assertTrue(self.store.verify_event_chain("work-store-1")["ok"])
 
+    def test_execution_trace_is_linked_without_auto_acceptance(self):
+        self.store.create(item())
+        for current, target in (
+            (WorkStatus.PENDING, WorkStatus.PLANNING),
+            (WorkStatus.PLANNING, WorkStatus.READY),
+            (WorkStatus.READY, WorkStatus.RUNNING),
+        ):
+            self.store.transition("work-store-1", target, expected_status=current)
+        traces = ExecutionTraceStore(self.db)
+        traces.record_execution_run("request-1", "test-model", 1.0, 2.0, "success", None, 1, None)
+        linked = self.store.attach_execution("work-store-1", "request-1", "success")
+        self.assertEqual(linked["status"], "running")
+        self.assertEqual(linked["execution_links"][0]["transport_outcome"], "success")
+        self.assertTrue(self.store.verify_event_chain("work-store-1")["ok"])
     def test_acceptance_rejects_missing_profile_or_verifier_execution(self):
         self.store.create(item())
         to_verifying(self.store)
