@@ -136,6 +136,43 @@ class RocksoulWorkApiTests(unittest.TestCase):
         )
         self.assertEqual(denied.status_code, 403)
 
+    def test_work_item_execution_blocks_unenforceable_cost_or_token_budget(self):
+        contract = {
+            "schema_version": 1,
+            "work_id": "api-token-budget-1",
+            "goal": "Must not exceed an unenforceable token budget.",
+            "acceptance_criteria": [{
+                "criterion_id": "artifact", "description": "Artifact digest is verified.",
+                "verification_method": "artifact_digest", "required": True,
+            }],
+            "risk": "low",
+            "budget": {
+                "max_wall_time_seconds": 10, "max_attempts": 1, "max_repairs": 0,
+                "max_tokens": 100, "max_cost_usd": None,
+            },
+            "permissions": ["model.execute"],
+            "created_at": "2026-11-06T10:00:00+07:00",
+            "deadline_at": None,
+            "human_approval_required": False,
+        }
+        created = self.client.post("/api/v1/work-items", json=contract, headers=self.headers)
+        self.assertEqual(created.status_code, 200, created.text)
+        for expected, target in (
+            ("pending", "planning"), ("planning", "ready"), ("ready", "running"),
+        ):
+            self.client.post(
+                "/api/v1/work-items/api-token-budget-1/transitions",
+                json={"expected_status": expected, "target_status": target},
+                headers=self.headers,
+            )
+        denied = self.client.post(
+            "/api/v1/execute",
+            json={"model": "test-model", "messages": [{"role": "user", "content": "hello"}],
+                  "work_id": "api-token-budget-1"},
+            headers=self.headers,
+        )
+        self.assertEqual(denied.status_code, 409)
+
     def test_profile_and_work_item_lifecycle_api(self):
         profile = {
             "schema_version": 1,
