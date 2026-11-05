@@ -1,0 +1,7 @@
+FROM python:3.13-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 G4F_VERSION=0.0.0 LOCALAPPDATA=/data
+WORKDIR /app
+COPY . .
+RUN pip install --no-cache-dir ".[rocksoul-api]"
+EXPOSE 8765
+CMD ["python","-m","g4f.rocksoul_api"]
