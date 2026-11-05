@@ -297,6 +297,16 @@ def build_parser() -> argparse.ArgumentParser:
     campaign.add_argument("--confirm-pack-digest", required=True, help="must exactly match the registered immutable pack digest")
     campaign.set_defaults(action="run-campaign")
 
+    verify_campaign = sub.add_parser("verify-campaign", help="audit one campaign against its immutable pack and Arena run records")
+    verify_campaign.add_argument("campaign_id")
+    verify_campaign.set_defaults(action="verify-campaign")
+
+    report = sub.add_parser("campaign-report", help="build a deterministic per-pack/per-target evidence report")
+    report.add_argument("--pack-digest", required=True)
+    report.add_argument("--target-digest")
+    report.add_argument("--limit", type=int, default=1000)
+    report.set_defaults(action="campaign-report")
+
     fixture = sub.add_parser("fixture-campaign", help="run a synthetic offline end-to-end contract fixture")
     fixture.set_defaults(action="fixture-campaign")
     return parser
@@ -583,6 +593,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 3
             _emit(campaign)
             return 0
+
+        if args.action == "verify-campaign":
+            audit = store.verify_campaign(args.campaign_id)
+            if audit is None:
+                _emit({"found": False, "campaign_id": args.campaign_id})
+                return 3
+            _emit(audit)
+            return 0 if audit["integrity_verified"] else 4
+
+        if args.action == "campaign-report":
+            if args.limit < 1 or args.limit > 1000:
+                raise ManifestError("limit must be between 1 and 1000")
+            report = store.campaign_report(args.pack_digest, args.target_digest, limit=args.limit)
+            _emit(report)
+            return 0 if report["report_status"] == "EVIDENCE_VERIFIED" else 4 if report["report_status"] == "EVIDENCE_REJECTED" else 3
 
         if args.action == "run-campaign":
             payload = _run_authorized_campaign(args, store)

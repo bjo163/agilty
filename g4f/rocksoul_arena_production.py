@@ -389,6 +389,371 @@ class ArenaProductionStore:
         value["variance_accepted"] = bool(value["variance_accepted"])
         return value
 
+
+    @staticmethod
+    def _audit_check(checks: list[dict[str, Any]], name: str, ok: bool, detail: str) -> None:
+        checks.append({"name": name, "ok": bool(ok), "detail": detail})
+
+    def verify_campaign(self, campaign_id: str) -> dict[str, Any] | None:
+        """Reconcile a persisted campaign against its immutable pack and every Arena run."""
+        campaign = self.get_campaign(campaign_id)
+        if campaign is None:
+            return None
+
+        checks: list[dict[str, Any]] = []
+        errors: list[str] = []
+        pack_row = None
+        with self.arena.db.connect() as conn:
+            pack_row = conn.execute(
+                "SELECT * FROM arena_production_packs WHERE digest=?",
+                (campaign["pack_digest"],),
+            ).fetchone()
+        if pack_row is None:
+            self._audit_check(checks, "registered_pack_exists", False, "campaign pack digest is not registered")
+            pack_manifest: dict[str, Any] = {}
+        else:
+            pack_row = dict(pack_row)
+            try:
+                pack_manifest = json.loads(pack_row["manifest_json"])
+                self._audit_check(
+                    checks,
+                    "pack_manifest_digest",
+                    digest_value(pack_manifest) == campaign["pack_digest"],
+                    "stored pack manifest must reproduce its content digest",
+                )
+                self._audit_check(
+                    checks,
+                    "pack_suite_digest",
+                    pack_row["suite_digest"] == pack_manifest.get("suite_digest"),
+                    "registered suite digest must match the immutable pack manifest",
+                )
+            except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                pack_manifest = {}
+                self._audit_check(checks, "pack_manifest_digest", False, f"pack manifest cannot be decoded: {exc}")
+
+        target = campaign.get("target")
+        environment = campaign.get("environment")
+        target_valid = isinstance(target, dict) and all(
+            isinstance(target.get(key), str) and target[key].strip()
+            for key in ("provider", "model", "revision", "runtime_revision")
+        )
+        computed_target_digest = digest_value(target) if isinstance(target, dict) else ""
+        self._audit_check(
+            checks,
+            "target_identity_digest",
+            target_valid and computed_target_digest == campaign["target_digest"],
+            "target identity fields and content digest must agree",
+        )
+        environment_valid = (
+            isinstance(environment, dict)
+            and all(isinstance(environment.get(key), str) and environment[key].strip()
+                    for key in ("runtime", "os", "python", "network_mode", "region"))
+            and environment.get("network_mode") in _ALLOWED_NETWORK_MODES
+            and isinstance(environment.get("extra", {}), dict)
+        )
+        self._audit_check(
+            checks,
+            "environment_evidence",
+            environment_valid,
+            "campaign environment must contain the required typed evidence fields",
+        )
+
+        try:
+            run_ids = campaign["run_ids"]
+            scores = campaign["scores"]
+            policy = pack_manifest.get("repeat_policy", {})
+            expected_runs = policy.get("runs")
+            cases = pack_manifest.get("suite", {}).get("cases", [])
+            pack_digest = campaign["pack_digest"]
+            expected_target = target
+            expected_environment = environment
+            pack_name = pack_manifest.get("name")
+            pack_version = pack_manifest.get("version")
+            expected_dataset = pack_manifest.get("dataset")
+            evaluator_revision = pack_manifest.get("evaluator_revision")
+            suite_digest = pack_manifest.get("suite_digest")
+            valid_shape = (
+                isinstance(run_ids, list)
+                and isinstance(scores, list)
+                and type(expected_runs) is int
+                and len(run_ids) == expected_runs
+                and len(scores) == expected_runs
+                and len(set(run_ids)) == len(run_ids)
+                and bool(cases)
+            )
+            self._audit_check(
+                checks,
+                "repeat_count_and_identity",
+                valid_shape,
+                "campaign must contain the declared number of unique run IDs and scores",
+            )
+        except (TypeError, ValueError, AttributeError):
+            run_ids, scores, cases = [], [], []
+            valid_shape = False
+            self._audit_check(checks, "repeat_count_and_identity", False, "campaign repeat evidence has an invalid shape")
+
+        run_scores: list[float] = []
+        run_ids = run_ids if isinstance(run_ids, list) else []
+        scores = scores if isinstance(scores, list) else []
+        expected_cases = {
+            str(item.get("case_id")): item
+            for item in cases
+            if isinstance(item, dict) and isinstance(item.get("case_id"), str)
+        }
+        for index, run_id in enumerate(run_ids):
+            run = self.arena.get_run(str(run_id))
+            if run is None:
+                self._audit_check(checks, f"run_{index + 1}_exists", False, f"Arena run {run_id!r} is missing")
+                continue
+
+            run_metadata = run.get("metadata", {})
+            expected_run_target = (
+                f"{target.get('provider')}:{target.get('model')}@{target.get('revision')}"
+                if isinstance(target, dict) else ""
+            )
+            metadata_ok = (
+                run_metadata.get("production_benchmark") is True
+                and run_metadata.get("pack_digest") == pack_digest
+                and run_metadata.get("pack_name") == pack_name
+                and run_metadata.get("pack_version") == pack_version
+                and run_metadata.get("dataset") == expected_dataset
+                and run_metadata.get("evaluator_revision") == evaluator_revision
+                and run_metadata.get("target_identity") == expected_target
+                and run_metadata.get("target_digest") == campaign["target_digest"]
+                and run_metadata.get("environment") == expected_environment
+                and run_metadata.get("repeat_index") == index + 1
+                and run_metadata.get("repeat_count") == expected_runs
+            )
+            self._audit_check(
+                checks,
+                f"run_{index + 1}_metadata",
+                metadata_ok,
+                "run metadata must bind to this pack, target, environment, evaluator, and repeat index",
+            )
+            self._audit_check(
+                checks,
+                f"run_{index + 1}_suite_target",
+                run.get("suite_digest") == suite_digest and run.get("target") == expected_run_target,
+                "Arena run suite and provider/model target must match the campaign",
+            )
+
+            results = run.get("results", [])
+            result_ids = [item.get("case_id") for item in results if isinstance(item, dict)]
+            results_shape_ok = (
+                len(results) == len(expected_cases)
+                and len(result_ids) == len(results)
+                and set(result_ids) == set(expected_cases)
+                and len(set(result_ids)) == len(result_ids)
+            )
+            result_weights_ok = True
+            result_values_ok = True
+            weighted_total = 0.0
+            weight_total = 0.0
+            passed = 0
+            for item in results:
+                if not isinstance(item, dict):
+                    result_values_ok = False
+                    continue
+                case_spec = expected_cases.get(str(item.get("case_id")), {})
+                try:
+                    score = float(item.get("score"))
+                    weight = float(item.get("weight"))
+                    latency = float(item.get("latency_ms"))
+                except (TypeError, ValueError, OverflowError):
+                    result_values_ok = False
+                    continue
+                if (
+                    isinstance(item.get("score"), bool)
+                    or not math.isfinite(score)
+                    or score < 0.0 or score > 1.0
+                    or not math.isfinite(weight) or weight <= 0.0
+                    or not math.isfinite(latency) or latency < 0.0
+                    or not isinstance(item.get("ok"), bool)
+                    or (item.get("output_digest") is not None and not _SHA256_RE.fullmatch(str(item.get("output_digest"))))
+                ):
+                    result_values_ok = False
+                try:
+                    expected_weight = float(case_spec.get("weight", 1.0))
+                except (TypeError, ValueError, OverflowError):
+                    expected_weight = math.nan
+                if not math.isclose(weight, expected_weight, rel_tol=1e-12, abs_tol=1e-12):
+                    result_weights_ok = False
+                weighted_total += score * weight
+                weight_total += weight
+                passed += int(item.get("ok") is True)
+
+            derived_score = 100.0 * weighted_total / weight_total if weight_total > 0.0 else 0.0
+            try:
+                stored_score = float(run.get("score"))
+                run_total = int(run.get("total"))
+                run_passed = int(run.get("passed"))
+                run_failed = int(run.get("failed"))
+            except (TypeError, ValueError, OverflowError):
+                stored_score, run_total, run_passed, run_failed = math.nan, -1, -1, -1
+            aggregates_ok = (
+                math.isfinite(stored_score)
+                and 0.0 <= stored_score <= 100.0
+                and math.isclose(stored_score, derived_score, rel_tol=1e-9, abs_tol=1e-8)
+                and run_total == len(results) == len(expected_cases)
+                and run_passed == passed
+                and run_failed == run_total - passed
+            )
+            self._audit_check(
+                checks,
+                f"run_{index + 1}_case_results",
+                results_shape_ok and result_weights_ok and result_values_ok and aggregates_ok,
+                "case IDs, weights, result values, pass counts, and weighted run score must reconcile",
+            )
+            if math.isfinite(stored_score):
+                run_scores.append(stored_score)
+
+            try:
+                run_started = float(run["started_at"])
+                run_finished = float(run["finished_at"])
+                campaign_started = float(campaign["started_at"])
+                campaign_finished = float(campaign["finished_at"])
+                timestamps_ok = (
+                    all(math.isfinite(value) for value in (run_started, run_finished, campaign_started, campaign_finished))
+                    and run_started <= run_finished
+                    and campaign_started <= run_started
+                    and run_finished <= campaign_finished
+                )
+            except (KeyError, TypeError, ValueError, OverflowError):
+                timestamps_ok = False
+            self._audit_check(
+                checks,
+                f"run_{index + 1}_timestamps",
+                timestamps_ok,
+                "run timestamps must be finite and contained within the campaign time window",
+            )
+
+        scores_finite = len(run_scores) == len(run_ids) and all(
+            math.isfinite(float(score)) and 0.0 <= float(score) <= 100.0 for score in scores
+        )
+        scores_match_runs = (
+            len(scores) == len(run_scores)
+            and all(
+                math.isclose(float(scores[index]), run_scores[index], rel_tol=1e-9, abs_tol=1e-8)
+                for index in range(len(run_scores))
+            )
+        )
+        self._audit_check(
+            checks,
+            "campaign_scores_match_runs",
+            scores_finite and scores_match_runs,
+            "campaign score list must exactly reconcile with its persisted Arena runs",
+        )
+
+        try:
+            score_mean = statistics.fmean(float(score) for score in scores)
+            score_stddev = statistics.pstdev(float(score) for score in scores)
+            expected_variance = score_stddev <= float(pack_manifest["repeat_policy"]["max_score_stddev"])
+            summary_ok = (
+                math.isclose(score_mean, float(campaign["score_mean"]), rel_tol=1e-9, abs_tol=1e-8)
+                and math.isclose(score_stddev, float(campaign["score_stddev"]), rel_tol=1e-9, abs_tol=1e-8)
+                and expected_variance is bool(campaign["variance_accepted"])
+                and len(scores) == pack_manifest["repeat_policy"]["runs"]
+            )
+        except (KeyError, TypeError, ValueError, OverflowError, statistics.StatisticsError):
+            score_mean, score_stddev, expected_variance, summary_ok = math.nan, math.nan, False, False
+        self._audit_check(
+            checks,
+            "campaign_statistics",
+            summary_ok,
+            "mean, population standard deviation, and variance decision must be reproducible",
+        )
+
+        verified = bool(checks) and all(item["ok"] for item in checks)
+        errors = [item["name"] for item in checks if not item["ok"]]
+        return {
+            "campaign_id": campaign_id,
+            "integrity_status": "VERIFIED" if verified else "REJECTED",
+            "integrity_verified": verified,
+            "variance_accepted": bool(campaign["variance_accepted"]),
+            "pack_digest": campaign["pack_digest"],
+            "target_digest": campaign["target_digest"],
+            "run_count": len(run_ids),
+            "checks": checks,
+            "failed_checks": errors,
+            "quality_certification": "NOT_CERTIFIED",
+        }
+
+    def campaign_report(
+        self,
+        pack_digest: str,
+        target_digest: str | None = None,
+        *,
+        limit: int = 1000,
+    ) -> dict[str, Any]:
+        """Build a deterministic integrity/stability report without making quality claims."""
+        if not self.has_pack(pack_digest):
+            return {
+                "report_status": "NO_PACK",
+                "pack_digest": pack_digest,
+                "campaign_count": 0,
+                "campaigns": [],
+                "quality_certification": "NOT_CERTIFIED",
+            }
+        campaigns = self.list_campaigns(pack_digest, limit=limit)
+        if target_digest:
+            campaigns = [item for item in campaigns if item["target_digest"] == target_digest]
+        audits = [self.verify_campaign(item["id"]) for item in campaigns]
+        audits = [item for item in audits if item is not None]
+        by_target: dict[str, list[dict[str, Any]]] = {}
+        for item in campaigns:
+            by_target.setdefault(str(item["target_digest"]), []).append(item)
+        target_summaries = []
+        for digest, items in sorted(by_target.items()):
+            means = [float(item["score_mean"]) for item in items]
+            target_summaries.append({
+                "target_digest": digest,
+                "campaign_count": len(items),
+                "mean_score_across_campaigns": statistics.fmean(means) if means else 0.0,
+                "min_campaign_score": min(means) if means else 0.0,
+                "max_campaign_score": max(means) if means else 0.0,
+                "variance_accepted_campaigns": sum(bool(item["variance_accepted"]) for item in items),
+                "integrity_verified_campaigns": sum(
+                    1 for audit in audits if audit["target_digest"] == digest and audit["integrity_verified"]
+                ),
+            })
+        all_verified = bool(audits) and len(audits) == len(campaigns) and all(
+            item["integrity_verified"] for item in audits
+        )
+        all_stable = bool(campaigns) and all(bool(item["variance_accepted"]) for item in campaigns)
+        report = {
+            "report_status": (
+                "EVIDENCE_VERIFIED" if all_verified
+                else "EVIDENCE_REJECTED" if campaigns
+                else "NO_EVIDENCE"
+            ),
+            "pack_digest": pack_digest,
+            "target_filter": target_digest,
+            "campaign_count": len(campaigns),
+            "integrity_verified_campaigns": sum(1 for item in audits if item["integrity_verified"]),
+            "integrity_rejected_campaigns": sum(1 for item in audits if not item["integrity_verified"]),
+            "variance_accepted_campaigns": sum(1 for item in campaigns if item["variance_accepted"]),
+            "all_campaigns_stable": all_stable,
+            "targets": target_summaries,
+            "campaigns": [
+                {
+                    "campaign_id": item["campaign_id"],
+                    "target_digest": item["target_digest"],
+                    "score_mean": item["score_mean"],
+                    "score_stddev": item["score_stddev"],
+                    "variance_accepted": item["variance_accepted"],
+                    "integrity_status": next(
+                        (audit["integrity_status"] for audit in audits if audit["campaign_id"] == item["campaign_id"]),
+                        "MISSING",
+                    ),
+                }
+                for item in audits
+            ],
+            "quality_certification": "NOT_CERTIFIED",
+            "claim_boundary": "Integrity verification is not an independent dataset audit or a model-quality certification.",
+        }
+        report["report_digest"] = digest_value(report)
+        return report
+
     def has_pack(self, pack_digest: str) -> bool:
         """Check immutable pack registration by its primary-key digest."""
         if not isinstance(pack_digest, str) or not _SHA256_RE.fullmatch(pack_digest):
