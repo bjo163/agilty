@@ -187,6 +187,11 @@ def create_app(db: RocksoulDB | None = None):
         except WorkGraphStoreError as exc:
             raise HTTPException(status_code=404, detail="WorkGraph not found") from exc
 
+    @app.get("/api/v1/work-graphs/{graph_id}/verify-chain")
+    def verify_work_graph_chain(graph_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
+        return work_graphs.verify_event_chain(graph_id)
+
     @app.get("/api/v1/work-graphs/{graph_id}/readiness")
     def resolve_work_graph_readiness(graph_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
         require_operator(x_rocksoul_api_key)
