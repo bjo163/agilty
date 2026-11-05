@@ -109,7 +109,7 @@ class WorkGraphStoreTests(unittest.TestCase):
 
     def test_readiness_blocks_missing_work_items(self):
         result = self.store.resolve_readiness("pipeline", WorkItemStore(self.db))
-        self.assertEqual(result["blocked_nodes"], ["build"])
+        self.assertEqual(result["blocked_nodes"], ["build", "test"])
         self.assertEqual(result["blocked_nodes"][0], "build")
         self.assertEqual(result["nodes"][0]["reason"], "work_item_not_found")
 
