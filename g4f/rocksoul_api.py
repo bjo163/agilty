@@ -234,10 +234,10 @@ def create_app(db: RocksoulDB | None = None):
     @app.get("/api/v1/work-items/{work_id}/verify-chain")
     def verify_work_item_chain(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
         require_operator(x_rocksoul_api_key)
-        result = work_items.get(work_id)
-        if result is None:
+        result = work_items.verify_event_chain(work_id)
+        if result.get("reason") == "work_item_not_found":
             raise HTTPException(status_code=404, detail="WorkItem not found")
-        return work_items.verify_event_chain(work_id)
+        return result
 
     @app.get("/api/v1/traces")
     def list_traces(limit: int = 50, offset: int = 0):
