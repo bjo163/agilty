@@ -261,7 +261,7 @@ class RocksoulArenaProductionTests(unittest.TestCase):
         pack = self.pack(runs=2)
         campaign = store.run_campaign(pack, self.target(), self.environment(), lambda case: case.expected)
         with store.arena.db.connect() as conn:
-            conn.execute("UPDATE arena_campaigns SET score_mean=NULL WHERE id=?", (campaign.campaign_id,))
+            conn.execute("UPDATE arena_campaigns SET score_mean=? WHERE id=?", (float("inf"), campaign.campaign_id))
         report = store.campaign_report(pack.digest)
         self.assertEqual(report["report_status"], "EVIDENCE_REJECTED")
         self.assertEqual(report["integrity_rejected_campaigns"], 1)
