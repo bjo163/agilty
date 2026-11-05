@@ -82,6 +82,22 @@ class VerificationEngineTests(unittest.TestCase):
                 self.engine.verify(self.profile(), artifact, source="artifact://test/large",
                                    expected_sha256=hashlib.sha256(artifact).hexdigest())
 
+    def test_non_finite_json_and_malformed_schema_constraints_fail_closed(self):
+        non_finite = self.engine.verify(
+            self.profile("json_schema", "json_validation"),
+            b'{"value":NaN}',
+            source="artifact://json/non-finite",
+            schema={"type": "object"},
+        )
+        malformed = self.engine.verify(
+            self.profile("json_schema", "json_validation"),
+            b'{"name":"ok"}',
+            source="artifact://json/malformed-schema",
+            schema={"type": "object", "properties": {"name": {"type": "string", "minLength": "two"}}},
+        )
+        self.assertEqual(non_finite.result.outcome, VerificationOutcome.FAIL)
+        self.assertEqual(malformed.result.outcome, VerificationOutcome.FAIL)
+
     def test_unsupported_schema_keywords_fail_closed(self):
         result = self.engine.verify(
             self.profile("json_schema", "json_validation"),
