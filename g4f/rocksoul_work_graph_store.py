@@ -236,8 +236,11 @@ class WorkGraphStore:
                 continue
             if current["status"] == "accepted":
                 current["state"] = "accepted"
-            elif current["status"] in {"pending", "planning", "ready", "blocked"}:
+            elif current["status"] in {"pending", "planning", "ready"}:
                 current["state"] = "ready"
+            elif current["status"] == "blocked":
+                current["state"] = "blocked"
+                current["reason"] = "work_item_blocked"
             elif current["status"] in {"running", "verifying", "unverified", "uncertain"}:
                 current["state"] = "in_progress"
             else:
