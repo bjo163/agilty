@@ -103,6 +103,49 @@ class RocksoulApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
 
 
+    def test_work_graph_api_requires_operator_key(self):
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            missing = self.client.get("/api/v1/work-graphs")
+            wrong = self.client.get("/api/v1/work-graphs", headers={"X-ROCKSOUL-API-Key": "wrong"})
+        self.assertEqual(missing.status_code, 401)
+        self.assertEqual(wrong.status_code, 401)
+
+    def test_work_graph_create_read_list_and_readiness(self):
+        graph = {
+            "schema_version": 1,
+            "graph_id": "api-pipeline",
+            "nodes": [
+                {"node_id": "build", "work_id": "api-build"},
+                {"node_id": "test", "work_id": "api-test", "depends_on": ["build"]},
+            ],
+        }
+        headers = {"X-ROCKSOUL-API-Key": "expected"}
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            created = self.client.post("/api/v1/work-graphs", headers=headers, json=graph)
+            repeated = self.client.post("/api/v1/work-graphs", headers=headers, json=graph)
+            listed = self.client.get("/api/v1/work-graphs", headers=headers)
+            fetched = self.client.get("/api/v1/work-graphs/api-pipeline", headers=headers)
+            readiness = self.client.get("/api/v1/work-graphs/api-pipeline/readiness", headers=headers)
+            invalid = self.client.post("/api/v1/work-graphs", headers=headers, json={**graph, "unknown": True})
+        self.assertEqual(created.status_code, 200)
+        self.assertEqual(repeated.status_code, 200)
+        self.assertEqual(created.json()["graph_digest"], repeated.json()["graph_digest"])
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["total"], 1)
+        self.assertEqual(fetched.status_code, 200)
+        self.assertEqual(readiness.status_code, 200)
+        self.assertEqual(readiness.json()["blocked_nodes"], ["build", "test"])
+        self.assertEqual(invalid.status_code, 422)
+
+    def test_work_graph_immutable_conflict_returns_conflict(self):
+        headers = {"X-ROCKSOUL-API-Key": "expected"}
+        first = {"graph_id": "api-immutable", "nodes": [{"node_id": "one", "work_id": "one-work"}]}
+        changed = {"graph_id": "api-immutable", "nodes": [{"node_id": "two", "work_id": "two-work"}]}
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            self.assertEqual(self.client.post("/api/v1/work-graphs", headers=headers, json=first).status_code, 200)
+            conflict = self.client.post("/api/v1/work-graphs", headers=headers, json=changed)
+        self.assertEqual(conflict.status_code, 409)
+
     def test_verification_profile_registry_requires_operator_key(self):
         with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
             missing = self.client.get("/api/v1/verification-profiles")
