@@ -32,7 +32,7 @@ Authenticated API endpoints now support graph create/list/read and readiness rea
 
 ## Scheduling semantics
 
-The pure `WorkGraph.ready_nodes(completed)` helper remains structural and trusts only the explicit caller-supplied node set; it must not be used as execution authorization. The store-level `resolve_readiness(graph_id, work_items)` is the authoritative read model: it queries each referenced WorkItem, verifies its event/evidence chain, and requires accepted status for every dependency. Readiness is a snapshot, not a reservation or lock; a future dispatcher must re-check state atomically immediately before a child transition or execution.
+The pure `WorkGraph.ready_nodes(completed)` helper remains structural and trusts only the explicit caller-supplied node set; it must not be used as execution authorization. The store-level `resolve_readiness(graph_id, work_items)` is the authoritative read model: it queries each referenced WorkItem, verifies its event/evidence chain, and requires accepted status for every dependency. It reads each WorkItem status and evidence history inside one SQLite read transaction so those values come from the same database snapshot. Readiness is still not a reservation or lock; a future dispatcher must re-check and claim state atomically immediately before a child transition or execution.
 
 The initial graph model intentionally avoids implicit fan-out and dynamic graph mutation. A future schema revision may add typed edges (artifact, control, ordering), but must not overload a generic dependency with different semantics.
 
