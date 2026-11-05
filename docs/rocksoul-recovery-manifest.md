@@ -1,0 +1,48 @@
+# ROCKSOUL Stage 2 — Recovery Manifest
+
+## Scope
+
+This document records the selective recovery of ROCKSOUL onto the evolving `main` branch of `bjo163/agilty`.
+
+- Source snapshot: `f4/mesh-core-doc`
+- Source snapshot commit: `73cc04f371f690730ee3cb9d4e90ded5aba9cacc`
+- Target branch: `main`
+- Target parent before recovery: `6d49e0c5882f1ee17a6ee4cc515175843fd5e250`
+- Strategy: restore selected blob objects; do not merge or reset the divergent branch.
+
+## Restored inventory
+
+- 14 ROCKSOUL Python modules under `g4f/rocksoul_*.py`.
+- 12 deterministic/offline test modules under `tests/test_rocksoul_*.py`.
+- 21 ROCKSOUL architecture, product, migration, backlog, governance, and release-gate documents.
+- A default `.github/CODEOWNERS` file.
+- Current-main compatible ROCKSOUL CI, Mesh CI, and Arena CI workflows.
+- A manual-only live intelligence workflow requiring an explicit boolean opt-in.
+
+## Integration choices
+
+1. Existing g4f provider implementations and the current `g4f.client` API remain the runtime substrate.
+2. `setup.py` remains the active packaging authority. ROCKSOUL console scripts are added there.
+3. The old `pyproject.toml`/uv-build configuration is intentionally not restored because it changes the Python compatibility floor and packaging backend for the whole repository.
+4. The historical release workflow is intentionally not restored. This recovery does not create tags, GitHub Releases, or PyPI publications.
+5. The prior six-hour scheduled live-probe workflow is replaced with manual-only execution and explicit live-probe confirmation. Default CI remains offline.
+6. The evolving `main` history is preserved. No force-push, branch reset, or broad branch merge is performed.
+
+## Verification contract
+
+The new workflows verify:
+- the full offline ROCKSOUL contract suite on Ubuntu and Windows with Python 3.10 and 3.13;
+- independent Mesh security/lifecycle/lease/CLI tests on Ubuntu and Windows;
+- independent Arena scoring/provenance/persistence/CLI tests on Ubuntu and Windows;
+- package wheel/sdist build and metadata validation through the current `setup.py` packaging configuration.
+
+Historical v0.2.0/v0.2.1 green checks are retained as historical evidence only. They do not certify the recovered modules against the current g4f runtime. Current-main certification is pending until the new workflow runs pass on the exact recovery commit.
+
+## Explicitly out of scope
+
+- Rebranding or changing the repository/package identity.
+- Replacing or migrating the current g4f provider system.
+- Activating remote Mesh traffic or provisioning production node secrets.
+- Running live provider probes or authoritative live Arena campaigns automatically.
+- Publishing a new package or release.
+- Rewriting the repository history or merging the divergent snapshot branch.

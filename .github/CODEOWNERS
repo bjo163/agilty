@@ -1,0 +1,8 @@
+# Default repository ownership. Enforcement still depends on GitHub rulesets.
+* @bjo163
+
+# Sensitive CI and packaging surfaces.
+/.github/workflows/ @bjo163
+/setup.py @bjo163
+/docs/rocksoul-*-release-gate.md @bjo163
+/docs/rocksoul-release-integrity.md @bjo163

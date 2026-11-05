@@ -1,0 +1,70 @@
+name: ROCKSOUL CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'g4f/rocksoul_*.py'
+      - 'tests/test_rocksoul_*.py'
+      - 'docs/rocksoul-*.md'
+      - 'setup.py'
+      - '.github/workflows/rocksoul-ci.yml'
+  pull_request:
+    paths:
+      - 'g4f/rocksoul_*.py'
+      - 'tests/test_rocksoul_*.py'
+      - 'docs/rocksoul-*.md'
+      - 'setup.py'
+      - '.github/workflows/rocksoul-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-tests:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.13']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install minimal runtime dependencies
+        run: python -m pip install -r requirements-min.txt
+      - name: Compile runtime and ROCKSOUL modules
+        run: python -m compileall -q g4f
+      - name: Run all offline ROCKSOUL contract tests
+        run: python -m unittest discover -s tests -p "test_rocksoul_*.py" -v
+      - name: Smoke-test offline operator commands
+        env:
+          LOCALAPPDATA: ${{ runner.temp }}
+        run: |
+          python -m g4f.rocksoul_db_cli status
+          python -m g4f.rocksoul_db_cli route-explain rocksoul-ci-synthetic
+          python -m g4f.rocksoul_mesh_cli --help
+          python -m g4f.rocksoul_arena_cli --help
+
+  package-build:
+    name: Build and validate wheel / sdist
+    runs-on: ubuntu-latest
+    needs: deterministic-tests
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install package build tools
+        run: python -m pip install --upgrade pip build twine
+      - name: Build package using the active setup.py configuration
+        env:
+          G4F_VERSION: 0.0.0-dev
+        run: python -m build
+      - name: Validate package metadata
+        run: python -m twine check dist/*

@@ -34,6 +34,7 @@ This README is a consolidated, improved, and complete guide to installing, runni
 
 Table of contents
 - [What’s included](#whats-included)
+- [ROCKSOUL control plane](#rocksoul-control-plane)
 - [Quick links](#quick-links)
 - [Requirements & compatibility](#requirements--compatibility)
 - [Installation](#installation)
@@ -80,6 +81,25 @@ Table of contents
 - Docker images (full and slim).
 - Multi-provider adapters (LLMs, media providers, local inference backends).
 - Tooling for image/audio/video generation and media persistence.
+- Optional ROCKSOUL execution-control, Mesh coordination, and Arena benchmarking modules.
+
+
+## ROCKSOUL control plane
+
+This fork also carries ROCKSOUL, an optional control-plane layer built around the existing g4f runtime. ROCKSOUL adds provider discovery, evidence-backed routing, bounded execution and retries, request traces, provider quarantine/recovery, authenticated Mesh coordination, and deterministic Arena benchmarks. It does not replace or duplicate the upstream g4f provider implementations.
+
+The ROCKSOUL modules are included in the `g4f` Python package. They can be invoked directly from a source checkout:
+
+```bash
+python -m g4f.rocksoul_db_cli status
+python -m g4f.rocksoul_db_cli discover
+python -m g4f.rocksoul_mesh_cli --help
+python -m g4f.rocksoul_arena_cli --help
+```
+
+The `rocksoul`, `rocksoul-db`, `rocksoul-mesh`, and `rocksoul-arena` console scripts are also registered by `setup.py` when the package is installed. Live provider probes and Mesh node mutations are explicit operator actions; unit tests and CI use local deterministic fixtures by default.
+
+Architecture, security boundaries, release gates, migration notes, and the granular backlog are collected under [`docs/rocksoul-product.md`](docs/rocksoul-product.md) and [`docs/rocksoul-todo.md`](docs/rocksoul-todo.md).
 
 ---
 

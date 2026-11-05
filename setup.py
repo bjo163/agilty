@@ -118,6 +118,11 @@ setup(
             "g4f=g4f.cli:main",
             "g4f-mcp=g4f.mcp.server:main",
             "g4f-tray=g4f.tray:_tray_main",
+            "rocksoul=g4f.rocksoul_db_cli:main",
+            "rocksoul-db=g4f.rocksoul_db:main",
+            "rocksoul-mesh=g4f.rocksoul_mesh_cli:main",
+            "rocksoul-arena=g4f.rocksoul_arena_cli:main",
+            "rocksoul-legacy=g4f.rocksoul_platform:main",
         ],
     },
     url="https://github.com/xtekky/gpt4free",  # Link to your GitHub repository
