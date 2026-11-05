@@ -392,7 +392,7 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 
 ### RS-F9-006 — WorkItem CLI and operator readback
 - Status: `DONE` — operator CLI and local artifact verification.
-- Implementation: `rocksoul-work` / `python -m g4f.rocksoul_work_cli` supports `create`, `get`, `list`, `transition`, `verify`, and `verify-chain`.
+- Implementation: `rocksoul-work` / `python -m g4f.rocksoul_work_cli` supports `profile-register`, `profile-list`, `profile-get`, `create`, `get`, `list`, `transition`, `verify`, and `verify-chain`.
 - Acceptance: JSON output; verification reads exact local artifact bytes; state changes require explicit expected and target statuses.
 
 ### RS-F9-007 — Executable verifier adapters and authenticated evidence receipts
