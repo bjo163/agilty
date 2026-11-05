@@ -272,7 +272,7 @@ The flywheel must not learn from unverified outputs as if they were ground truth
 |---|---|---|
 | Runtime substrate | Existing g4f provider/runtime layer | Keep provider execution adapters reusable |
 | Routing | Explainable, capability-aware route foundation | Candidate recall, contextual and step-level routing |
-| Execution | Bounded attempts/time, retry taxonomy, traces | Work contracts, checkpoints, scoped action capabilities |
+| Execution | Bounded attempts/time, retry taxonomy, traces; canonical WorkItem schema and lifecycle validation | Persisted work contracts, checkpoints, scoped action capabilities, execution integration |
 | Health/recovery | Provider lifecycle and quarantine/recovery | Drift detection and verified capability expiry |
 | Mesh | Authenticated nodes, leases, isolation | Attestation, sandbox scheduling, data locality |
 | Arena | Deterministic foundation and campaign integrity verifier | Provenance-rich suites, adversarial tests, held-out evaluations |
