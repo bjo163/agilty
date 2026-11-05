@@ -266,10 +266,11 @@ class WorkItemStore:
             trace = conn.execute("SELECT request_id FROM execution_runs WHERE request_id=?", (request_id,)).fetchone()
             if trace is None:
                 raise WorkItemStoreError("execution trace must exist before it can be linked")
-            duplicate = conn.execute(
-                "SELECT 1 FROM rocksoul_work_events WHERE work_id=? AND event_type='work.execution_linked' AND json_extract(payload_json,'$.request_id')=?",
-                (work_id, request_id),
-            ).fetchone()
+            existing_links = conn.execute(
+                "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.execution_linked'",
+                (work_id,),
+            ).fetchall()
+            duplicate = any(json.loads(event["payload_json"]).get("request_id") == request_id for event in existing_links)
             if duplicate:
                 return self.get(work_id, connection=conn)
             self._append_event(
