@@ -353,3 +353,48 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - A live Coolify deployment was not performed because no deployment target, domain/DNS, or production secrets were supplied. The Compose topology is validated and documented, but runtime deployment must not be represented as completed.
 - Arena production quality certification remains `NOT_CERTIFIED`; the separate production dataset/methodology gate remains deferred.
 
+
+
+## Stage 8 — P0 Trust & Truth: Work Contract Foundation
+
+### RS-F9-001 — Canonical WorkItem schema
+- Status: `DONE` (schema/test scope only)
+- Implementation: `g4f/rocksoul_contracts.py`.
+- Contract fields: schema version, stable work ID, goal, required acceptance criteria, risk level, bounded execution budget, exact permission identifiers, timezone-aware creation/deadline timestamps, and human-approval requirement.
+- Safety: empty permissions deny all tool capabilities; wildcards are rejected; high/critical risk cannot disable human approval; unknown JSON fields fail closed.
+- Integrity: canonical serialization and SHA-256 contract digest.
+- Tests: `tests/test_rocksoul_contracts.py`.
+
+### RS-F9-002 — Explicit WorkItem lifecycle
+- Status: `DONE` (state-transition contract only)
+- Implementation: `WorkStatus` and `validate_status_transition` in `g4f/rocksoul_contracts.py`.
+- Acceptance: a WorkItem cannot jump from execution directly to accepted; acceptance must pass through `VERIFYING`. Terminal states cannot silently restart. Unverified/uncertain work requires another verification pass before acceptance.
+- Tests: happy path, illegal jumps, terminal-state enforcement, uncertain/unverified re-verification, blocked-work resumption.
+
+### RS-F9-003 — Verification profile registry
+- Status: `TODO`
+- Scope: versioned profiles map acceptance criteria to registered verifier implementations, required evidence, severity, and independent-review policy.
+- Boundary: method identifiers in WorkItem are declarations only; they do not execute or certify a verifier.
+
+### RS-F9-004 — Persisted work contract and lifecycle store
+- Status: `TODO`
+- Scope: SQLite-backed work item records, immutable contract revisions, append-only lifecycle events, idempotent creation, and atomic state transitions.
+- Safety: no secrets in contract payloads; explicit retention/redaction policy; concurrent transition protection.
+
+### RS-F9-005 — Execution/API integration without false acceptance
+- Status: `TODO`
+- Scope: attach WorkItem identity to execution traces and API responses while preserving legacy request compatibility.
+- Acceptance: provider transport success is represented separately from task outcome; an execution result alone can never create `ACCEPTED`; no implicit verifier is invented.
+- Tests: legacy API compatibility, correlation integrity, false-success regression cases.
+
+### RS-F9-006 — WorkItem CLI and operator readback
+- Status: `TODO`
+- Scope: inspect and validate contracts, show lifecycle history, and explain why a work item is blocked/unverified/uncertain.
+- Acceptance: JSON output is stable; read-only commands do not mutate state; permission secrets are never displayed.
+
+### Stage 8 verification boundary
+- The schema/lifecycle foundation is implemented and contract-tested.
+- The contract is not yet persisted and is not wired into execution, API, or Console.
+- No task outcome is certified by this stage.
+- The next release gate is verifier-profile definition and persistent WorkItem lifecycle storage.
+- Existing F1–F7 execution, Mesh, Arena, API, and Console contracts remain compatibility requirements.
