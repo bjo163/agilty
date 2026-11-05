@@ -24,6 +24,7 @@ Defaults to loopback `127.0.0.1:8765`. Binding beyond loopback requires `ROCKSOU
 - `GET|POST /api/v1/work-items` — authenticated WorkItem list/create.
 - `GET /api/v1/work-items/{work_id}` — authenticated contract and lifecycle readback.
 - `POST /api/v1/work-items/{work_id}/transitions` — authenticated expected-state lifecycle transition.
+- `POST /api/v1/work-items/{work_id}/criteria/{criterion_id}/verify` — execute a bounded built-in verifier against supplied artifact bytes.
 - `GET /api/v1/work-items/{work_id}/verify-chain` — authenticated event hash-chain verification.
 
 OpenAPI docs: `/api/docs`.
@@ -36,7 +37,7 @@ Keep the API on a private network. The Next.js console proxies browser requests 
 
 ## Work Contract boundary
 
-See [Work Contracts & Verification Profiles](rocksoul-work-contracts.md) for schemas, lifecycle semantics, CLI usage, and evidence requirements. Profile registration does not execute an adapter. Acceptance currently validates a trusted-caller PASS attestation and evidence metadata; the API does not independently run verifiers or recompute artifact digests. WorkItem-to-ExecutionEngine correlation remains future work.
+See [Work Contracts & Verification Profiles](rocksoul-work-contracts.md) for schemas, lifecycle semantics, CLI usage, and evidence requirements. The registry never dynamically loads adapters. The built-in verifier currently executes `artifact_digest` and a bounded `json_schema` subset; other allowlisted adapter IDs return `ERROR`. The verification endpoint computes SHA-256 over supplied artifact bytes, persists the result/evidence, and acceptance requires a latest persisted PASS for every required criterion. Optional `work_id` on `/api/v1/execute` links the execution trace to a RUNNING WorkItem but never auto-accepts it. Artifact source authenticity and external verifier signatures are not yet established.
 
 ## Not included
 Multi-tenant accounts, billing, quotas, public gateway exposure, streaming transport, Mesh administration and Arena campaign mutation APIs require dedicated authorization and audit contracts.
