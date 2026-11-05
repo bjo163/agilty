@@ -26,11 +26,13 @@ The WorkItem remains the authority boundary:
 
 The graph contract is persisted by `g4f/rocksoul_work_graph_store.py` in the existing SQLite control-plane database. Registration is idempotent for the same immutable graph digest and rejects reuse of a graph ID with changed content. Graph creation is recorded in a hash-chained event table; the verifier checks canonical graph integrity, sequence continuity, previous hashes, event hashes, and the creation event. Listing is bounded to 100 records per page.
 
-The implementation still does not create WorkItems, inspect WorkItem status, reserve budgets, dispatch execution, or propagate cancellation. Persistence makes graph definitions durable; it does not make them executable. Do not describe those capabilities as shipped.
+The current integration adds a read-only authoritative readiness resolver: every referenced WorkItem must exist and pass its own event/evidence-chain verification. Only an `accepted` dependency with a valid chain satisfies downstream dependencies. Missing or terminal-failed dependencies block descendants; pending dependencies leave descendants waiting; corrupt graph/WorkItem evidence fails closed. This resolver does not mutate WorkItems or dispatch work.
+
+Authenticated API endpoints now support graph create/list/read and readiness readback. The offline `rocksoul-work-graph` CLI supports create/list/get/verify/readiness. These are control-plane inspection and registration surfaces, not a worker scheduler. The implementation still does not create child WorkItems, reserve aggregate budgets, dispatch execution, or propagate cancellation.
 
 ## Scheduling semantics
 
-A node is structurally ready only when every dependency ID is in the caller-supplied completed set. This method deliberately does not query the WorkItem store. The future scheduler must resolve each dependency against authoritative WorkItem state and require an accepted upstream outcome when the edge is declared as outcome-dependent.
+The pure `WorkGraph.ready_nodes(completed)` helper remains structural and trusts only the explicit caller-supplied node set; it must not be used as execution authorization. The store-level `resolve_readiness(graph_id, work_items)` is the authoritative read model: it queries each referenced WorkItem, verifies its event/evidence chain, and requires accepted status for every dependency. Readiness is a snapshot, not a reservation or lock; a future dispatcher must re-check state atomically immediately before a child transition or execution.
 
 The initial graph model intentionally avoids implicit fan-out and dynamic graph mutation. A future schema revision may add typed edges (artifact, control, ordering), but must not overload a generic dependency with different semantics.
 
@@ -42,13 +44,15 @@ The initial graph model intentionally avoids implicit fan-out and dynamic graph 
 4. Cycles, missing dependencies, duplicate WorkItem references, and over-limit graphs fail closed.
 5. Ordering within a parallel layer is stable by node ID for reproducibility; it does not imply execution order.
 6. Graph execution must use per-WorkItem state transitions and acceptance gates. A parent graph must never mark children accepted by aggregation alone.
-7. Required/optional node semantics are descriptive only in this foundation; aggregation policy is not yet implemented.
+7. `required` is descriptive metadata only; graph completion/optional-node aggregation policy is not implemented.
+8. Readiness is a read-only snapshot and does not reserve the child, budget, or dependency state. A future scheduler must close the check/use race with an atomic claim or expected-state transition.
+9. A graph registry hash chain is tamper-evident within the database but is not WORM storage or an external signature.
 
 ## Next integration gates
 
 - [x] persistent graph registry with immutable graph IDs, idempotent registration, bounded listing, and hash-chained creation events;
-- API/CLI read and write endpoints with idempotent create and expected-version updates;
-- authoritative readiness calculation from WorkItem statuses and dependency outputs;
+- [x] authenticated API create/list/read/readiness endpoints and offline CLI create/list/get/verify/readiness;
+- [x] authoritative readiness calculation from actual WorkItem statuses and valid WorkItem event/evidence chains;
 - graph-level budget reservation that cannot exceed child WorkItem budgets;
 - cancellation, deadline propagation, and bounded retry semantics;
 - failure/uncertain propagation and explicit optional-node policy;
