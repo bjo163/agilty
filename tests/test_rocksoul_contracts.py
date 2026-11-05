@@ -73,6 +73,14 @@ class WorkItemTests(unittest.TestCase):
             with self.subTest(criteria=criteria), self.assertRaises(ContractValidationError):
                 work_item(acceptance_criteria=criteria)
 
+    def test_rejects_excessive_criteria_and_permissions(self):
+        with self.assertRaises(ContractValidationError):
+            work_item(acceptance_criteria=tuple(
+                criterion(criterion_id=f"criterion-{index}") for index in range(101)
+            ))
+        with self.assertRaises(ContractValidationError):
+            work_item(permissions=tuple(f"capability.{index}" for index in range(101)))
+
     def test_rejects_duplicate_criterion_ids(self):
         with self.assertRaises(ContractValidationError):
             work_item(acceptance_criteria=(criterion(), criterion()))
