@@ -388,14 +388,14 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Status: `DONE` — API foundation and execution trace linkage.
 - Scope implemented: authenticated WorkItem create/list/read/transition/event-chain endpoints; profile register/list/read endpoints; per-criterion verifier execution endpoint; optional `work_id` on legacy-compatible `POST /api/v1/execute`.
 - Acceptance: execution trace is linked only to a RUNNING WorkItem; exact `model.execute` permission is required; approval/deadline gates are enforced; wall-time/attempt budgets are capped; unsupported token/cost budgets fail closed; response keeps transport separate and reports `task_outcome=unverified`; provider success never auto-accepts work.
-- Remaining: direct Console workflow and stronger execution_runs-level foreign-key correlation are future enhancements.
+- Follow-through: Console WorkItem creation/readback, profile registration, bounded artifact upload/verification, and native `execution_runs.work_id` correlation are now implemented under RS-F9-008/009.
 
 ### RS-F9-006 — WorkItem CLI and operator readback
 - Status: `DONE` — operator CLI and local artifact verification.
 - Implementation: `rocksoul-work` / `python -m g4f.rocksoul_work_cli` supports `profile-register`, `profile-list`, `profile-get`, `create`, `get`, `list`, `transition`, `verify`, and `verify-chain`.
 - Acceptance: JSON output; verification reads exact local artifact bytes; state changes require explicit expected and target statuses.
 
-### RS-F9-007 — Executable verifier adapters and authenticated evidence receipts
+### RS-F9-007 — Executable verifier adapters and tamper-evident evidence receipts
 - Status: `FOUNDATION` — all five allowlisted deterministic built-in adapters implemented; external trust remains open.
 - Implementation: `g4f/rocksoul_verifier_engine.py` implements all five allowlisted deterministic adapters: `artifact_digest`, bounded `json_schema`, pytest JUnit XML receipts, captured HTTPS contract receipts, and content-addressed `source_provenance`. It computes SHA-256 from supplied bytes, caps artifact/schema sizes and schema complexity, emits provenance-bearing evidence, and fails closed for unimplemented adapter identifiers.
 - Persistence: verifier result/evidence rows are linked into the WorkItem event chain by a canonical receipt digest; acceptance checks the latest result for every required criterion.
