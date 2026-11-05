@@ -85,6 +85,7 @@ All WorkItem and verification-profile endpoints require `X-ROCKSOUL-API-Key`:
 - `POST /api/v1/work-items`
 - `GET /api/v1/work-items/{work_id}`
 - `POST /api/v1/work-items/{work_id}/transitions`
+- `POST /api/v1/work-items/{work_id}/criteria/{criterion_id}/verify` (bounded base64 artifact input; requires a registered profile)
 - `GET /api/v1/work-items/{work_id}/verify-chain`
 
 Create requests contain the complete WorkItem JSON contract. Transition requests require `expected_status` and `target_status`; optional event payloads must be finite JSON objects. See `docs/rocksoul-api.md` for API startup and deployment.
@@ -120,4 +121,4 @@ The CLI reads and writes the same ROCKSOUL SQLite database selected by the exist
 
 ## Explicit non-goals of this stage
 
-WorkItem execution correlation is available through the optional `work_id` field on `POST /api/v1/execute`; it records the trace link but never auto-accepts the task. The verifier engine currently covers artifact digest and a bounded JSON Schema subset only. WorkGraph, checkpoint/resume, policy learning, external source authenticity, and Console workflow remain future work. Provider transport success remains separate from task acceptance.
+WorkItem execution correlation is available through the optional `work_id` field on `POST /api/v1/execute`; it records the trace link but never auto-accepts the task. The verifier engine executes five bounded built-in adapters: artifact digest, JSON Schema, pytest JUnit receipt, captured HTTPS contract, and content-addressed source binding. The Console supports immutable profile registration and bounded artifact upload/verification. WorkGraph, checkpoint/resume, policy learning, independent remote artifact acquisition, external source authenticity, signed verifier identity, and cryptographically attributable human approval remain future work. Provider transport success remains separate from task acceptance.
