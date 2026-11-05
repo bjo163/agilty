@@ -311,9 +311,12 @@ class WorkItemStore:
             row = conn.execute("SELECT status FROM rocksoul_work_items WHERE work_id=?", (work_id,)).fetchone()
             if row is None:
                 raise WorkItemStoreError("WorkItem not found")
-            trace = conn.execute("SELECT request_id FROM execution_runs WHERE request_id=?", (request_id,)).fetchone()
+            trace = conn.execute("SELECT request_id,work_id FROM execution_runs WHERE request_id=?", (request_id,)).fetchone()
             if trace is None:
                 raise WorkItemStoreError("execution trace must exist before it can be linked")
+            if trace["work_id"] not in (None, work_id):
+                raise WorkItemStoreError("execution request is already natively linked to another WorkItem")
+            conn.execute("UPDATE execution_runs SET work_id=? WHERE request_id=? AND work_id IS NULL", (work_id, request_id))
             existing_links = conn.execute(
                 "SELECT work_id,payload_json FROM rocksoul_work_events WHERE event_type='work.execution_linked'",
             ).fetchall()
