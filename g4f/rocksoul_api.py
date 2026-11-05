@@ -9,6 +9,7 @@ import hmac
 import json
 import os
 from dataclasses import asdict
+from datetime import datetime, timezone
 from typing import Any
 
 from .rocksoul_control import ProviderControlStore
@@ -310,18 +311,41 @@ def create_app(db: RocksoulDB | None = None):
         supported = {"streaming", "tools", "structured_output", "vision", "image"}
         if any(item not in supported for item in body.requirements):
             raise HTTPException(status_code=422, detail="Unsupported capability requirement")
+        effective_max_attempts = body.max_attempts
+        effective_max_total_time = body.max_total_time
+        effective_timeout = body.timeout
+        applied_budget = None
         if body.work_id:
             linked_work = work_items.get(body.work_id)
             if linked_work is None:
                 raise HTTPException(status_code=404, detail="WorkItem not found")
             if linked_work["status"] != WorkStatus.RUNNING.value:
                 raise HTTPException(status_code=409, detail="WorkItem must be RUNNING before execution")
+            work_contract = WorkItem.from_dict(linked_work["contract"])
+            if work_contract.human_approval_required:
+                raise HTTPException(status_code=409, detail="WorkItem requires human approval; approval execution is not enabled")
+            if "model.execute" not in work_contract.permissions:
+                raise HTTPException(status_code=403, detail="WorkItem does not grant model.execute permission")
+            if work_contract.deadline_at:
+                deadline = datetime.fromisoformat(work_contract.deadline_at.replace("Z", "+00:00"))
+                if deadline <= datetime.now(timezone.utc):
+                    raise HTTPException(status_code=409, detail="WorkItem deadline has expired")
+            if work_contract.budget.max_tokens is not None or work_contract.budget.max_cost_usd is not None:
+                raise HTTPException(status_code=409, detail="Current provider adapters cannot enforce token/cost budgets; execution denied")
+            effective_max_attempts = min(body.max_attempts, work_contract.budget.max_attempts)
+            effective_max_total_time = min(body.max_total_time, work_contract.budget.max_wall_time_seconds)
+            effective_timeout = min(body.timeout, effective_max_total_time)
+            applied_budget = {
+                "max_attempts": effective_max_attempts,
+                "max_total_time": effective_max_total_time,
+                "timeout": effective_timeout,
+            }
         request = ExecutionRequest(
             model=body.model, messages=body.messages,
             requirements=tuple(body.requirements), providers=tuple(body.providers),
-            max_attempts=body.max_attempts,
+            max_attempts=effective_max_attempts,
             max_same_provider_attempts=body.max_same_provider_attempts,
-            max_total_time=body.max_total_time, timeout=body.timeout, stream=False,
+            max_total_time=effective_max_total_time, timeout=effective_timeout, stream=False,
         )
         result = ExecutionEngine(database).execute(request)
         if body.work_id:
@@ -342,6 +366,7 @@ def create_app(db: RocksoulDB | None = None):
             "transport_outcome": result.outcome,
             "work_id": body.work_id,
             "task_outcome": "unverified" if body.work_id else None,
+            "applied_budget": applied_budget,
             "error_class": result.error_class, "error": result.error,
             "response": _safe_response(result.response), "attempts": attempts,
         }
