@@ -70,6 +70,7 @@ This is a single-instance, environment-configured operator login. The configured
 - Arena pack/campaign evidence and integrity verification
 - Trace explorer
 - Bounded operator execution
+- Read-only WorkGraph registry and dependency-readiness cockpit (administrator graph registration)
 - Signed administrator approval for high/critical WorkItems
 - Per-criterion evidence diff and metadata-only evidence bundle export
 
