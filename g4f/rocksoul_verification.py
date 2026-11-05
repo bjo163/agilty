@@ -98,8 +98,8 @@ class VerificationProfile:
             raise VerificationProfileError("severity must be info, warning, error, or critical")
         if isinstance(self.version, bool) or not isinstance(self.version, int) or not 1 <= self.version <= 1_000_000:
             raise VerificationProfileError("version must be an integer in [1, 1000000]")
-        if not isinstance(self.evidence_requirements, tuple) or not self.evidence_requirements:
-            raise VerificationProfileError("evidence_requirements must be a non-empty tuple")
+        if not isinstance(self.evidence_requirements, tuple) or not self.evidence_requirements or len(self.evidence_requirements) > 20:
+            raise VerificationProfileError("evidence_requirements must contain 1 to 20 entries")
         if any(not isinstance(item, EvidenceRequirement) for item in self.evidence_requirements):
             raise VerificationProfileError("evidence_requirements must contain EvidenceRequirement values")
         if len({item.evidence_type for item in self.evidence_requirements}) != len(self.evidence_requirements):
@@ -193,8 +193,8 @@ class VerificationResult:
             _text(value, name, 128)
         if isinstance(self.profile_version, bool) or not isinstance(self.profile_version, int) or self.profile_version < 1:
             raise VerificationProfileError("profile_version must be a positive integer")
-        if not isinstance(self.findings, tuple):
-            raise VerificationProfileError("findings must be a tuple")
+        if not isinstance(self.findings, tuple) or len(self.findings) > 100:
+            raise VerificationProfileError("findings must be a tuple containing at most 100 entries")
         if self.outcome is VerificationOutcome.PASS and self.findings:
             raise VerificationProfileError("PASS results cannot contain unresolved findings")
         if any(not isinstance(item, str) or not item.strip() or len(item) > 2000 for item in self.findings):
