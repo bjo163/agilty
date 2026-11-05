@@ -81,11 +81,14 @@ Create requests contain the complete WorkItem JSON contract. Transition requests
 ## Operator CLI
 
 ```bash
-python -m g4f.rocksoul_work_cli create work-item.json
-python -m g4f.rocksoul_work_cli list --limit 50
-python -m g4f.rocksoul_work_cli get work-001
-python -m g4f.rocksoul_work_cli transition work-001 pending planning
-python -m g4f.rocksoul_work_cli verify-chain work-001
+rocksoul-work create work-item.json
+rocksoul-work list --limit 50
+rocksoul-work get work-001
+rocksoul-work transition work-001 pending planning
+rocksoul-work verify-chain work-001
+
+# Equivalent module invocation:
+python -m g4f.rocksoul_work_cli --help
 ```
 
 The CLI reads and writes the same ROCKSOUL SQLite database selected by the existing `RocksoulDB` path configuration. Transition commands always require explicit expected and target states.
