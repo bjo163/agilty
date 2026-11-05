@@ -113,14 +113,21 @@ Report by task family and verifier confidence. Do not collapse correctness, safe
 |---|---|---|
 | Runtime | Existing g4f substrate | Reusable multi-runtime adapters |
 | Routing | Explainable capability-aware foundation | Historical, contextual, step-level routing |
-| Execution | Bounded attempts/time and traceability | Work contracts, checkpoints, scoped tools |
+| Execution | Bounded attempts/time, traceability, canonical WorkItem schema, SQLite lifecycle store and hash-chained events | WorkItem-to-ExecutionEngine correlation, checkpoints, scoped tools |
 | Reliability | Health, quarantine, recovery | Drift-aware capability re-verification |
 | Mesh | Authenticated nodes and leases | Attestation, isolation, data locality |
 | Arena | Deterministic foundation and integrity audit | Adversarial, held-out, provenance-rich evaluation |
-| API/Console | Product API and operator console foundation | Work-item, verification, evidence and policy lifecycle |
-| Anti-slop | Deterministic tests and Arena controls | Task-specific verification profiles and independent evaluators |
+| API/Console | Authenticated WorkItem lifecycle and immutable verification-profile API foundations; Console remains a foundation | Execution-correlated work/evidence cockpit and policy lifecycle |
+| Anti-slop | Versioned profile contracts, evidence requirements and trusted-caller attestation validation; no executable verifier adapters yet | Artifact-bound deterministic verifiers, independent evaluators and authenticated receipts |
 | Learning | Evidence capture foundation | Offline learning and controlled policy promotion |
 | Memory/autonomy | Not yet a complete product capability | Provenance-aware memory and bounded long-running workflows |
+
+
+## Work Contract Foundation — implementation boundary
+
+The product now has canonical WorkItem contracts, bounded lifecycle transitions, immutable SQLite contract records, append-only hash-chained lifecycle events, immutable versioned verification-profile persistence, authenticated API readback/mutation, and an operator CLI. Acceptance requires a registered profile version and structured PASS attestation with provenance-bearing evidence records.
+
+This is a governed contract and attestation foundation—not a complete verification engine. The named adapter is not dynamically loaded or executed; submitted evidence digests are not independently recomputed against artifact bytes. A trusted API caller can attest to PASS, so production-grade task certification remains gated on executable adapters and authenticated artifact-bound receipts. Provider transport success remains distinct from WorkItem acceptance.
 
 ## Product roadmap
 
