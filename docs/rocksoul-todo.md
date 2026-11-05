@@ -320,7 +320,7 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - [x] Add optional `rocksoul-api` install extra and `rocksoul-api` console entrypoint.
 - [x] Add API contract tests and CI dependencies.
 - [x] Document API boundaries, OpenAPI, deployment safety and unsupported features.
-- [ ] Run current-main CI and wheel/package verification after implementation commit.
+- [x] Run current-main CI and wheel/package verification after implementation commit (ROCKSOUL CI #42059676917: four OS/Python lanes plus wheel/sdist build, metadata, wheel install and console-entrypoint smoke tests; Unittest #42059994881 and CodeQL #42059994638 passed on latest main).
 
 ## Stage 7 — Next.js Console migration
 
@@ -331,5 +331,16 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - [x] Document local and production setup and migration boundary.
 - [ ] Add full legacy route parity, Mesh/Arena/trace views and operator actions.
 - [ ] Add session authentication, role-based authorization, localization, theme persistence and browser E2E/accessibility gates.
-- [ ] Run Next.js production build and browser smoke tests in CI.
+- [x] Run Next.js lint and production build in CI (ROCKSOUL Console CI #42059995434, Node 24). Browser E2E smoke coverage remains outstanding.
 - [ ] Add Docker Compose/Coolify frontend/API deployment topology and health checks.
+
+
+### Latest-main verification — 2026-11-05
+
+- HEAD: `1799be835698cc2f80fcd89ff174f03730a5f3ae` (`chore(rocksoul-console): ignore generated Next.js artifacts`).
+- Next.js Console CI #42059995434: passed (lint and production build).
+- General Unittest #42059994881: passed.
+- CodeQL Advanced #42059994638: all five language/action analyses passed.
+- ROCKSOUL CI #42059676917 on the API implementation commit: all four Windows/Ubuntu × Python 3.10/3.13 lanes and wheel/sdist/package entrypoint smoke gate passed.
+- PyPI publication workflows were skipped because this was not a release publication event; this is not a test failure.
+- Stage 6 acceptance gates are complete. Stage 7 is a Next.js foundation only; feature parity, Mesh/Arena/trace screens, operator actions, authentication/RBAC, i18n/theme persistence, browser E2E/accessibility, and Docker Compose/Coolify deployment remain open.
