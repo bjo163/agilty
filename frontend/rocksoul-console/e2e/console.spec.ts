@@ -16,6 +16,9 @@ test("operator can sign in",async({page})=>{
   expect(response.status()).toBe(200);
   await expect(page).toHaveURL("http://127.0.0.1:3100/");
   await expect(page.getByRole("heading",{name:"Overview"})).toBeVisible();
+  await page.getByRole("button",{name:"Work & evidence"}).click();
+  await expect(page.getByRole("heading",{name:"Work & evidence"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Work contracts"})).toBeVisible();
   const session=await page.request.get("/api/auth/session");
   expect(await session.json()).toMatchObject({authenticated:true,role:"operator"});
 });
