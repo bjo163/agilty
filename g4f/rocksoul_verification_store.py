@@ -89,6 +89,13 @@ class VerificationProfileStore:
 
     def registry(self) -> VerificationProfileRegistry:
         with self.db.connect() as conn:
-            rows = conn.execute("SELECT profile_json FROM rocksoul_verification_profiles ORDER BY profile_id,version").fetchall()
-        profiles = tuple(VerificationProfile.from_dict(json.loads(row["profile_json"])) for row in rows)
-        return VerificationProfileRegistry(profiles)
+            rows = conn.execute(
+                "SELECT profile_json,profile_digest FROM rocksoul_verification_profiles ORDER BY profile_id,version"
+            ).fetchall()
+        profiles = []
+        for row in rows:
+            profile = VerificationProfile.from_dict(json.loads(row["profile_json"]))
+            if profile.digest != row["profile_digest"]:
+                raise VerificationProfileError("stored verification profile digest mismatch")
+            profiles.append(profile)
+        return VerificationProfileRegistry(tuple(profiles))
