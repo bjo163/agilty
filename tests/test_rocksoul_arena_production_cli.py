@@ -134,6 +134,22 @@ class RocksoulArenaProductionCliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("finite JSON values", payload["error"])
 
+    def test_manifest_rejects_unrepresentable_numeric_values_as_json_errors(self) -> None:
+        value = json.loads(self.manifest.read_text(encoding="utf-8"))
+        value["pack"]["suite"]["cases"][0]["weight"] = 10**1000
+        self.manifest.write_text(json.dumps(value), encoding="utf-8")
+        code, payload = self.invoke("validate-pack", str(self.manifest))
+        self.assertEqual(code, 2)
+        self.assertIn("finite number", payload["error"])
+
+        self.write_manifest()
+        value = json.loads(self.manifest.read_text(encoding="utf-8"))
+        value["pack"]["repeat_policy"]["max_score_stddev"] = 10**1000
+        self.manifest.write_text(json.dumps(value), encoding="utf-8")
+        code, payload = self.invoke("validate-pack", str(self.manifest))
+        self.assertEqual(code, 2)
+        self.assertIn("finite number", payload["error"])
+
     def test_manifest_rejects_unknown_or_unsupported_schema(self) -> None:
         self.write_manifest(schema_version=2)
         code, payload = self.invoke("validate-pack", str(self.manifest))

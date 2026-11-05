@@ -98,7 +98,7 @@ python -m g4f.rocksoul_arena_cli --help
 python -m g4f.rocksoul_arena_production_cli --help
 ```
 
-The `rocksoul`, `rocksoul-db`, `rocksoul-mesh`, and `rocksoul-arena` console scripts are also registered by `setup.py` when the package is installed. Live provider probes and Mesh node mutations are explicit operator actions; unit tests and CI use local deterministic fixtures by default.
+The `rocksoul`, `rocksoul-db`, `rocksoul-mesh`, `rocksoul-arena`, `rocksoul-arena-production`, and `rocksoul-legacy` console scripts are also registered by `setup.py` when the package is installed. Live provider probes and Mesh node mutations are explicit operator actions; unit tests and CI use local deterministic fixtures by default.
 
 The production-evidence registry has a separate offline-safe operator CLI. Validate a manifest first, then register it only with the exact local dataset artifact whose SHA-256 is declared in that manifest:
 

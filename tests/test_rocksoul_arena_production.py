@@ -156,6 +156,35 @@ class RocksoulArenaProductionTests(unittest.TestCase):
         self.assertGreater(campaign.score_stddev, 10.0)
         self.assertFalse(campaign.variance_accepted)
 
+    def test_suite_rejects_boolean_and_unrepresentable_case_weights(self):
+        store = self.make_store()
+        for index, invalid_weight in enumerate((True, 10**1000), start=1):
+            suite = ArenaSuite(
+                name="invalid-weight-suite",
+                version=str(index),
+                evaluator="exact",
+                cases=(ArenaCase("invalid", 1, 1, weight=invalid_weight),),
+            )
+            pack = self.pack(version=str(index))
+            invalid_pack = ArenaProductionPack(
+                name=pack.name,
+                version=pack.version,
+                suite=suite,
+                dataset=pack.dataset,
+                evaluator_revision=pack.evaluator_revision,
+                repeat_policy=pack.repeat_policy,
+                environment_requirements=pack.environment_requirements,
+                network_requirements=pack.network_requirements,
+            )
+            with self.assertRaises(ArenaValidationError):
+                store.validate_pack(invalid_pack)
+
+    def test_repeat_policy_rejects_boolean_and_unrepresentable_stddev(self):
+        store = self.make_store()
+        for invalid_stddev in (True, 10**1000):
+            with self.assertRaises(ArenaValidationError):
+                store.validate_pack(self.pack(max_score_stddev=invalid_stddev))
+
     def test_target_and_environment_identity_are_required(self):
         store = self.make_store()
         with self.assertRaises(ArenaValidationError):

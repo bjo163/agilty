@@ -179,7 +179,17 @@ class ArenaStore:
             if case_id in seen:
                 raise ArenaValidationError(f"duplicate case_id: {case_id}")
             seen.add(case_id)
-            if not math.isfinite(case.weight) or case.weight <= 0 or case.weight > self.policy.max_weight:
+            try:
+                weight = float(case.weight)
+            except (TypeError, ValueError, OverflowError):
+                weight = math.nan
+            if (
+                isinstance(case.weight, bool)
+                or not isinstance(case.weight, (int, float))
+                or not math.isfinite(weight)
+                or weight <= 0
+                or weight > self.policy.max_weight
+            ):
                 raise ArenaValidationError(f"invalid weight for {case_id}: {case.weight}")
 
     def register_suite(self, suite: ArenaSuite, *, now: float | None = None) -> str:

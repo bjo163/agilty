@@ -222,7 +222,16 @@ class ArenaProductionStore:
         repeat = pack.repeat_policy
         if type(repeat.runs) is not int or repeat.runs < 2 or repeat.runs > 100:
             raise ArenaValidationError("repeat_policy.runs must be an integer between 2 and 100")
-        if isinstance(repeat.max_score_stddev, bool) or not isinstance(repeat.max_score_stddev, (int, float)) or not math.isfinite(repeat.max_score_stddev) or repeat.max_score_stddev < 0:
+        try:
+            max_score_stddev = float(repeat.max_score_stddev)
+        except (TypeError, ValueError, OverflowError):
+            max_score_stddev = math.nan
+        if (
+            isinstance(repeat.max_score_stddev, bool)
+            or not isinstance(repeat.max_score_stddev, (int, float))
+            or not math.isfinite(max_score_stddev)
+            or max_score_stddev < 0
+        ):
             raise ArenaValidationError("repeat_policy.max_score_stddev must be a finite non-negative number")
         if not pack.environment_requirements:
             raise ArenaValidationError("environment_requirements must be explicit for a production pack")

@@ -79,9 +79,15 @@ def _text(value: Mapping[str, Any], key: str, label: str) -> str:
 
 
 def _number(value: Any, label: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ManifestError(f"{label} must be a finite number")
-    return float(value)
+    try:
+        number = float(value)
+    except (OverflowError, ValueError):
+        raise ManifestError(f"{label} must be a finite number") from None
+    if not math.isfinite(number):
+        raise ManifestError(f"{label} must be a finite number")
+    return number
 
 
 def _json_object(value: Any, label: str) -> dict[str, Any]:
