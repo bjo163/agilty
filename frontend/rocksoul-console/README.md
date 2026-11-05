@@ -70,6 +70,8 @@ This is a single-instance, environment-configured operator login. The configured
 - Arena pack/campaign evidence and integrity verification
 - Trace explorer
 - Bounded operator execution
+- Signed administrator approval for high/critical WorkItems
+- Per-criterion evidence diff and metadata-only evidence bundle export
 
 Arena evidence integrity is not a model-quality certification. Reports continue to state `NOT_CERTIFIED` until the separate dataset and methodology requirements are satisfied.
 
