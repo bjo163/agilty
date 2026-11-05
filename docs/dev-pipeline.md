@@ -295,7 +295,7 @@ models, then OVHcloud models as keyless fallbacks.
 | `agent` | `pi` | agent executable (`pi` or `omp`) |
 | `thinking` | `high` | Pi thinking level |
 | `task_timeout` | `1800` | seconds per agent invocation |
-| `check_timeout` | `300` | seconds per check command |
+| `check_timeout` | `900` | seconds per check command; the full repository suite may take several minutes |
 | `commit` | `false` | git commit successful tasks |
 | `push` | `false` | git push after a successful commit |
 | `enabled_projects` | all | optional allowlist |
@@ -304,8 +304,9 @@ Checks are argv lists, not shell strings, so quoting is predictable:
 
 ```json
 "checks": [
-  ["python3", "-m", "compileall", "-q", "g4f"],
-  ["python3", "-m", "unittest", "tools.dev_pipeline.tests.test_status"]
+  ["python3", "-m", "compileall", "-q", "g4f", "tools/dev_pipeline"],
+  ["python3", "-m", "unittest", "tools.dev_pipeline.tests.test_status"],
+  ["python3", "-m", "etc.unittest"]
 ]
 ```
 
@@ -390,3 +391,29 @@ PYTHONPATH=. python3 -m unittest tools.dev_pipeline.tests.test_status -v
 
 The pipeline's own `gpt4free` check list includes this test, so every
 autonomous task also verifies that the status store still round-trips.
+
+## Repository quality gate
+
+The `gpt4free` project check list runs three gates for each autonomous task:
+
+1. Compile the runtime and pipeline modules with `compileall`.
+2. Run the development-pipeline state-store and orchestration tests.
+3. Run the full repository regression suite with `python3 -m etc.unittest`.
+
+The full suite is allowed up to 900 seconds per check command. Git checkouts also
+run `git diff --check` automatically. Do not weaken or skip the full suite merely
+to make an agent task appear successful; repair the failure or report it as blocked.
+
+The GitHub Unittest workflow has two dependency tiers. The Python 3.10 minimal
+tier intentionally omits FastAPI and Uvicorn, so API/CDP tests that import the
+server package must skip explicitly when those extras are absent. The full
+dependency tier installs `requirements.txt` and must execute those tests.
+
+### Local verification
+
+```bash
+python3 -m compileall -q g4f tools/dev_pipeline
+python3 -m unittest tools.dev_pipeline.tests.test_status -v
+python3 -m etc.unittest
+git diff --check
+```

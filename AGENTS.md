@@ -31,9 +31,13 @@ bin/dev-pipeline init --project g4f.dev
 - Keep changes small, focused, and consistent with the surrounding code.
 - Add or update tests when behaviour changes. Prefer the existing `unittest`
   style under `etc/unittest/` and `tools/dev_pipeline/tests/`.
-- Run the checks relevant to the files you touched. The pipeline runs:
-  - `python3 -m compileall -q g4f`
+- Run the checks relevant to the files you touched. The autonomous pipeline runs:
+  - `python3 -m compileall -q g4f tools/dev_pipeline`
   - `python3 -m unittest tools.dev_pipeline.tests.test_status`
+  - `python3 -m etc.unittest` (full repository regression suite)
+  - `git diff --check`
+- API/CDP tests that require the optional FastAPI/Uvicorn extras must skip cleanly in
+  minimal-dependency environments and run in the full-dependency CI lane.
 - Do not add paid services, hard-coded API keys, or dependencies that require
   an account for the pipeline to run.
 - Do not rewrite unrelated files. Do not commit generated media or caches.
@@ -60,9 +64,11 @@ bin/dev-pipeline init --project g4f.dev
 python3 -m g4f --port 8080
 g4f client "Hello" --model openai
 
-# Quick checks used by the pipeline
-python3 -m compileall -q g4f
-PYTHONPATH=. python3 -m unittest tools.dev_pipeline.tests.test_status
+# Quality gates used by the autonomous pipeline
+python3 -m compileall -q g4f tools/dev_pipeline
+python3 -m unittest tools.dev_pipeline.tests.test_status
+python3 -m etc.unittest
+git diff --check
 
 # Pipeline
 bin/dev-pipeline status

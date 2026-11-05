@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import tempfile
@@ -20,6 +21,16 @@ from g4f.mcp.tools import (
     FileSearchGlobTool,
 )
 from g4f.mcp.pa_provider import execute_safe_code, get_workspace_dir, SAFE_MODULES
+
+
+# The minimal CI lane intentionally omits the optional FastAPI server extra.
+# Importing g4f.api.cdp_relay also imports the API package and therefore
+# requires both FastAPI and Uvicorn. Keep these tests active in the full
+# dependency lane while skipping them cleanly in the minimal lane.
+_API_TEST_DEPS_AVAILABLE = all(
+    importlib.util.find_spec(module) is not None
+    for module in ("fastapi", "uvicorn")
+)
 
 try:
     from ddgs import DDGS, DDGSError
@@ -1360,6 +1371,7 @@ class TestMCPServerShellActivation(unittest.TestCase):
 
 
 class TestBrowserIframeClick(unittest.IsolatedAsyncioTestCase):
+    @unittest.skipUnless(_API_TEST_DEPS_AVAILABLE, "FastAPI and Uvicorn are optional API dependencies")
     async def test_frame_path_evaluates_in_nested_frame(self):
         from g4f.api.cdp_relay import _evaluate_in_frame_path
 
@@ -1402,6 +1414,7 @@ class TestBrowserIframeClick(unittest.IsolatedAsyncioTestCase):
             calls,
         )
 
+    @unittest.skipUnless(_API_TEST_DEPS_AVAILABLE, "FastAPI and Uvicorn are optional API dependencies")
     async def test_frame_path_rejects_missing_frame(self):
         from g4f.api.cdp_relay import _evaluate_in_frame_path
 
@@ -1411,6 +1424,7 @@ class TestBrowserIframeClick(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(ValueError, "Frame path does not exist"):
             await _evaluate_in_frame_path(call, [0], "click()")
 
+    @unittest.skipUnless(_API_TEST_DEPS_AVAILABLE, "FastAPI and Uvicorn are optional API dependencies")
     async def test_native_click_translates_iframe_offsets(self):
         try:
             from g4f.api.cdp_relay import _native_click
@@ -1443,6 +1457,7 @@ class TestBrowserIframeClick(unittest.IsolatedAsyncioTestCase):
             self.assertIn(f'[role=\\"{role}\\"]', SNAPSHOT_JS)
             self.assertIn(f'[role=\\"{role}\\"]', click_js(0))
 
+    @unittest.skipUnless(_API_TEST_DEPS_AVAILABLE, "FastAPI and Uvicorn are optional API dependencies")
     def test_copy_click_listener_tracks_iframe_path(self):
         from g4f.api.cdp_relay import _COPY_SCRIPT
 
