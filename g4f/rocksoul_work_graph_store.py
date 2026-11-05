@@ -164,6 +164,98 @@ class WorkGraphStore:
                 "offset": offset,
             }
 
+    def resolve_readiness(self, graph_id: str, work_items: Any) -> dict[str, Any]:
+        """Resolve graph readiness from authoritative WorkItem state and integrity.
+
+        Only ACCEPTED WorkItems with a valid WorkItem event/evidence chain satisfy
+        dependencies. This is a read-only resolver; it never changes child state.
+        """
+        if work_items is None or not callable(getattr(work_items, "get", None)) or not callable(getattr(work_items, "verify_event_chain", None)):
+            raise WorkGraphStoreError("resolve_readiness requires a WorkItemStore-compatible object")
+        graph_integrity = self.verify_event_chain(graph_id)
+        if not graph_integrity.get("ok"):
+            return {
+                "graph_id": graph_id, "graph_integrity": graph_integrity,
+                "nodes": [], "ready_nodes": [], "blocked_nodes": [],
+                "waiting_nodes": [], "integrity_error_nodes": [],
+            }
+        record = self.get(graph_id)
+        graph = WorkGraph.from_dict(record["graph"])
+        by_id = {node.node_id: node for node in graph.nodes}
+        states: dict[str, dict[str, Any]] = {}
+        for node in graph.nodes:
+            item = work_items.get(node.work_id)
+            if item is None:
+                states[node.node_id] = {
+                    "node_id": node.node_id, "work_id": node.work_id,
+                    "status": "missing", "state": "blocked",
+                    "reason": "work_item_not_found", "dependencies": list(node.depends_on),
+                }
+                continue
+            integrity = work_items.verify_event_chain(node.work_id)
+            if not integrity.get("ok") or item.get("contract_digest") is None:
+                states[node.node_id] = {
+                    "node_id": node.node_id, "work_id": node.work_id,
+                    "status": item.get("status"), "state": "integrity_error",
+                    "reason": integrity.get("reason") or "work_item_contract_missing",
+                    "dependencies": list(node.depends_on),
+                }
+                continue
+            states[node.node_id] = {
+                "node_id": node.node_id, "work_id": node.work_id,
+                "status": item["status"], "state": "pending",
+                "reason": None, "dependencies": list(node.depends_on),
+                "contract_digest": item["contract_digest"],
+                "required": node.required,
+            }
+
+        terminal_failures = {"rejected", "cancelled", "expired"}
+        for node_id in [item for layer in graph.topological_layers() for item in layer]:
+            current = states[node_id]
+            if current["state"] in {"blocked", "integrity_error"}:
+                continue
+            failed_dependencies = [
+                dependency for dependency in by_id[node_id].depends_on
+                if states[dependency]["status"] in terminal_failures
+                or states[dependency]["state"] in {"blocked", "integrity_error"}
+            ]
+            if failed_dependencies:
+                current["state"] = "blocked"
+                current["reason"] = "dependency_failed_or_untrusted"
+                current["blocked_by"] = failed_dependencies
+                continue
+            waiting_dependencies = [
+                dependency for dependency in by_id[node_id].depends_on
+                if states[dependency]["status"] != "accepted"
+                or states[dependency]["state"] == "integrity_error"
+            ]
+            if waiting_dependencies:
+                current["state"] = "waiting"
+                current["reason"] = "dependencies_not_accepted"
+                current["waiting_for"] = waiting_dependencies
+                continue
+            if current["status"] == "accepted":
+                current["state"] = "accepted"
+            elif current["status"] in {"pending", "planning", "ready", "blocked"}:
+                current["state"] = "ready"
+            elif current["status"] in {"running", "verifying", "unverified", "uncertain"}:
+                current["state"] = "in_progress"
+            else:
+                current["state"] = "blocked"
+                current["reason"] = "unsupported_work_item_state"
+
+        nodes = [states[node_id] for layer in graph.topological_layers() for node_id in layer]
+        return {
+            "graph_id": graph_id,
+            "graph_digest": record["graph_digest"],
+            "graph_integrity": graph_integrity,
+            "nodes": nodes,
+            "ready_nodes": [item["node_id"] for item in nodes if item["state"] == "ready"],
+            "blocked_nodes": [item["node_id"] for item in nodes if item["state"] == "blocked"],
+            "waiting_nodes": [item["node_id"] for item in nodes if item["state"] == "waiting"],
+            "integrity_error_nodes": [item["node_id"] for item in nodes if item["state"] == "integrity_error"],
+        }
+
     def verify_event_chain(self, graph_id: str) -> dict[str, Any]:
         with self.db.connect() as conn:
             graph_row = conn.execute(
