@@ -225,17 +225,44 @@ class RocksoulApiTests(unittest.TestCase):
                 json=body,
             )
             self.assertEqual(bad.status_code, 401)
+            expired_body = {**body, "issued_at": int(time.time()) - 301, "nonce": secrets.token_hex(16)}
+            expired_canonical = json.dumps(expired_body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            expired_signature = hmac.new(secret.encode(), expired_canonical.encode(), "sha256").hexdigest()
+            expired = self.client.post(
+                "/api/v1/work-items/approval-api-work/approval",
+                headers={**headers, "X-ROCKSOUL-Approval-Signature": expired_signature},
+                json=expired_body,
+            )
+            self.assertEqual(expired.status_code, 401)
+            rejected_body = {**body, "decision": "rejected", "nonce": secrets.token_hex(16)}
+            rejected_canonical = json.dumps(rejected_body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            rejected_signature = hmac.new(secret.encode(), rejected_canonical.encode(), "sha256").hexdigest()
+            rejected = self.client.post(
+                "/api/v1/work-items/approval-api-work/approval",
+                headers={**headers, "X-ROCKSOUL-Approval-Signature": rejected_signature},
+                json=rejected_body,
+            )
+            self.assertEqual(rejected.status_code, 200, rejected.text)
+            still_blocked = self.client.post(
+                "/api/v1/work-items/approval-api-work/transitions",
+                headers=headers,
+                json={"expected_status": "ready", "target_status": "running"},
+            )
+            self.assertEqual(still_blocked.status_code, 409)
+            approved_body = {**body, "nonce": secrets.token_hex(16)}
+            approved_canonical = json.dumps(approved_body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            approved_signature = hmac.new(secret.encode(), approved_canonical.encode(), "sha256").hexdigest()
             approved = self.client.post(
                 "/api/v1/work-items/approval-api-work/approval",
-                headers={**headers, "X-ROCKSOUL-Approval-Signature": signature},
-                json=body,
+                headers={**headers, "X-ROCKSOUL-Approval-Signature": approved_signature},
+                json=approved_body,
             )
             self.assertEqual(approved.status_code, 200, approved.text)
             self.assertEqual(approved.json()["latest_approval"]["approver_id"], "test-admin")
             replay = self.client.post(
                 "/api/v1/work-items/approval-api-work/approval",
-                headers={**headers, "X-ROCKSOUL-Approval-Signature": signature},
-                json=body,
+                headers={**headers, "X-ROCKSOUL-Approval-Signature": approved_signature},
+                json=approved_body,
             )
             self.assertEqual(replay.status_code, 409)
             running = self.client.post(
