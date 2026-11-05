@@ -131,7 +131,8 @@ def create_app(db: RocksoulDB | None = None):
 
 
     @app.get("/api/v1/verification-profiles")
-    def list_verification_profiles(limit: int = 100):
+    def list_verification_profiles(limit: int = 100, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
         return verification_profiles.list(limit=limit)
 
     @app.post("/api/v1/verification-profiles")
@@ -144,14 +145,16 @@ def create_app(db: RocksoulDB | None = None):
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/api/v1/verification-profiles/{profile_id}/{version}")
-    def get_verification_profile(profile_id: str, version: int):
+    def get_verification_profile(profile_id: str, version: int, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
         result = verification_profiles.get(profile_id, version)
         if result is None:
             raise HTTPException(status_code=404, detail="Verification profile not found")
         return result
 
     @app.get("/api/v1/work-items")
-    def list_work_items(limit: int = 50, offset: int = 0):
+    def list_work_items(limit: int = 50, offset: int = 0, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
         return work_items.list(limit=limit, offset=offset)
 
     @app.post("/api/v1/work-items")
@@ -166,7 +169,8 @@ def create_app(db: RocksoulDB | None = None):
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.get("/api/v1/work-items/{work_id}")
-    def get_work_item(work_id: str):
+    def get_work_item(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
         result = work_items.get(work_id)
         if result is None:
             raise HTTPException(status_code=404, detail="WorkItem not found")
@@ -191,7 +195,8 @@ def create_app(db: RocksoulDB | None = None):
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/api/v1/work-items/{work_id}/verify-chain")
-    def verify_work_item_chain(work_id: str):
+    def verify_work_item_chain(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
+        require_operator(x_rocksoul_api_key)
         result = work_items.get(work_id)
         if result is None:
             raise HTTPException(status_code=404, detail="WorkItem not found")
