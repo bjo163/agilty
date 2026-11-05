@@ -213,6 +213,8 @@ def create_app(db: RocksoulDB | None = None):
         try:
             if not isinstance(body["artifact_base64"], str):
                 raise ValueError("artifact_base64 must be a string")
+            if len(body["artifact_base64"]) > 1_333_336:
+                raise ValueError("encoded artifact must not exceed the 1 MiB decoded limit")
             artifact = base64.b64decode(body["artifact_base64"], validate=True)
             if not artifact or len(artifact) > 1_000_000:
                 raise ValueError("artifact must contain 1 to 1000000 bytes")
@@ -222,11 +224,11 @@ def create_app(db: RocksoulDB | None = None):
                 expected_sha256=body.get("expected_sha256"), schema=body.get("schema"),
             )
             return work_items.record_verification(work_id, criterion_id, execution)
-        except (ValueError, binascii.Error, VerificationProfileError) as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
         except WorkItemStoreError as exc:
             code = 404 if str(exc) in {"WorkItem not found", "acceptance criterion not found"} else 409
             raise HTTPException(status_code=code, detail=str(exc)) from exc
+        except (ValueError, binascii.Error, VerificationProfileError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/api/v1/work-items/{work_id}/verify-chain")
     def verify_work_item_chain(work_id: str, x_rocksoul_api_key: str | None = Header(default=None)):
