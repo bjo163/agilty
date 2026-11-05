@@ -6,12 +6,14 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from g4f.rocksoul_api import create_app
 from g4f.rocksoul_db import RocksoulDB
+from g4f.rocksoul_execution_store import ExecutionTraceStore
 
 
 class RocksoulWorkApiTests(unittest.TestCase):
@@ -30,6 +32,108 @@ class RocksoulWorkApiTests(unittest.TestCase):
     def test_work_and_profile_reads_require_operator_key(self):
         self.assertEqual(self.client.get("/api/v1/work-items").status_code, 401)
         self.assertEqual(self.client.get("/api/v1/verification-profiles").status_code, 401)
+
+    def test_work_item_execution_enforces_permissions_and_caps_budget(self):
+        contract = {
+            "schema_version": 1,
+            "work_id": "api-exec-1",
+            "goal": "Execute one bounded model request.",
+            "acceptance_criteria": [{
+                "criterion_id": "artifact",
+                "description": "Artifact digest is verified.",
+                "verification_method": "artifact_digest",
+                "required": True,
+            }],
+            "risk": "low",
+            "budget": {
+                "max_wall_time_seconds": 5,
+                "max_attempts": 2,
+                "max_repairs": 0,
+                "max_tokens": None,
+                "max_cost_usd": None,
+            },
+            "permissions": ["model.execute"],
+            "created_at": "2026-11-06T10:00:00+07:00",
+            "deadline_at": None,
+            "human_approval_required": False,
+        }
+        created = self.client.post("/api/v1/work-items", json=contract, headers=self.headers)
+        self.assertEqual(created.status_code, 200, created.text)
+        for expected, target in (
+            ("pending", "planning"), ("planning", "ready"), ("ready", "running"),
+        ):
+            response = self.client.post(
+                "/api/v1/work-items/api-exec-1/transitions",
+                json={"expected_status": expected, "target_status": target},
+                headers=self.headers,
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+
+        class FakeEngine:
+            def __init__(self, database):
+                self.database = database
+
+            def execute(self, request):
+                ExecutionTraceStore(self.database).record_execution_run(
+                    "request-work-1", request.model, 1.0, 2.0, "success", None, 1, None,
+                )
+                return SimpleNamespace(
+                    request_id="request-work-1", ok=True, model=request.model,
+                    provider=None, outcome="success", error_class=None, error=None,
+                    response=None, attempts=[],
+                )
+
+        with patch("g4f.rocksoul_api.ExecutionEngine", FakeEngine):
+            executed = self.client.post(
+                "/api/v1/execute",
+                json={"model": "test-model", "messages": [{"role": "user", "content": "hello"}],
+                      "max_attempts": 3, "max_total_time": 90, "timeout": 30, "work_id": "api-exec-1"},
+                headers=self.headers,
+            )
+        self.assertEqual(executed.status_code, 200, executed.text)
+        body = executed.json()
+        self.assertEqual(body["task_outcome"], "unverified")
+        self.assertEqual(body["transport_outcome"], "success")
+        self.assertEqual(body["applied_budget"], {"max_attempts": 2, "max_total_time": 5.0, "timeout": 5.0})
+        readback = self.client.get("/api/v1/work-items/api-exec-1", headers=self.headers).json()
+        self.assertEqual(readback["status"], "running")
+        self.assertEqual(readback["execution_links"][0]["request_id"], "request-work-1")
+
+    def test_work_item_execution_denies_missing_capability(self):
+        contract = {
+            "schema_version": 1,
+            "work_id": "api-denied-1",
+            "goal": "Must not execute without permission.",
+            "acceptance_criteria": [{
+                "criterion_id": "artifact",
+                "description": "Artifact digest is verified.",
+                "verification_method": "artifact_digest",
+                "required": True,
+            }],
+            "risk": "low",
+            "budget": {"max_wall_time_seconds": 10, "max_attempts": 1, "max_repairs": 0,
+                       "max_tokens": None, "max_cost_usd": None},
+            "permissions": [],
+            "created_at": "2026-11-06T10:00:00+07:00",
+            "deadline_at": None,
+            "human_approval_required": False,
+        }
+        self.client.post("/api/v1/work-items", json=contract, headers=self.headers)
+        for expected, target in (
+            ("pending", "planning"), ("planning", "ready"), ("ready", "running"),
+        ):
+            self.client.post(
+                "/api/v1/work-items/api-denied-1/transitions",
+                json={"expected_status": expected, "target_status": target},
+                headers=self.headers,
+            )
+        denied = self.client.post(
+            "/api/v1/execute",
+            json={"model": "test-model", "messages": [{"role": "user", "content": "hello"}],
+                  "work_id": "api-denied-1"},
+            headers=self.headers,
+        )
+        self.assertEqual(denied.status_code, 403)
 
     def test_profile_and_work_item_lifecycle_api(self):
         profile = {
