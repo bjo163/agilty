@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import os
 import tempfile
 import unittest
@@ -92,34 +94,24 @@ class RocksoulWorkApiTests(unittest.TestCase):
             )
             self.assertEqual(moved.status_code, 200, moved.text)
 
-        evidence = {
-            "evidence_id": "api-ev-1",
-            "evidence_type": "artifact_digest",
-            "source": "artifact://sha256/test",
-            "digest": "b" * 64,
-            "captured_at": "2026-11-06T10:05:00+07:00",
-            "verifier_id": "artifact-checker",
-            "verifier_version": "1.0.0",
-        }
+        artifact = b"real artifact bytes from the API test"
+        verified = self.client.post(
+            "/api/v1/work-items/api-work-1/criteria/artifact/verify",
+            json={
+                "profile_id": "artifact.check",
+                "profile_version": 1,
+                "artifact_base64": base64.b64encode(artifact).decode("ascii"),
+                "source": "test://api/artifact-1",
+                "expected_sha256": hashlib.sha256(artifact).hexdigest(),
+            },
+            headers=self.headers,
+        )
+        self.assertEqual(verified.status_code, 200, verified.text)
+        self.assertEqual(verified.json()["outcome"], "pass")
+
         accepted = self.client.post(
             "/api/v1/work-items/api-work-1/transitions",
-            json={
-                "expected_status": "verifying",
-                "target_status": "accepted",
-                "payload": {
-                    "verification_results": {
-                        "artifact": {
-                            "outcome": "pass",
-                            "profile_id": "artifact.check",
-                            "profile_version": 1,
-                            "verifier_id": "artifact-checker",
-                            "verifier_version": "1.0.0",
-                            "independence_group": "artifact_integrity",
-                            "evidence": [evidence],
-                        }
-                    }
-                },
-            },
+            json={"expected_status": "verifying", "target_status": "accepted"},
             headers=self.headers,
         )
         self.assertEqual(accepted.status_code, 200, accepted.text)
