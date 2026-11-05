@@ -113,6 +113,33 @@ class WorkGraphStoreTests(unittest.TestCase):
         self.assertEqual(result["blocked_nodes"][0], "build")
         self.assertEqual(result["nodes"][0]["reason"], "work_item_not_found")
 
+    def test_readiness_fails_closed_on_malformed_work_item_contract_json(self):
+        work_store = WorkItemStore(self.db)
+        work_store.create(WorkItem(
+            work_id="work-build",
+            goal="Build the artifact",
+            acceptance_criteria=(AcceptanceCriterion(
+                criterion_id="artifact", description="Artifact digest is recorded",
+                verification_method="artifact_digest",
+            ),),
+        ))
+        work_store.create(WorkItem(
+            work_id="work-test",
+            goal="Test the artifact",
+            acceptance_criteria=(AcceptanceCriterion(
+                criterion_id="tests", description="Tests pass",
+                verification_method="pytest",
+            ),),
+        ))
+        with self.db.connect() as conn:
+            conn.execute("UPDATE rocksoul_work_items SET contract_json=? WHERE work_id=?",
+                         ("{malformed", "work-build"))
+        result = self.store.resolve_readiness("pipeline", work_store)
+        self.assertEqual(result["integrity_error_nodes"], ["build"])
+        states = {item["node_id"]: item for item in result["nodes"]}
+        self.assertEqual(states["build"]["state"], "integrity_error")
+        self.assertEqual(states["test"]["state"], "blocked")
+
     def test_readiness_fails_closed_on_invalid_work_item_chain(self):
         work_store = WorkItemStore(self.db)
         work_store.create(WorkItem(
