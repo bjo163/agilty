@@ -112,6 +112,9 @@ class WorkItemStore:
     def create(self, item: WorkItem) -> dict[str, Any]:
         if not isinstance(item, WorkItem):
             raise WorkItemStoreError("create requires a validated WorkItem")
+        prior_chain = self.verify_event_chain(item.work_id)
+        if not prior_chain["ok"] and prior_chain.get("reason") != "work_item_not_found":
+            raise WorkItemStoreError("existing WorkItem integrity check failed; idempotent create is blocked")
         payload = self._canonical(item.to_dict())
         now = datetime.now(timezone.utc).isoformat(timespec="microseconds")
         with self.db.connect() as conn:
@@ -137,11 +140,12 @@ class WorkItemStore:
         event_payload = dict(payload or {})
         # Payloads are persisted as JSON; reject unserializable values before acquiring a write lock.
         accepting = target is WorkStatus.ACCEPTED or target == WorkStatus.ACCEPTED.value
+        chain = self.verify_event_chain(work_id)
+        if chain.get("reason") == "work_item_not_found":
+            raise WorkItemStoreError("WorkItem not found")
+        if not chain["ok"]:
+            raise WorkItemStoreError("WorkItem evidence chain is invalid; lifecycle transition is blocked")
         registry = self.profiles.registry() if accepting else None
-        if accepting:
-            chain = self.verify_event_chain(work_id)
-            if not chain["ok"]:
-                raise WorkItemStoreError("WorkItem evidence chain is invalid; acceptance is blocked")
         try:
             encoded_payload = self._canonical(event_payload)
             if len(encoded_payload.encode("utf-8")) > 1_000_000:
@@ -194,8 +198,11 @@ class WorkItemStore:
         if not isinstance(execution, VerificationExecution):
             raise WorkItemStoreError("record_verification requires a VerificationEngine execution result")
         result = execution.result
-        if self.get(work_id) is None:
+        chain = self.verify_event_chain(work_id)
+        if chain.get("reason") == "work_item_not_found":
             raise WorkItemStoreError("WorkItem not found")
+        if not chain["ok"]:
+            raise WorkItemStoreError("WorkItem evidence chain is invalid; verification is blocked")
         profile = self.profiles.resolve(result.profile_id, result.profile_version)
         registry = VerificationProfileRegistry((profile,))
         with self.db.connect() as conn:
@@ -269,6 +276,11 @@ class WorkItemStore:
             }
 
     def attach_execution(self, work_id: str, request_id: str, transport_outcome: str, *, applied_budget: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        chain = self.verify_event_chain(work_id)
+        if chain.get("reason") == "work_item_not_found":
+            raise WorkItemStoreError("WorkItem not found")
+        if not chain["ok"]:
+            raise WorkItemStoreError("WorkItem evidence chain is invalid; execution linkage is blocked")
         if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 128:
             raise WorkItemStoreError("request_id must be a non-empty identifier")
         if not isinstance(transport_outcome, str) or not transport_outcome.strip() or len(transport_outcome) > 64:
