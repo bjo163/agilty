@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from .rocksoul_verifier_engine import VerificationEngine
+from .rocksoul_verification import VerificationProfile
 from typing import Any
 
 from .rocksoul_contracts import WorkItem, WorkStatus
@@ -21,6 +22,16 @@ def _print(value: Any) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="ROCKSOUL WorkItem operator")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    profile_register = commands.add_parser("profile-register", help="Register an immutable verification profile version")
+    profile_register.add_argument("profile", type=Path)
+
+    profile_list = commands.add_parser("profile-list", help="List registered verification profiles")
+    profile_list.add_argument("--limit", type=int, default=100)
+
+    profile_get = commands.add_parser("profile-get", help="Read a registered verification profile")
+    profile_get.add_argument("profile_id")
+    profile_get.add_argument("version", type=int)
 
     create = commands.add_parser("create", help="Create a WorkItem from a JSON contract file")
     create.add_argument("contract", type=Path)
@@ -54,7 +65,17 @@ def main() -> None:
     args = parser.parse_args()
     store = WorkItemStore(RocksoulDB())
 
-    if args.command == "create":
+    if args.command == "profile-register":
+        raw = json.loads(args.profile.read_text(encoding="utf-8"))
+        _print(store.profiles.register(VerificationProfile.from_dict(raw)))
+    elif args.command == "profile-list":
+        _print(store.profiles.list(args.limit))
+    elif args.command == "profile-get":
+        result = store.profiles.get(args.profile_id, args.version)
+        if result is None:
+            raise SystemExit("Verification profile not found")
+        _print(result)
+    elif args.command == "create":
         raw = json.loads(args.contract.read_text(encoding="utf-8"))
         _print(store.create(WorkItem.from_dict(raw)))
     elif args.command == "get":
