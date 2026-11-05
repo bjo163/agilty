@@ -44,6 +44,7 @@ class WorkGraphStoreError(ValueError):
 
 class WorkGraphStore:
     MAX_LIST_LIMIT = 100
+    MAX_LIST_OFFSET = 1_000_000
 
     def __init__(self, db: RocksoulDB) -> None:
         self.db = db
@@ -145,8 +146,8 @@ class WorkGraphStore:
     def list(self, *, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= self.MAX_LIST_LIMIT:
             raise WorkGraphStoreError(f"limit must be an integer in [1, {self.MAX_LIST_LIMIT}]")
-        if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
-            raise WorkGraphStoreError("offset must be a non-negative integer")
+        if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset <= self.MAX_LIST_OFFSET:
+            raise WorkGraphStoreError(f"offset must be an integer in [0, {self.MAX_LIST_OFFSET}]")
         with self.db.connect() as conn:
             total = int(conn.execute("SELECT COUNT(*) FROM rocksoul_work_graphs").fetchone()[0])
             rows = conn.execute(
