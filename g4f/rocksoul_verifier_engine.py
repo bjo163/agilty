@@ -67,7 +67,9 @@ class VerificationEngine:
         elif profile.adapter_id == "json_schema":
             evidence_type = "json_validation"
             try:
-                document = json.loads(artifact.decode("utf-8"))
+                def reject_constant(token: str):
+                    raise ValueError(f"non-finite JSON number is forbidden: {token}")
+                document = json.loads(artifact.decode("utf-8"), parse_constant=reject_constant)
                 if not isinstance(schema, Mapping):
                     raise ValueError("a JSON schema object is required")
                 self._validate_schema(document, schema)
@@ -122,8 +124,12 @@ class VerificationEngine:
             unknown = set(rule) - allowed
             if unknown:
                 raise ValueError(f"unsupported JSON schema keywords at {path}: {', '.join(sorted(unknown))}")
-            if "enum" in rule and value not in rule["enum"]:
-                raise ValueError(f"{path} is not one of the allowed enum values")
+            if "enum" in rule:
+                allowed_values = rule["enum"]
+                if not isinstance(allowed_values, list) or not 1 <= len(allowed_values) <= 100:
+                    raise ValueError(f"invalid enum constraint at {path}")
+                if value not in allowed_values:
+                    raise ValueError(f"{path} is not one of the allowed enum values")
             expected = rule.get("type")
             types = {
                 "object": dict, "array": list, "string": str, "integer": int,
@@ -140,8 +146,12 @@ class VerificationEngine:
             if isinstance(value, dict):
                 required = rule.get("required", [])
                 properties = rule.get("properties", {})
-                if not isinstance(required, list) or not isinstance(properties, Mapping):
-                    raise ValueError(f"invalid object schema at {path}")
+                if not isinstance(required, list) or len(required) > 100 or any(not isinstance(key, str) for key in required):
+                    raise ValueError(f"invalid required constraint at {path}")
+                if not isinstance(properties, Mapping) or len(properties) > 100:
+                    raise ValueError(f"invalid properties constraint at {path}")
+                if "additionalProperties" in rule and not isinstance(rule["additionalProperties"], bool):
+                    raise ValueError(f"additionalProperties must be a boolean at {path}")
                 missing = [key for key in required if key not in value]
                 if missing:
                     raise ValueError(f"{path} is missing required properties: {', '.join(map(str, missing))}")
@@ -176,6 +186,6 @@ class VerificationEngine:
                 if "maximum" in rule and value > rule["maximum"]:
                     raise ValueError(f"{path} is above maximum")
 
-        if len(json.dumps(schema, ensure_ascii=False).encode("utf-8")) > cls.MAX_SCHEMA_BYTES:
+        if len(json.dumps(schema, ensure_ascii=False, allow_nan=False).encode("utf-8")) > cls.MAX_SCHEMA_BYTES:
             raise ValueError("JSON schema exceeds 65536 bytes")
         check(document, schema, "$", 0)
