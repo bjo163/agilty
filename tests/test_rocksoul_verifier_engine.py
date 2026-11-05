@@ -194,5 +194,16 @@ class VerificationEngineTests(unittest.TestCase):
                 self.assertEqual(result.result.outcome, VerificationOutcome.FAIL)
 
 
+    def test_source_provenance_requires_exact_content_address(self):
+        artifact = b"content-addressed artifact"
+        digest = hashlib.sha256(artifact).hexdigest()
+        profile = self.profile("source_provenance", "source_provenance")
+        passed = self.engine.verify(profile, artifact, source=f"sha256:{digest}")
+        failed = self.engine.verify(profile, artifact, source="https://example.test/artifact")
+        self.assertEqual(passed.result.outcome, VerificationOutcome.PASS)
+        self.assertEqual(passed.evidence[0].evidence_type, "source_provenance")
+        self.assertEqual(failed.result.outcome, VerificationOutcome.FAIL)
+
+
 if __name__ == "__main__":
     unittest.main()
