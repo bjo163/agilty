@@ -118,6 +118,10 @@ class WorkItemStoreTests(unittest.TestCase):
         linked = self.store.attach_execution("work-store-1", "request-1", "success")
         self.assertEqual(linked["status"], "running")
         self.assertEqual(linked["execution_links"][0]["transport_outcome"], "success")
+        again = self.store.attach_execution("work-store-1", "request-1", "success")
+        self.assertEqual(len(again["execution_links"]), 1)
+        with self.assertRaises(WorkItemStoreError):
+            self.store.attach_execution("work-store-1", "request-1", "failure")
         self.assertTrue(self.store.verify_event_chain("work-store-1")["ok"])
     def test_acceptance_rejects_missing_profile_or_verifier_execution(self):
         self.store.create(item())
