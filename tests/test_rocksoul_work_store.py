@@ -118,6 +118,7 @@ class WorkItemStoreTests(unittest.TestCase):
         linked = self.store.attach_execution("work-store-1", "request-1", "success")
         self.assertEqual(linked["status"], "running")
         self.assertEqual(linked["execution_links"][0]["transport_outcome"], "success")
+        self.assertEqual(traces.trace("request-1")["work_id"], "work-store-1")
         again = self.store.attach_execution("work-store-1", "request-1", "success")
         self.assertEqual(len(again["execution_links"]), 1)
         with self.assertRaises(WorkItemStoreError):
