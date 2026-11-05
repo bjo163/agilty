@@ -113,7 +113,7 @@ python -m g4f.rocksoul_arena_production_cli campaign-report --pack-digest <pack-
 
 The CLI does not invoke providers or make network calls. Its built-in `fixture-campaign` runs only synthetic offline cases. The registered pack is immutable by name/version; changing content requires a version bump. See [production CLI manifest and workflow](docs/rocksoul-arena-production-cli.md).
 
-Architecture, security boundaries, release gates, migration notes, and the granular backlog are collected under [`docs/rocksoul-product.md`](docs/rocksoul-product.md) and [`docs/rocksoul-todo.md`](docs/rocksoul-todo.md).
+The product direction, narrative, strategic blueprint, future roadmap, security boundaries, release gates, and granular implementation backlog are documented in [`docs/rocksoul-product.md`](docs/rocksoul-product.md), [`docs/rocksoul-narrative.md`](docs/rocksoul-narrative.md), [`docs/rocksoul-blueprint.md`](docs/rocksoul-blueprint.md), [`docs/rocksoul-future-roadmap.md`](docs/rocksoul-future-roadmap.md), and [`docs/rocksoul-todo.md`](docs/rocksoul-todo.md). ROCKSOUL's strategic direction is evidence-driven execution and task-specific verification—not a claim of AGI or certified general intelligence.
 
 ---
 
