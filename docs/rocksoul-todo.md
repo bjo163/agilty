@@ -387,7 +387,7 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 ### RS-F9-005 — WorkItem API integration without false transport success
 - Status: `DONE` — API foundation and execution trace linkage.
 - Scope implemented: authenticated WorkItem create/list/read/transition/event-chain endpoints; profile register/list/read endpoints; per-criterion verifier execution endpoint; optional `work_id` on legacy-compatible `POST /api/v1/execute`.
-- Acceptance: execution trace is linked to a WorkItem only after the WorkItem is RUNNING; response keeps provider transport outcome separate and reports `task_outcome=unverified`; provider success never auto-accepts work.
+- Acceptance: execution trace is linked only to a RUNNING WorkItem; exact `model.execute` permission is required; approval/deadline gates are enforced; wall-time/attempt budgets are capped; unsupported token/cost budgets fail closed; response keeps transport separate and reports `task_outcome=unverified`; provider success never auto-accepts work.
 - Remaining: direct Console workflow and stronger execution_runs-level foreign-key correlation are future enhancements.
 
 ### RS-F9-006 — WorkItem CLI and operator readback
