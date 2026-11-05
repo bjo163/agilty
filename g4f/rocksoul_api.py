@@ -247,7 +247,7 @@ def create_app(db: RocksoulDB | None = None):
         secret = os.environ.get("ROCKSOUL_APPROVAL_SIGNING_SECRET", "")
         if len(secret) < 32:
             raise HTTPException(status_code=503, detail="ROCKSOUL_APPROVAL_SIGNING_SECRET must contain at least 32 characters")
-        if not isinstance(x_rocksoul_approval_signature, str) or len(x_rocksoul_approval_signature) != 64:
+        if not isinstance(x_rocksoul_approval_signature, str) or len(x_rocksoul_approval_signature) != 64 or any(ch not in "0123456789abcdef" for ch in x_rocksoul_approval_signature):
             raise HTTPException(status_code=401, detail="Signed administrator approval is required")
         try:
             canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
