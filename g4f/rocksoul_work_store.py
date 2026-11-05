@@ -431,12 +431,26 @@ class WorkItemStore:
         offset = max(0, min(int(offset), 100000))
         with self.db.connect() as conn:
             rows = conn.execute(
-                """SELECT work_id,status,contract_digest,created_at,updated_at
+                """SELECT work_id,status,contract_digest,created_at,updated_at,contract_json
                    FROM rocksoul_work_items ORDER BY created_at DESC,work_id LIMIT ? OFFSET ?""",
                 (limit, offset),
             ).fetchall()
             total = int(conn.execute("SELECT COUNT(*) FROM rocksoul_work_items").fetchone()[0])
-        return {"items": [dict(row) for row in rows], "total": total, "limit": limit, "offset": offset}
+            items = []
+            for row in rows:
+                contract = json.loads(row["contract_json"])
+                approval = conn.execute(
+                    "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.approval_recorded' ORDER BY sequence DESC LIMIT 1",
+                    (row["work_id"],),
+                ).fetchone()
+                items.append({
+                    "work_id": row["work_id"], "status": row["status"],
+                    "contract_digest": row["contract_digest"], "created_at": row["created_at"],
+                    "updated_at": row["updated_at"], "risk": contract.get("risk"),
+                    "human_approval_required": contract.get("human_approval_required", False),
+                    "latest_approval": json.loads(approval["payload_json"]) if approval else None,
+                })
+        return {"items": items, "total": total, "limit": limit, "offset": offset}
 
     def verify_event_chain(self, work_id: str) -> dict[str, Any]:
         with self.db.connect() as conn:
