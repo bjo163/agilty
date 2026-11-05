@@ -241,7 +241,7 @@ class WorkItemStore:
                                  WorkStatus.CANCELLED.value, WorkStatus.EXPIRED.value}:
                 raise WorkItemStoreError("terminal WorkItem cannot receive an approval")
             events = conn.execute(
-                "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.approval_recorded'",
+                "SELECT payload_json FROM rocksoul_work_events WHERE work_id=? AND event_type='work.approval_recorded' ORDER BY sequence ASC",
                 (work_id,),
             ).fetchall()
             if any(json.loads(entry["payload_json"]).get("nonce") == nonce for entry in events):
