@@ -40,6 +40,30 @@ class RocksoulApiTests(unittest.TestCase):
         self.assertEqual(providers.status_code, 200)
         self.assertEqual(providers.json()["total"], 1)
 
+    def test_mesh_arena_and_trace_read_models(self):
+        mesh = self.client.get("/api/v1/mesh")
+        arena = self.client.get("/api/v1/arena")
+        traces = self.client.get("/api/v1/traces")
+        self.assertEqual(mesh.status_code, 200)
+        self.assertIn("nodes", mesh.json())
+        self.assertEqual(arena.status_code, 200)
+        self.assertIn("production", arena.json())
+        self.assertEqual(traces.status_code, 200)
+        self.assertEqual(traces.json()["total"], 0)
+
+    def test_provider_control_requires_operator_key(self):
+        response = self.client.post("/api/v1/providers/fixture/control", json={"action": "quarantine"})
+        self.assertEqual(response.status_code, 503)
+
+    def test_provider_control_rejects_unknown_action(self):
+        with patch.dict(os.environ, {"ROCKSOUL_API_KEY": "expected"}, clear=True):
+            response = self.client.post(
+                "/api/v1/providers/fixture/control",
+                headers={"X-ROCKSOUL-API-Key": "expected"},
+                json={"action": "delete"},
+            )
+        self.assertEqual(response.status_code, 422)
+
     def test_execute_requires_configured_operator_key(self):
         with patch.dict(os.environ, {}, clear=True):
             response = self.client.post("/api/v1/execute", json={
