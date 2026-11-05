@@ -34,7 +34,7 @@ The current P0 foundation includes:
 - Built-in deterministic `artifact_digest` and bounded `json_schema` verifier adapters. Other declared adapter IDs fail with `ERROR`.
 - Persisted verifier results and evidence receipts linked to lifecycle events; acceptance requires the latest persisted PASS for every required criterion.
 - Authenticated API and `rocksoul-work` CLI for contracts, profiles, verification, transitions, and event-chain checks.
-- Optional API-level WorkItem-to-execution trace linkage; provider transport success remains separate from task outcome.
+- Optional API-level WorkItem-to-execution trace linkage with exact `model.execute` permission, deadline/approval gates, and wall-time/attempt budget caps; provider transport success remains separate from task outcome.
 
 **Scope boundary:** the engine verifies the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact. `pytest`, `http_contract`, and `source_provenance` adapters remain unimplemented. Native execution_runs foreign-key correlation and Console workflow remain future work. See [Work Contracts & Verification Profiles](rocksoul-work-contracts.md).
 
