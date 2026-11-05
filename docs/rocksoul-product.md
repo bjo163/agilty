@@ -26,16 +26,17 @@ These capabilities are not equivalent to a complete autonomous agent platform. T
 
 ## Work Contract Foundation — implemented
 
-The first P0 contract foundation is now implemented in `g4f/rocksoul_contracts.py`:
+The current P0 foundation includes:
 
-- `WorkItem` captures a stable work ID, goal, required acceptance criteria, risk, budget, exact permissions, creation time, optional deadline, and human-approval requirement.
-- `ExecutionBudget` validates finite wall-time, attempt, repair, token, and optional cost limits.
-- `AcceptanceCriterion` binds a checkable requirement to a stable verification-method identifier.
-- `WorkStatus` and `validate_status_transition` prevent illegal lifecycle jumps; acceptance must pass through `VERIFYING`.
-- Strict dictionary parsing rejects unknown fields. Canonical serialization produces a SHA-256 contract digest.
-- Empty permissions mean no tool capability is authorized. High/critical risk cannot disable human approval.
+- Canonical WorkItem, bounded budgets, exact permissions, risk/approval policy, strict schema parsing, and lifecycle validation.
+- Immutable SQLite WorkItem contracts, idempotent creation, atomic expected-state transitions, append-only hash-chained events, and tamper readback.
+- Immutable versioned verification profiles with allowlisted adapter identifiers and evidence requirements.
+- Built-in deterministic `artifact_digest` and bounded `json_schema` verifier adapters. Other declared adapter IDs fail with `ERROR`.
+- Persisted verifier results and evidence receipts linked to lifecycle events; acceptance requires the latest persisted PASS for every required criterion.
+- Authenticated API and `rocksoul-work` CLI for contracts, profiles, verification, transitions, and event-chain checks.
+- Optional API-level WorkItem-to-execution trace linkage; provider transport success remains separate from task outcome.
 
-**Scope boundary:** this is a dependency-free schema and lifecycle foundation with contract tests. It is not yet persisted, exposed through the API/Console, or wired into `ExecutionEngine`; it does not verify provider output or certify task outcomes.
+**Scope boundary:** the engine verifies the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact. `pytest`, `http_contract`, and `source_provenance` adapters remain unimplemented. Native execution_runs foreign-key correlation and Console workflow remain future work. See [Work Contracts & Verification Profiles](rocksoul-work-contracts.md).
 
 ## What ROCKSOUL is becoming
 
@@ -113,21 +114,15 @@ Report by task family and verifier confidence. Do not collapse correctness, safe
 |---|---|---|
 | Runtime | Existing g4f substrate | Reusable multi-runtime adapters |
 | Routing | Explainable capability-aware foundation | Historical, contextual, step-level routing |
-| Execution | Bounded attempts/time, traceability, canonical WorkItem schema, SQLite lifecycle store and hash-chained events | WorkItem-to-ExecutionEngine correlation, checkpoints, scoped tools |
+| Execution | Bounded attempts/time, traceability, persisted WorkItems, verifier receipts, hash-chained lifecycle and API-level execution trace linkage | Native execution_runs correlation, checkpoints, scoped tools |
 | Reliability | Health, quarantine, recovery | Drift-aware capability re-verification |
 | Mesh | Authenticated nodes and leases | Attestation, isolation, data locality |
 | Arena | Deterministic foundation and integrity audit | Adversarial, held-out, provenance-rich evaluation |
-| API/Console | Authenticated WorkItem lifecycle and immutable verification-profile API foundations; Console remains a foundation | Execution-correlated work/evidence cockpit and policy lifecycle |
-| Anti-slop | Versioned profile contracts, evidence requirements and trusted-caller attestation validation; no executable verifier adapters yet | Artifact-bound deterministic verifiers, independent evaluators and authenticated receipts |
+| API/Console | Authenticated WorkItem lifecycle, verifier execution, profile registry, and API-level trace linkage; Console remains a foundation | Native execution correlation, outcome cockpit and policy lifecycle |
+| Anti-slop | Artifact SHA-256 and bounded JSON Schema adapters with persisted evidence receipts | Code/test, HTTP-contract, source-provenance and independent evaluators |
 | Learning | Evidence capture foundation | Offline learning and controlled policy promotion |
 | Memory/autonomy | Not yet a complete product capability | Provenance-aware memory and bounded long-running workflows |
 
-
-## Work Contract Foundation — implementation boundary
-
-The product now has canonical WorkItem contracts, bounded lifecycle transitions, immutable SQLite contract records, append-only hash-chained lifecycle events, immutable versioned verification-profile persistence, authenticated API readback/mutation, and an operator CLI. Acceptance requires a registered profile version and structured PASS attestation with provenance-bearing evidence records.
-
-This is a governed contract and attestation foundation—not a complete verification engine. The named adapter is not dynamically loaded or executed; submitted evidence digests are not independently recomputed against artifact bytes. A trusted API caller can attest to PASS, so production-grade task certification remains gated on executable adapters and authenticated artifact-bound receipts. Provider transport success remains distinct from WorkItem acceptance.
 
 ## Product roadmap
 
