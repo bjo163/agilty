@@ -57,6 +57,13 @@ class RocksoulApiTests(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 401)
 
+    def test_execute_rejects_oversized_message_payload(self):
+        response = self.client.post("/api/v1/execute", json={
+            "model": "fixture-model",
+            "messages": [{"role": "user", "content": "x" * 1_000_001}],
+        })
+        self.assertEqual(response.status_code, 422)
+
     def test_execute_rejects_unknown_fields(self):
         response = self.client.post("/api/v1/execute", json={
             "model": "fixture-model",

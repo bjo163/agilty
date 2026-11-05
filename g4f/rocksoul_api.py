@@ -4,6 +4,7 @@ This adapter composes existing stores, routing and execution services. It does
 not implement or own provider adapters.
 """
 import hmac
+import json
 import os
 from typing import Any
 
@@ -30,7 +31,7 @@ def _safe_response(value: Any) -> Any:
 def create_app(db: RocksoulDB | None = None):
     try:
         from fastapi import FastAPI, Header, HTTPException
-        from pydantic import BaseModel, ConfigDict, Field
+        from pydantic import BaseModel, ConfigDict, Field, model_validator
     except ImportError as exc:
         raise RuntimeError("ROCKSOUL HTTP API requires the 'rocksoul-api' extra") from exc
 
@@ -57,6 +58,13 @@ def create_app(db: RocksoulDB | None = None):
         max_total_time: float = Field(default=90.0, gt=0, le=300)
         timeout: float = Field(default=30.0, gt=0, le=120)
         stream: bool = False
+
+        @model_validator(mode="after")
+        def enforce_payload_budget(self):
+            encoded = json.dumps(self.messages, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            if len(encoded) > 1_000_000:
+                raise ValueError("messages payload must not exceed 1 MiB")
+            return self
 
     def require_operator(api_key: str | None):
         expected = os.environ.get("ROCKSOUL_API_KEY", "")

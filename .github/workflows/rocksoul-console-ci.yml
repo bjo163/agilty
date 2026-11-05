@@ -1,0 +1,39 @@
+name: ROCKSOUL Console CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/rocksoul-console/**'
+      - '.github/workflows/rocksoul-console-ci.yml'
+  pull_request:
+    paths:
+      - 'frontend/rocksoul-console/**'
+      - '.github/workflows/rocksoul-console-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Next.js / Node 24
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/rocksoul-console
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/rocksoul-console/package.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Production build
+        env:
+          ROCKSOUL_API_INTERNAL_URL: http://127.0.0.1:8765
+        run: npm run build
