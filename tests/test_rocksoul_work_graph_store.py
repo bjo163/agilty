@@ -8,6 +8,8 @@ from pathlib import Path
 from g4f.rocksoul_db import RocksoulDB
 from g4f.rocksoul_work_graph import WorkGraph, WorkGraphNode
 from g4f.rocksoul_work_graph_store import WorkGraphStore, WorkGraphStoreError
+from g4f.rocksoul_contracts import AcceptanceCriterion, WorkItem
+from g4f.rocksoul_work_store import WorkItemStore
 
 
 class WorkGraphStoreTests(unittest.TestCase):
@@ -79,6 +81,63 @@ class WorkGraphStoreTests(unittest.TestCase):
         result = self.store.verify_event_chain("missing")
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "work_graph_not_found")
+
+    def test_readiness_uses_authoritative_work_item_state(self):
+        work_store = WorkItemStore(self.db)
+        work_store.create(WorkItem(
+            work_id="work-build",
+            goal="Build the artifact",
+            acceptance_criteria=(AcceptanceCriterion(
+                criterion_id="artifact", description="Artifact digest is recorded",
+                verification_method="artifact_digest",
+            ),),
+        ))
+        work_store.create(WorkItem(
+            work_id="work-test",
+            goal="Test the artifact",
+            acceptance_criteria=(AcceptanceCriterion(
+                criterion_id="tests", description="Tests pass",
+                verification_method="pytest",
+            ),),
+        ))
+        result = self.store.resolve_readiness("pipeline", work_store)
+        self.assertEqual(result["ready_nodes"], ["build"])
+        self.assertEqual(result["waiting_nodes"], ["test"])
+        states = {item["node_id"]: item for item in result["nodes"]}
+        self.assertEqual(states["build"]["state"], "ready")
+        self.assertEqual(states["test"]["waiting_for"], ["build"])
+
+    def test_readiness_blocks_missing_work_items(self):
+        result = self.store.resolve_readiness("pipeline", WorkItemStore(self.db))
+        self.assertEqual(result["blocked_nodes"], ["build"])
+        self.assertEqual(result["blocked_nodes"][0], "build")
+        self.assertEqual(result["nodes"][0]["reason"], "work_item_not_found")
+
+    def test_readiness_fails_closed_on_invalid_work_item_chain(self):
+        work_store = WorkItemStore(self.db)
+        work_store.create(WorkItem(
+            work_id="work-build",
+            goal="Build the artifact",
+            acceptance_criteria=(AcceptanceCriterion(
+                criterion_id="artifact", description="Artifact digest is recorded",
+                verification_method="artifact_digest",
+            ),),
+        ))
+        work_store.create(WorkItem(
+            work_id="work-test",
+            goal="Test the artifact",
+            acceptance_criteria=(AcceptanceCriterion(
+                criterion_id="tests", description="Tests pass",
+                verification_method="pytest",
+            ),),
+        ))
+        with self.db.connect() as conn:
+            conn.execute("UPDATE rocksoul_work_events SET payload_json=? WHERE work_id=? AND sequence=1",
+                         (json.dumps({"contract_digest": "0" * 64, "schema_version": 1}), "work-build"))
+        result = self.store.resolve_readiness("pipeline", work_store)
+        self.assertEqual(result["integrity_error_nodes"], ["build"])
+        self.assertIn("build", result["blocked_nodes"])
+        self.assertEqual({n["node_id"]: n for n in result["nodes"]}["test"]["state"], "blocked")
 
 
 if __name__ == "__main__":
