@@ -116,6 +116,12 @@ class WorkItemTests(unittest.TestCase):
     def test_schema_version_is_explicit(self):
         with self.assertRaises(ContractValidationError):
             work_item(schema_version=2)
+        with self.assertRaises(ContractValidationError):
+            work_item(schema_version=1.0)
+        payload = work_item().to_dict()
+        del payload["schema_version"]
+        with self.assertRaises(ContractValidationError):
+            WorkItem.from_dict(payload)
 
 
 class WorkLifecycleTests(unittest.TestCase):
