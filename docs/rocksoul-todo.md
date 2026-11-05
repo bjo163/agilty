@@ -407,10 +407,18 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Acceptance: provider transport success cannot auto-transition a WorkItem to ACCEPTED; explicit verifier execution and a separate transition are required.
 - Remaining: native `execution_runs.work_id` column and Console outcome cockpit are not yet implemented.
 
+### RS-F9-009 — Console WorkItem & Evidence Cockpit
+- Status: `DONE` — read-only operator cockpit foundation.
+- Scope: authenticated Console navigation and WorkItem list, outcome counters, contract digest visibility, detail readback, and event-chain integrity checks.
+- Implementation: `frontend/rocksoul-console/src/app/page.tsx` and authenticated API proxy.
+- Security: proxy forwards the API key for protected GET as well as POST routes; API keys remain server-side.
+- Tests: Playwright operator navigation assertion.
+- Remaining: WorkItem creation, lifecycle mutation, profile registration, artifact upload/verification UI, and rich evidence diff remain TODO.
+
 ### Stage 8 verification boundary
 - WorkItem contracts, profile definitions/persistence, lifecycle storage, authenticated API, operator CLI, execution trace linkage, and two deterministic verifier adapters are implemented.
 - Only `artifact_digest` and the bounded `json_schema` subset execute. Other allowlisted identifiers return `ERROR`.
 - Acceptance requires a latest persisted built-in verifier PASS for every required criterion and a valid event/receipt hash chain; caller-supplied PASS payloads are rejected.
 - The verifier hashes the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact.
-- Console integration, additional verifier adapters, native execution_runs correlation, and signed external evidence remain open.
+- Console read-only WorkItem cockpit is implemented. Console creation/mutation/verification workflows, additional verifier adapters, native execution_runs correlation, and signed external evidence remain open.
 - Existing F1–F7 execution, Mesh, Arena, API, and Console contracts remain compatibility requirements.
