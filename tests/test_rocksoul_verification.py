@@ -52,6 +52,12 @@ class VerificationProfileTests(unittest.TestCase):
         with self.assertRaises(VerificationProfileError):
             VerificationProfile.from_dict(payload)
 
+    def test_evidence_requirements_cannot_disable_digest_or_source(self):
+        with self.assertRaises(VerificationProfileError):
+            EvidenceRequirement("test_receipt", require_digest=False)
+        with self.assertRaises(VerificationProfileError):
+            EvidenceRequirement("test_receipt", require_source=False)
+
     def test_adapter_must_be_allowlisted(self):
         with self.assertRaises(VerificationProfileError):
             profile(adapter_id="arbitrary_python_callable")
