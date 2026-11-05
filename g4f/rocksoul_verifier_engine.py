@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import time
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
@@ -76,6 +77,33 @@ class VerificationEngine:
                 self._validate_schema(document, schema)
                 outcome = VerificationOutcome.PASS
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError, RecursionError) as exc:
+                findings.append(str(exc)[:2000])
+                outcome = VerificationOutcome.FAIL
+        elif profile.adapter_id == "pytest":
+            evidence_type = "test_receipt"
+            try:
+                if b"<!DOCTYPE" in artifact.upper() or b"<!ENTITY" in artifact.upper():
+                    raise ValueError("JUnit XML DTD and entity declarations are forbidden")
+                root = ET.fromstring(artifact)
+                if root.tag not in {"testsuite", "testsuites"}:
+                    raise ValueError("pytest adapter requires a JUnit testsuite/testsuites document")
+                cases = root.findall(".//testcase")
+                if not cases:
+                    raise ValueError("JUnit report contains no test cases")
+                failures = sum(1 for case in cases if case.find("failure") is not None)
+                errors = sum(1 for case in cases if case.find("error") is not None)
+                skipped = sum(1 for case in cases if case.find("skipped") is not None)
+                unnamed = sum(1 for case in cases if not str(case.attrib.get("name", "")).strip())
+                if unnamed:
+                    raise ValueError("JUnit report contains unnamed test cases")
+                findings.append(f"tests={len(cases)} failures={failures} errors={errors} skipped={skipped}")
+                if failures or errors:
+                    outcome = VerificationOutcome.FAIL
+                elif skipped:
+                    outcome = VerificationOutcome.INCONCLUSIVE
+                else:
+                    outcome = VerificationOutcome.PASS
+            except (ET.ParseError, ValueError, RecursionError) as exc:
                 findings.append(str(exc)[:2000])
                 outcome = VerificationOutcome.FAIL
         else:
