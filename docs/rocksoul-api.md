@@ -19,14 +19,24 @@ Defaults to loopback `127.0.0.1:8765`. Binding beyond loopback requires `ROCKSOU
 - `GET /api/v1/routes/{model}/explain` — canonical route explanation; optional comma-separated `requirements` and `providers_filter`.
 - `GET /api/v1/traces/{request_id}` — persisted execution trace.
 - `POST /api/v1/execute` — bounded non-streaming execution, requires `X-ROCKSOUL-API-Key`.
+- `GET|POST /api/v1/verification-profiles` — authenticated immutable profile registry list/register.
+- `GET /api/v1/verification-profiles/{profile_id}/{version}` — authenticated immutable profile readback.
+- `GET|POST /api/v1/work-items` — authenticated WorkItem list/create.
+- `GET /api/v1/work-items/{work_id}` — authenticated contract and lifecycle readback.
+- `POST /api/v1/work-items/{work_id}/transitions` — authenticated expected-state lifecycle transition.
+- `GET /api/v1/work-items/{work_id}/verify-chain` — authenticated event hash-chain verification.
 
 OpenAPI docs: `/api/docs`.
 
 ## Safety
-Unknown request fields are rejected. Message count, attempt count, timeout and total duration are bounded. Arbitrary provider objects are never accepted. Streaming is rejected by this JSON endpoint to avoid partial-response replay ambiguity. API keys are compared in constant time and never returned. Do not expose execution publicly without user/session and tenant authorization.
+WorkItem and verification-profile endpoints require the operator API key for both reads and writes. Unknown request fields are rejected. Message count, attempt count, timeout and total duration are bounded. Arbitrary provider objects are never accepted. Streaming is rejected by this JSON endpoint to avoid partial-response replay ambiguity. API keys are compared in constant time and never returned. Do not expose execution publicly without user/session and tenant authorization.
 
 ## Deployment
 Keep the API on a private network. The Next.js console proxies browser requests through same-origin `/api/*` rewrites to `ROCKSOUL_API_INTERNAL_URL`; the API key must remain server-side and must never use a `NEXT_PUBLIC_*` variable.
+
+## Work Contract boundary
+
+See [Work Contracts & Verification Profiles](rocksoul-work-contracts.md) for schemas, lifecycle semantics, CLI usage, and evidence requirements. Profile registration does not execute an adapter. Acceptance currently validates a trusted-caller PASS attestation and evidence metadata; the API does not independently run verifiers or recompute artifact digests. WorkItem-to-ExecutionEngine correlation remains future work.
 
 ## Not included
 Multi-tenant accounts, billing, quotas, public gateway exposure, streaming transport, Mesh administration and Arena campaign mutation APIs require dedicated authorization and audit contracts.
