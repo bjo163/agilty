@@ -21,6 +21,9 @@ Defaults to loopback `127.0.0.1:8765`. Binding beyond loopback requires `ROCKSOU
 - `POST /api/v1/execute` — bounded non-streaming execution, requires `X-ROCKSOUL-API-Key`.
 - `GET|POST /api/v1/verification-profiles` — authenticated immutable profile registry list/register.
 - `GET /api/v1/verification-profiles/{profile_id}/{version}` — authenticated immutable profile readback.
+- `GET|POST /api/v1/work-graphs` — authenticated WorkGraph list/create; graph IDs are immutable and repeated identical creates are idempotent.
+- `GET /api/v1/work-graphs/{graph_id}` — authenticated graph contract and audit-event readback.
+- `GET /api/v1/work-graphs/{graph_id}/readiness` — authenticated read-only readiness snapshot based on referenced WorkItem status and verified event/evidence chains.
 - `GET|POST /api/v1/work-items` — authenticated WorkItem list/create.
 - `GET /api/v1/work-items/{work_id}` — authenticated contract and lifecycle readback.
 - `POST /api/v1/work-items/{work_id}/transitions` — authenticated expected-state lifecycle transition.
@@ -44,3 +47,12 @@ See [Work Contracts & Verification Profiles](rocksoul-work-contracts.md) for sch
 
 ## Not included
 Multi-tenant accounts, billing, quotas, public gateway exposure, streaming transport, Mesh administration and Arena campaign mutation APIs require dedicated authorization and audit contracts.
+
+
+## WorkGraph API and CLI
+
+WorkGraph endpoints register bounded DAG definitions and expose authoritative readiness. A dependency satisfies downstream readiness only when its referenced WorkItem exists, has status `accepted`, and its WorkItem event/evidence chain verifies. Missing dependencies and terminal failures block downstream nodes; pending dependencies leave them waiting. Invalid WorkItem chains are surfaced as integrity errors and never count as completion.
+
+Readiness is a snapshot, not an execution claim, reservation, or lock. The API does not dispatch workers, create child WorkItems, reserve aggregate budgets, or propagate cancellation. Every child retains its own permissions, budget, human approval, and verifier acceptance gate.
+
+The offline operator CLI is available as `rocksoul-work-graph` (or `python -m g4f.rocksoul_work_graph_cli`) with `create`, `list`, `get`, `verify`, and `readiness` commands. Graph JSON creation validates the full bounded DAG contract before immutable registration.
