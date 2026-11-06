@@ -35,7 +35,7 @@ The first bundled shell provides:
 - Dark/light theme preference.
 - Basic request errors and runtime status links.
 
-This is an initial UI cut, not full legacy GUI parity. Browser-local history is not server-side g4f conversation persistence. Attachments, provider login management, rich tool/media rendering, settings parity, localization, and full accessibility review remain open.
+This is an initial UI cut, not full legacy GUI parity. Only `/` and `/chat/` are provisionally replaced; the provider, diagnostics, agent, browser, playground, apps, private, versioned, and legacy content routes still use their existing handlers/pages. Browser-local history is not server-side g4f conversation persistence. Attachments, provider login management, rich tool/media rendering, settings parity, localization, and full accessibility review remain open.
 
 ## Rollback
 
@@ -58,7 +58,8 @@ The canonical deployment is the existing docker-compose.yml g4f Python service. 
 ## Release gate (open)
 
 - [ ] Automated Flask tests for enabled/disabled / and /chat/, asset path traversal rejection, and packaged asset availability.
-- [ ] Browser tests for model discovery, SSE chunk boundaries, provider errors, cancellation/disconnect, and history reload.
+- [x] Mocked browser tests for model discovery, normal SSE, EOF flush, provider errors, Stop/abort, and history reload.
+- [ ] Live-provider browser tests for upstream disconnect semantics and provider authentication.
 - [ ] Real-provider streaming check against the exact candidate runtime.
 - [ ] Built wheel and Docker image asset inclusion checks.
 - [ ] Canonical Compose deployment smoke test using Coolify-compatible settings.
