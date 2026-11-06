@@ -10,6 +10,7 @@ on:
       - 'docs/rocksoul-*.md'
       - 'setup.py'
       - 'docker-compose.yml'
+      - 'docker/Dockerfile'
       - '.github/workflows/rocksoul-ci.yml'
   pull_request:
     paths:
@@ -83,7 +84,8 @@ jobs:
       - name: Build canonical Docker image and verify bundled ROCKSOUL assets
         run: |
           docker build --build-arg G4F_VERSION=0.0.0-dev --tag rocksoul-ui-smoke --file docker/Dockerfile .
-          docker run --rm --entrypoint python rocksoul-ui-smoke -c "from importlib.resources import files; assets = files(\"g4f\").joinpath(\"gui\", \"rocksoul\"); assert all(assets.joinpath(name).is_file() for name in (\"index.html\", \"app.css\", \"app.js\"))"
+          docker run --rm --entrypoint python -e G4F_CONFIG_DIR=/data/g4f -v rocksoul-ui-smoke-data:/data/g4f rocksoul-ui-smoke -c "from importlib.resources import files; from pathlib import Path; assets = files(\"g4f\").joinpath(\"gui\", \"rocksoul\"); assert all(assets.joinpath(name).is_file() for name in (\"index.html\", \"app.css\", \"app.js\")); data = Path(\"/data/g4f\"); data.mkdir(parents=True, exist_ok=True); probe = data / \"volume-smoke.txt\"; probe.write_text(\"ok\"); assert probe.read_text() == \"ok\""
+          docker volume rm rocksoul-ui-smoke-data
 
       - name: Install minimal runtime dependencies for entrypoint smoke tests
         run: python -m pip install -r requirements-min.txt
