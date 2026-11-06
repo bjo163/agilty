@@ -56,3 +56,10 @@
 @media(max-width:760px){.primary-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.primary-nav a{font-size:10px;padding:9px 7px;gap:7px}.recent-label{margin-top:2px}.page-content{width:calc(100% - 30px);padding-top:30px}.page-heading h1{letter-spacing:-2px}.workspace-grid{grid-template-columns:1fr}.table-row{flex-direction:column;gap:5px}.table-row span{text-align:left}}
 
 .sidebar{overflow-y:auto}.history{min-height:36px;max-height:220px}
+
+.tool-card{min-width:0;padding:15px;border:1px solid var(--line);background:var(--bg)}
+.tool-card h3{font:700 13px 'Space Grotesk';margin:0 0 8px}
+.tool-card p{font-size:11px;line-height:1.7;color:var(--muted)}
+.tool-runner{display:grid;gap:10px}
+.tool-runner label{font:9px 'DM Mono';letter-spacing:1.2px;color:var(--muted)}
+.code-input{width:100%;min-height:130px;padding:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:11px/1.6 'DM Mono';resize:vertical}
