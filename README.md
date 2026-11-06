@@ -92,7 +92,7 @@ The existing g4f Python runtime remains the source of truth for provider impleme
 
 The repository also contains optional engineering/operator modules (Arena, Mesh, WorkItem, WorkGraph, verifier/evidence stores and diagnostics). These are not required for ordinary chat and do not define the ROCKSOUL product.
 
-**UI replacement status:** an initial ROCKSOUL chat shell is bundled in `g4f/gui/rocksoul` and is mounted by the existing g4f GUI server on `/` and `/chat/` by default. It loads models from `/v1/models` and streams chat through the existing `/v1/chat/completions` endpoint. A Stop control cancels the browser request; the Playwright smoke workflow covers mocked model discovery, normal SSE, EOF flush, provider errors, Stop/abort, history reload, and unavailable-local-storage resilience. Set `ROCKSOUL_UI_ENABLED=0` to roll back to the legacy HTML UI. This is an initial usable UI, not full GUI parity: server-backed history, attachments, provider login UX, rich tool/media rendering, localization, and full accessibility/regression certification remain open. See [Product](docs/rocksoul-product.md), [Narrative](docs/rocksoul-narrative.md), [Blueprint](docs/rocksoul-blueprint.md), [GUI route inventory](docs/rocksoul-ui-route-inventory.md), [Finalization status](docs/rocksoul-ui-finalization.md), and [Backlog](docs/rocksoul-todo.md).
+**UI replacement status:** ROCKSOUL is now the unified shell for the primary live GUI pages: overview (`/`), chat (`/chat/`), providers and provider details (`/providers/`), status, stats, logs, agent tools, browser workspace, playground, apps/modules, and private utilities. These screens use existing g4f endpoints such as `/v1/models`, `/v1/chat/completions`, `/backend-api/v2/providers`, `/backend-api/v2/status`, `/backend-api/v2/stats`, `/backend-api/v2/log`, `/backend-api/v2/webmcp/tools`, and `/pa/providers`; no second runtime or gateway is added. File/media routes, `/dist/*`, API routes, and version-pinned historical snapshots remain their existing non-page handlers. Set `ROCKSOUL_UI_ENABLED=0` to roll back the primary GUI pages to their legacy handlers. The new UI migration has mocked browser coverage for every workspace section, but live-provider, deployment, rich tool/media, server-side history, attachment, localization, and accessibility certification remain release gates. See [Product](docs/rocksoul-product.md), [Narrative](docs/rocksoul-narrative.md), [Blueprint](docs/rocksoul-blueprint.md), [GUI route inventory](docs/rocksoul-ui-route-inventory.md), [Finalization status](docs/rocksoul-ui-finalization.md), and [Backlog](docs/rocksoul-todo.md).
 
 ---
  
@@ -283,7 +283,7 @@ Notes:
 
 ### GUI (web client)
 
-When GUI mode is enabled, the bundled ROCKSOUL chat UI is served at `/` and `/chat/` by the existing g4f Python GUI server. Set `ROCKSOUL_UI_ENABLED=0` to temporarily restore the legacy g4f home/chat HTML during migration. The UI calls the same-origin g4f inference API; it does not start another runtime.
+When GUI mode is enabled, the bundled ROCKSOUL workspace serves the primary GUI pages from the existing g4f Python GUI server. Set `ROCKSOUL_UI_ENABLED=0` to temporarily restore the legacy g4f page handlers. The UI calls same-origin g4f APIs; it does not start another runtime.
 - Run via Python:
 ```python
 from g4f.gui import run_gui
