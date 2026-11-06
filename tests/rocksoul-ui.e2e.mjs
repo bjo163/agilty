@@ -109,6 +109,7 @@ try {
   await page.addInitScript(() => { Object.defineProperty(window.crypto, "randomUUID", { configurable: true, value: undefined }); });
   await page.evaluate(() => { const key = "rocksoul-chat-history-v1"; const items = JSON.parse(localStorage.getItem(key) || "[]"); items[0].id = "1712345678901"; localStorage.setItem(key, JSON.stringify(items)); });
   await page.reload();
+  await page.goto("http://127.0.0.1:4173/chat/");
   await page.getByText("ROCKSOUL browser test").waitFor();
   assert.equal(chatWriteCount, 0, "private chat must not be written to the server");
   await page.evaluate(() => { window.__copiedShareUrl = ""; Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { window.__copiedShareUrl = value; } } }); });
