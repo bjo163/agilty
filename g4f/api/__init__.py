@@ -183,6 +183,11 @@ _SENSITIVE_HEADERS = {
     "cookie",
     "set-cookie",
     "x-api-key",
+    "proxy-authorization",
+    "x-auth-token",
+    "x-goog-api-key",
+    "x-amz-security-token",
+    "x-session-token",
 }
 
 _request_log: deque = deque(maxlen=_MAX_LOG_ENTRIES)
@@ -256,7 +261,9 @@ _SENSITIVE_BODY_KEYS = {
     "api_key", "apikey", "authorization", "access_token", "refresh_token",
     "id_token", "password", "passwd", "secret", "client_secret",
     "cookie", "cookies", "session", "session_id", "token", "credential",
-    "credentials", "private_key", "g4f_api_key",
+    "credentials", "private_key", "g4f_api_key", "clientsecret",
+    "accesstoken", "refreshtoken", "idtoken", "sessionid", "privatekey",
+    "apikey", "api_key", "key", "auth", "bearer",
 }
 
 
