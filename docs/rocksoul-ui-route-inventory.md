@@ -32,7 +32,7 @@ The existing navigation is unified in `g4f/gui/rocksoul/index.html`; route-aware
 | `/v<version>/*` | Historical version-pinned GUI snapshots remain available and are not rewritten |
 | `/headers`, `/country-ip`, `/meta`, `/sitemap.xml` | Existing metadata/diagnostic endpoints remain unchanged |
 
-Unknown legacy content pages continue through their existing handlers. The migration targets the primary interactive GUI surfaces, not arbitrary upstream content URLs or immutable historical snapshots.
+Nested non-HTML assets requested beneath legacy `/chat/*`, `/apps/*`, `/private/*`, and `/playground/*` paths continue through their existing handlers. Unknown legacy content pages also remain available. The migration targets primary interactive GUI surfaces, not arbitrary upstream content URLs or immutable historical snapshots.
 
 ## Workspace behavior
 
