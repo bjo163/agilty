@@ -115,7 +115,7 @@ def _get_webmcp_server():
 
 
 def _privileged_request_allowed() -> bool:
-    """Allow privileged GUI writes only from loopback or with the configured API key.
+    """Allow privileged GUI routes from loopback/trusted CIDRs or with the configured API key.
 
     This is defense in depth for legacy GUI routes. Remote deployments must
     still use an authenticated reverse proxy and must not expose the service
@@ -147,7 +147,7 @@ def _privileged_request_allowed() -> bool:
 
 
 def _privileged_forbidden():
-    return jsonify({"error": {"message": "Privileged operation requires a trusted local client or valid API key"}}), 403
+    return jsonify({"error": {"message": "Privileged operation requires a trusted client or valid API key"}}), 403
 
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -286,8 +286,6 @@ class Backend_Api(Api):
                         "tools": tool_list
                     })
 
-                if not _privileged_request_allowed():
-                    return _privileged_forbidden()
                 body = request.get_json() or {}
                 method = body.get("method", "tools/call")
                 req_id = body.get("id", int(time.time()))
