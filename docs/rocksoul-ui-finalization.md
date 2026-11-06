@@ -25,7 +25,7 @@ ROCKSOUL is the unified replacement UI for the primary live g4f GUI pages. It is
 - Private utilities use the existing guarded `/backend-api/v2/upload_cookies` endpoint; ROCKSOUL does not read or display cookie contents.
 - Chat and playground use the existing `/v1/models` and `/v1/chat/completions` endpoints.
 - Legacy handlers remain available when `ROCKSOUL_UI_ENABLED=0`.
-- File/media delivery, `/dist/*`, API routes, and historical `/v<version>/*` snapshots are not rewritten.
+- File/media delivery, `/dist/*`, API routes, nested non-HTML assets beneath legacy GUI paths, and historical `/v<version>/*` snapshots are not rewritten.
 - Bundled assets remain part of Python package data and canonical deployment remains the existing single g4f Python service.
 
 ## Remaining feature parity / certification
