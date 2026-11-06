@@ -97,10 +97,11 @@ class VerificationEngine:
                 unnamed = sum(1 for case in cases if not str(case.attrib.get("name", "")).strip())
                 if unnamed:
                     raise ValueError("JUnit report contains unnamed test cases")
-                findings.append(f"tests={len(cases)} failures={failures} errors={errors} skipped={skipped}")
                 if failures or errors:
+                    findings.append(f"tests={len(cases)} failures={failures} errors={errors} skipped={skipped}")
                     outcome = VerificationOutcome.FAIL
                 elif skipped:
+                    findings.append(f"tests={len(cases)} failures=0 errors=0 skipped={skipped}")
                     outcome = VerificationOutcome.INCONCLUSIVE
                 else:
                     outcome = VerificationOutcome.PASS
