@@ -34,12 +34,14 @@ def disable_logging() -> None:
 
 
 def log(*text: Any, file: Optional[Any] = None) -> None:
-    """Log a message if logging is enabled."""
+    """Log to the current request sink, or to the global debug log when enabled."""
+    sink = _request_log_sink.get()
+    if sink is not None:
+        sink(*text, file=file)
+        if logging:
+            log_handler(*text, file=file, flush=True)
+        return
     if logging:
-        sink = _request_log_sink.get()
-        if sink is not None:
-            sink(*text, file=file)
-            return
         message = " ".join(map(str, text))
         logs.append(message)
         log_handler(*text, file=file, flush=True)
