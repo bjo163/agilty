@@ -71,7 +71,7 @@ const server = createServer(async (req, res) => {
       // Keep the stream open so the browser Stop control exercises AbortController.
       return;
     }
-    res.write('data: {"choices":[{"delta":{"content":"ROCKSOUL browser test"}}]}\n\n');
+    res.write('data: {"choices":[{"delta":{"content":"**ROCKSOUL browser test**\\n\\n```js\\nconst answer = 42;\\n```"}}]}\n\n');
     res.write("data: [DONE]\n\n");
     res.end();
     return;
