@@ -157,6 +157,7 @@ class Website:
         self.app = app
         self.routes = {
             "/": {"function": self._index, "methods": ["GET", "POST"]},
+            "/rocksoul-assets/<path:filename>": {"function": self._rocksoul_asset, "methods": ["GET"]},
             "/chat/": {"function": self._chat, "methods": ["GET", "POST"]},
             "/<filename>.html": {"function": self._index, "methods": ["GET", "POST"]},
             "/chat/<filename>": {"function": self._chat, "methods": ["GET", "POST"]},
@@ -260,7 +261,30 @@ class Website:
                + "".join(entries) + "</urlset>")
         return Response(xml, mimetype="application/xml")
 
+    def _rocksoul_enabled(self) -> bool:
+        """Return whether the bundled ROCKSOUL UI should replace the legacy home/chat HTML."""
+        enabled = os.environ.get("ROCKSOUL_UI_ENABLED", "1").strip().lower()
+        ui_index = os.path.join(os.path.dirname(__file__), "..", "rocksoul", "index.html")
+        return enabled not in {"0", "false", "no", "off"} and os.path.isfile(ui_index)
+
+    def _rocksoul_app(self):
+        """Serve the local ROCKSOUL app shell without introducing another backend."""
+        ui_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rocksoul"))
+        response = send_from_directory(ui_dir, "index.html", max_age=0)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-ROCKSOUL-UI"] = "1"
+        return response
+
+    def _rocksoul_asset(self, filename: str):
+        """Serve only files contained by the bundled ROCKSOUL asset directory."""
+        ui_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rocksoul"))
+        response = send_from_directory(ui_dir, filename, max_age=31536000)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
     def _index(self, filename="home"):
+        if filename == "home" and self._rocksoul_enabled():
+            return self._rocksoul_app()
         try:
             result = render(filename)
         except requests.RequestException:
@@ -702,6 +726,8 @@ class Website:
         return response
 
     def _chat(self, filename=""):
+        if self._rocksoul_enabled():
+            return self._rocksoul_app()
         filename = f"chat/{filename}" if filename else "chat/index"
         return render(filename)
 
