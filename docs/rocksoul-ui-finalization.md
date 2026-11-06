@@ -42,7 +42,7 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 - Keyboard focus-visible and reduced-motion/contrast affordances are present; full screen-reader, contrast, responsive QA, and Indonesian/English localization are not yet certified. External Google Fonts loading was removed so the UI does not depend on a third-party font host.
 - Real-provider end-to-end streaming and upstream disconnect behavior.
 - Successful GitHub Actions runs on the exact final `main` commit. Current GitHub Actions runs are queued; no green result is claimed.
-- CI checks wheel assets, Compose configuration, and builds a Docker image with bundled ROCKSOUL asset verification. A live Coolify deployment/runtime smoke test still requires a reachable deployment environment.
+- CI checks wheel assets, Compose configuration, builds the Docker image, verifies bundled ROCKSOUL assets, and smoke-tests write access to the persistent config volume. Compose now builds the local source explicitly and mounts a named volume at G4F_CONFIG_DIR. A live Coolify deployment/runtime smoke test still requires a reachable deployment environment.
 
 
 ## Security and privacy review notes
@@ -52,7 +52,7 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 - **Cookie/HAR upload:** the existing upload handler's remote-access condition checks whether G4F_API_KEY is configured, but does not compare a supplied request key in that handler. ROCKSOUL removed the ineffective API-key input and warns operators to restrict this endpoint at the network/reverse-proxy layer.
 - **Tool audit:** metadata-only events are sent to the existing log endpoint. The endpoint is directly writable and does not provide tamper-proof audit guarantees.
 - **Extension links:** PA-provider links are restricted to same-origin relative paths or HTTP(S); javascript: and other active URL schemes are rejected.
-- **Offline deployment:** UI CSS no longer imports Google Fonts; it uses system font stacks.
+- **Offline deployment:** UI CSS no longer imports Google Fonts; it uses system font stacks. Compose sets pull_policy to build the checked-out source and mounts a named persistent volume for g4f config, cookies, buckets, logs, and cache.
 
 ## Route inventory
 
