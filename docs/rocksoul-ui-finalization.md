@@ -51,3 +51,11 @@ The initial ROCKSOUL UI is mounted by default, with the legacy UI retained as a 
 - [ ] Real-provider streaming and browser regression checks pass.
 - [ ] UI parity and accessibility review passes.
 - [ ] Canonical Compose/Coolify deployment is verified.
+
+
+## Latest UI interaction change
+
+- Added a visible Stop generation control to the composer.
+- The browser aborts the in-flight fetch using AbortController. If text has already streamed, the partial assistant response is retained in browser-local history; otherwise the UI reports that generation was stopped.
+- This is client-side cancellation. It does not claim provider-side cancellation beyond the disconnect behavior supported by the existing g4f API.
+- Automated browser verification for this interaction remains open.
