@@ -45,7 +45,7 @@ Nested non-HTML assets requested beneath legacy `/chat/*`, `/apps/*`, `/private/
 - **Agent / Browser:** discovers tools actually advertised by WebMCP. ROCKSOUL asks for per-invocation browser confirmation and writes metadata-only outcome events, but this is not server authorization; the existing endpoint accepts direct calls. Restrict it to trusted networks or an authenticated reverse proxy.
 - **Playground:** uses the same chat runtime in a focused prompt experimentation layout.
 - **Apps:** lists the existing PA provider registry.
-- **Private utilities:** exposes the existing JSON/HAR cookie import endpoint while preserving its loopback/API-key restrictions. It never reads or displays cookie contents.
+- **Private utilities:** exposes the existing JSON/HAR cookie import endpoint. It never reads or displays cookie contents. The backend handler does not validate a per-request API key; protect remote access with network/reverse-proxy policy.
 
 ## Rollback
 
@@ -54,7 +54,7 @@ Set `ROCKSOUL_UI_ENABLED=0` in the existing g4f process environment and restart.
 ## Verification requirements
 
 - [x] Route-level tests cover all primary GUI handler families and preserved non-page route registrations.
-- [x] Playwright mocked-browser coverage includes overview, chat, shared-history restore/share, media attachment submission, provider login/health, status, stats, logs, agent tools, browser tool discovery, playground, apps, and private utilities.
+- [x] Playwright mocked-browser coverage includes overview, chat, shared-history restore/share, media attachment submission, provider login/health/quota, secure share-ID fallback, status, stats, logs, agent tools, browser tool discovery, playground, apps, and private utilities.
 - [ ] Run route and browser workflows successfully on the exact final `main` commit.
 - [ ] Verify live provider authentication and streaming, including upstream disconnect semantics.
 - [x] Add CI checks for built wheel assets, canonical Compose configuration, and Docker image asset inclusion; [ ] wait for the exact-main CI run to complete.
