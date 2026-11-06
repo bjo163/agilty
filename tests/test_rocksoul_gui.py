@@ -9,6 +9,12 @@ def _website():
     return Website(Flask(__name__))
 
 
+def _body(response):
+    # Flask send_file responses use direct passthrough outside the test client.
+    response.direct_passthrough = False
+    return response.get_data()
+
+
 def test_root_serves_bundled_rocksoul_ui_by_default(monkeypatch):
     monkeypatch.delenv("ROCKSOUL_UI_ENABLED", raising=False)
     website = _website()
@@ -18,7 +24,7 @@ def test_root_serves_bundled_rocksoul_ui_by_default(monkeypatch):
 
     assert response.status_code == 200
     assert response.headers.get("X-ROCKSOUL-UI") == "1"
-    assert b"ROCKSOUL" in response.get_data()
+    assert b"ROCKSOUL" in _body(response)
 
 
 def test_chat_route_serves_same_rocksoul_app_shell(monkeypatch):
@@ -30,7 +36,7 @@ def test_chat_route_serves_same_rocksoul_app_shell(monkeypatch):
 
     assert response.status_code == 200
     assert response.headers.get("X-ROCKSOUL-UI") == "1"
-    assert b'id="composer"' in response.get_data()
+    assert b'id="composer"' in _body(response)
 
 
 def test_legacy_gui_fallback_can_be_selected(monkeypatch):
@@ -48,7 +54,7 @@ def test_rocksoul_assets_are_served_from_bundled_directory(monkeypatch):
         response = website._rocksoul_asset("app.css")
 
     assert response.status_code == 200
-    assert b".app-shell" in response.get_data()
+    assert b".app-shell" in _body(response)
     assert response.headers.get("Cache-Control") == "public, max-age=0, must-revalidate"
 
 
@@ -64,7 +70,7 @@ def test_all_bundled_assets_are_present_and_served(monkeypatch):
         with website.app.test_request_context(f"/rocksoul-assets/{filename}"):
             response = website._rocksoul_asset(filename)
         assert response.status_code == 200
-        assert marker in response.get_data()
+        assert marker in _body(response)
 
 
 def test_asset_handler_rejects_parent_traversal():
@@ -257,4 +263,4 @@ def test_registered_provider_catalog_uses_legacy_template_when_disabled(monkeypa
     response = website.app.test_client().get("/providers/")
     assert response.status_code == 200
     assert response.headers.get("X-ROCKSOUL-UI") is None
-    assert b"Providers" in response.get_data()
+    assert b"Providers" in _body(response)
