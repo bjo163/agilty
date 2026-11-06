@@ -456,3 +456,64 @@ def test_privileged_backend_route_families_invoke_the_shared_guard():
         assert start >= 0, marker
         guard = source.find("if not _privileged_request_allowed():", start, start + 700)
         assert guard >= 0, marker
+
+
+
+def _registered_backend_guard_client(monkeypatch):
+    from types import SimpleNamespace
+    import g4f.gui.server.backend_api as backend_module
+
+    class FakeMCPServer:
+        def get_tool_list(self):
+            return [{"name": "safe_test_tool"}]
+
+        async def handle_request(self, request):
+            return SimpleNamespace(error=None, result={"ok": True})
+
+    monkeypatch.setattr(backend_module, "Client", lambda: object())
+    monkeypatch.setattr(backend_module, "_get_webmcp_server", lambda: FakeMCPServer())
+    monkeypatch.setattr(backend_module, "has_crypto", False)
+    app = Flask("rocksoul-backend-guard-test")
+    backend_module.Backend_Api(app)
+    return app.test_client()
+
+
+def test_registered_privileged_backend_routes_reject_untrusted_remote_calls(monkeypatch):
+    from g4f.config import AppConfig
+
+    monkeypatch.setattr(AppConfig, "g4f_api_key", None)
+    monkeypatch.delenv("G4F_API_KEY", raising=False)
+    monkeypatch.delenv("G4F_GUI_TRUSTED_IPS", raising=False)
+    client = _registered_backend_guard_client(monkeypatch)
+    remote = {"REMOTE_ADDR": "203.0.113.10"}
+
+    cases = (
+        ("GET", "/backend-api/v2/webmcp/tools"),
+        ("GET", "/backend-api/v2/log"),
+        ("POST", "/backend-api/v2/upload_cookies"),
+        ("POST", "/backend-api/v2/files/guard-test"),
+        ("POST", "/backend-api/v2/chat/guard-test"),
+    )
+    for method, path in cases:
+        response = client.open(path, method=method, json={}, environ_base=remote)
+        assert response.status_code == 403, (method, path, response.get_data(as_text=True))
+
+
+def test_registered_privileged_backend_routes_allow_loopback_and_valid_key(monkeypatch):
+    from g4f.config import AppConfig
+
+    monkeypatch.setattr(AppConfig, "g4f_api_key", "route-test-secret")
+    monkeypatch.setenv("G4F_API_KEY", "route-test-secret")
+    monkeypatch.delenv("G4F_GUI_TRUSTED_IPS", raising=False)
+    client = _registered_backend_guard_client(monkeypatch)
+
+    local = client.get("/backend-api/v2/webmcp/tools", environ_base={"REMOTE_ADDR": "127.0.0.1"})
+    assert local.status_code == 200
+    assert local.get_json()["tools"][0]["name"] == "safe_test_tool"
+
+    remote = client.get(
+        "/backend-api/v2/webmcp/tools",
+        headers={"x-api-key": "route-test-secret"},
+        environ_base={"REMOTE_ADDR": "203.0.113.10"},
+    )
+    assert remote.status_code == 200
