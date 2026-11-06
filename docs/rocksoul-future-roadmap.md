@@ -13,10 +13,11 @@ This roadmap is intentionally UI-first. g4f remains the runtime and API authorit
 
 ## P1 — ROCKSOUL shell and chat
 
-- [ ] Build the chat-first ROCKSOUL shell with desktop/mobile layouts.
-- [ ] Mount the frontend through the existing g4f GUI serving layer.
+- [x] Build the initial bundled chat-first ROCKSOUL shell with desktop/mobile layout.
+- [x] Mount the initial frontend through the existing g4f GUI serving layer; / and /chat/ select it by default with ROCKSOUL_UI_ENABLED=0 rollback.
+- [ ] Complete visual/product parity, accessibility review and installed-wheel deployment verification.
 - [ ] Preserve the existing g4f API and Python SDK contracts.
-- [ ] Implement incremental streaming using existing g4f stream responses.
+- [x] Implement initial incremental SSE text streaming using the existing g4f chat completions API; real-provider and disconnect/cancellation regression tests remain open.
 - [ ] Preserve browser disconnect/cancellation behavior where supported by the backend.
 - [ ] Implement conversation creation, switching and history using existing g4f session behavior.
 - [ ] Populate model/provider selectors from live runtime metadata.
