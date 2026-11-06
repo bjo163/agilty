@@ -16,7 +16,13 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/backend-api/v2/version") return json({ version: "test", latest_version: "test" });
   if (url.pathname === "/backend-api/v2/stats") return json({ totals: { requests: 2, prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }, models: {}, providers: {} });
   if (url.pathname === "/backend-api/v2/log") return json({ logs: [{ timestamp: "now", event: "browser-test" }], count: 1 });
-  if (url.pathname === "/backend-api/v2/webmcp/tools") return json({ tools: [{ name: "search_web", description: "Search the web" }, { name: "read_page", description: "Read a page" }] });
+  if (url.pathname === "/backend-api/v2/webmcp/tools") {
+    if (req.method === "POST") {
+      for await (const chunk of req) { /* consume mock tool request */ }
+      return json({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "mock tool executed" }] } });
+    }
+    return json({ tools: [{ name: "search_web", description: "Search the web" }, { name: "read_page", description: "Read a page" }] });
+  }
   if (url.pathname === "/pa/providers") return json([{ name: "DemoExtension", description: "Mock extension" }]);
   if (url.pathname === "/v1/models") {
     res.writeHead(200, { "content-type": "application/json" });
@@ -102,6 +108,13 @@ try {
   await page.reload();
   await page.getByText("partial before stop").waitFor();
 
+  await page.goto("http://127.0.0.1:4173/agent/");
+  await page.locator(".tool-runner").waitFor();
+  page.once("dialog", dialog => dialog.accept());
+  await page.locator(".tool-runner textarea").fill('{"query":"test"}');
+  await page.locator(".tool-runner button[type=submit]").click();
+  await page.getByText(/mock tool executed/).waitFor();
+
   for (const [route, selector] of [
     ["/providers/", ".workspace-card"],
     ["/providers/DemoProvider", ".tag"],
@@ -128,7 +141,7 @@ try {
   assert.deepEqual(pageErrors, []);
   await restrictedPage.close();
 
-  console.log("ROCKSOUL browser smoke passed: all migrated workspace pages, model discovery, SSE EOF flush, provider errors, stop, history reload, and blocked-storage resilience.");
+  console.log("ROCKSOUL browser smoke passed: all migrated workspace pages, confirmed WebMCP execution, model discovery, SSE EOF flush, provider errors, stop, history reload, and blocked-storage resilience.");
 } finally {
   if (browser) await browser.close();
   await new Promise((resolveClose) => server.close(resolveClose));
