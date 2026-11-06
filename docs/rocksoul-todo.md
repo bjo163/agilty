@@ -540,3 +540,26 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - Other legacy GUI routes remain on their existing handlers/pages. This is not full replacement of every built-in g4f HTML screen.
 - The mocked Playwright test validates browser wiring only; it does not prove real provider availability or production deployment.
 - The visible Vercel status is a build-rate-limit failure, not a ROCKSOUL test result. GitHub Actions status for the latest commit is not yet confirmed.
+
+
+### Unified GUI migration — 2026-11-06
+
+- [x] Replace the chat-only shell navigation with a single ROCKSOUL workspace navigation.
+- [x] Migrate overview and chat routes.
+- [x] Migrate provider catalog and provider detail routes using the existing provider/model APIs.
+- [x] Migrate status and model catalog using existing runtime status/version/model APIs.
+- [x] Migrate usage statistics using the existing usage ledger API.
+- [x] Migrate backend logs using the existing diagnostics endpoint.
+- [x] Migrate Agent and Browser pages to live WebMCP tool discovery; no tools are fabricated and no second agent runtime is started.
+- [x] Migrate Playground to the existing model/chat API.
+- [x] Migrate Apps to the existing PA provider registry.
+- [x] Migrate Private utilities to the existing guarded JSON/HAR cookie upload endpoint; cookie contents are never exposed in the UI.
+- [x] Preserve API, media/file, dist asset, metadata, and historical versioned routes.
+- [x] Add Flask route coverage for all primary GUI page handlers.
+- [x] Extend Playwright mocks and browser checks to every migrated workspace page.
+- [ ] Verify all route/browser workflows green on exact final `main`.
+- [ ] Verify live-provider chat, OAuth/login behavior, and upstream cancellation semantics.
+- [ ] Complete full legacy interaction parity for attachments, media rendering, tool execution permissions, browser research, and provider-specific controls.
+- [ ] Complete accessibility, responsive, Indonesian/English localization, wheel/Docker, and Coolify release gates.
+
+**Migration boundary:** the primary live GUI pages now use ROCKSOUL. Historical snapshots, static assets, media delivery, APIs, and arbitrary legacy content URLs are deliberately preserved. The remaining items above are real parity and release gates; do not mark them done based only on route-shell mounting or mocked browser tests.
