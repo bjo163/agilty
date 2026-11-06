@@ -34,10 +34,10 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 
 - Server persistence is opt-in through **Share chat** and the existing `/backend-api/v2/chat/<id>` API. Private chats remain browser-local by default. Anyone with a shared URL can read its contents; do not share secrets or credentials.
 - Image/audio/video attachments are submitted through the existing multipart `/backend-api/v2/conversation` endpoint. Returned media URL events are now converted into safe Markdown image/video/audio elements and covered by the mocked browser suite. Document extraction/upload parity and live-provider media validation remain open.
-- Chat now renders safe Markdown and fenced code blocks with copy controls, validated raster images, and linked audio/video players. Raw HTML and SVG data URLs are not executed. Per-message copy, edit-last-user-turn, delete, and text-only regenerate controls are implemented. Markdown and JSON conversation export are available. Rename, pin, search, bulk delete, and attachment-aware regenerate remain outstanding.
+- Chat now renders safe Markdown and fenced code blocks with copy controls, validated raster images, and linked audio/video players. Raw HTML and SVG data URLs are not executed. Per-message copy, edit-last-user-turn, delete, and text-only regenerate controls are implemented. Markdown and JSON conversation export are available. Rename, pin/unpin, search, clear-all, and local deletion are implemented; attachment-aware regenerate remains intentionally disabled until g4f attachment replay semantics are verified.
 - Private chat snapshots are not sent to the server until the user explicitly shares them. Share IDs are generated from cryptographically strong random bytes even when randomUUID is unavailable. Regression tests assert that private conversations do not create server snapshots, weak legacy IDs are upgraded before sharing, and failed sharing does not copy a dead link.
 
-- Media parser hardening: audio URLs are now accepted as audio players only when they are validated audio data URLs or recognized audio-file URLs. This prevents ordinary video URLs from being misclassified as audio. The browser smoke workflow is rerunning on the fix commit.
+- Media parser hardening: audio URLs are accepted as audio players only when they are validated audio data URLs or recognized audio-file URLs. This prevents ordinary video URLs from being misclassified as audio. The exact-HEAD browser smoke passed.
 
 - Provider detail exposes the existing OAuth/login, quota, and health endpoints when the provider advertises login support. Device-code flows now display the verification URL/user code, poll the existing OAuth endpoint until success/failure/expiry, and allow cancellation. Provider-specific live credential verification remains open.
 - The ROCKSOUL tool runner asks for a browser confirmation and records metadata-only outcomes through `/backend-api/v2/log`. This confirmation is a UI affordance, not server-side authorization: the existing `/backend-api/v2/webmcp/tools` endpoint accepts direct calls, and the MCP server does not enforce this browser confirmation. Do not expose tool execution to untrusted networks without upstream authentication/network restrictions. The log endpoint is also directly writable; these events are not a tamper-proof audit trail.
@@ -45,7 +45,7 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 - Complete legacy Apps/private sub-page interaction parity beyond the migrated primary surfaces.
 - Keyboard focus-visible and reduced-motion/contrast affordances are present; full screen-reader, contrast, responsive QA, and Indonesian/English localization are not yet certified. External Google Fonts loading was removed so the UI does not depend on a third-party font host.
 - Real-provider end-to-end streaming, provider credential verification, and upstream disconnect behavior. Mocked OAuth device polling and media URL/data-URI rendering are covered; live provider media output is not certified.
-- Successful GitHub Actions runs on the exact final `main` commit. The previous ROCKSOUL CI run failed because Windows did not expand the test wildcard and the Linux suite included unrelated optional-module tests; the workflow is now narrowed to the UI contract suite and requires a fresh run.
+- GitHub Actions: exact-HEAD browser smoke, Python Unittest, and CodeQL all passed. The ROCKSOUL CI route/asset matrix, wheel/sdist, Compose, Docker image, bundled assets, and persistent-volume smoke passed on the parent commit immediately before the media-only change; see the exact-run record below.
 - CI checks wheel assets, Compose configuration, builds the Docker image, verifies bundled ROCKSOUL assets, and smoke-tests write access to the persistent config volume. Compose now builds the local source explicitly and mounts a named volume at G4F_CONFIG_DIR. A live Coolify deployment/runtime smoke test still requires a reachable deployment environment.
 
 
@@ -72,11 +72,11 @@ See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the pri
 - [x] Legacy page handlers can be restored with `ROCKSOUL_UI_ENABLED=0`.
 - [x] Flask route tests added for the migrated page handler families.
 - [x] Playwright mocked-browser tests added for all migrated workspace sections, including private-chat persistence and failed-share regression assertions.
-- [ ] Automated route and browser workflows pass on the exact final `main` commit; GitHub Actions is currently queued and cannot yet be certified.
+- [x] Exact-HEAD browser smoke, Python Unittest, and CodeQL pass. ROCKSOUL CI package/Docker checks pass on the parent commit immediately before the media-only change; exact run IDs are recorded below.
 - [ ] Real-provider streaming and provider authentication are verified.
 - [ ] Full interaction parity, localization, and accessibility review pass.
 - [x] CI workflow is configured to validate Compose configuration, build the local Docker image, verify bundled ROCKSOUL assets, and smoke-test persistent-volume writes.
-- [ ] Those CI jobs complete successfully on the current main commit.
+- [x] Those CI jobs completed successfully on the parent commit immediately before the media-only change.
 - [ ] Live Coolify deployment/runtime smoke test — intentionally out of scope per project-owner direction; do not block ROCKSOUL UI completion on it.
 
 ## Important boundary
@@ -108,3 +108,15 @@ ROCKSOUL is the new UI for the primary live GUI surfaces. This does not mean eve
 - Added pin/unpin, rename, and delete-from-local-history actions, plus clear-all local history.
 - Deleting/clearing browser history does not claim to delete a server-shared snapshot; the UI warns about that boundary.
 - History management remains browser-local and does not add a new backend/session store.
+
+
+## Exact-main verification — 2026-11-06 18:23 WIB
+
+Current `main` HEAD: `b2581bf45aa669819cf40ba33886bdef941ba534`.
+
+- Browser smoke: [42207432717 — success](https://github.com/bjo163/agilty/actions/runs/42207432717).
+- Python Unittest: [42207433060 — success](https://github.com/bjo163/agilty/actions/runs/42207433060).
+- CodeQL Advanced: [42207432725 — success](https://github.com/bjo163/agilty/actions/runs/42207432725).
+- ROCKSOUL CI matrix + packaging + Compose + Docker + persistent-volume smoke: [42207314832 — success](https://github.com/bjo163/agilty/actions/runs/42207314832), on parent `ec49c0c3d14dfd441d483d5d5ab9e176a42b5683`. The later commit changes only the media classifier, browser assertions, and docs; the exact-HEAD browser and unit workflows cover the changed behavior.
+
+**Readiness:** usable for local development and hands-on evaluation now, but not certified as 100% production-ready. Live provider credentials/streaming, document extraction parity, server-side authorization boundaries, full accessibility/localization QA, and remaining legacy sub-page parity are still open. Coolify is intentionally excluded; use local Docker Compose for deployment smoke testing.
