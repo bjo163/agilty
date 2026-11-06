@@ -1,8 +1,10 @@
 (()=>{"use strict";
 const $=id=>document.getElementById(id),historyKey="rocksoul-chat-history-v1";
 let conversations=[],activeId=null,busy=false,activeController=null;
-try{conversations=JSON.parse(localStorage.getItem(historyKey)||"[]");if(!Array.isArray(conversations))conversations=[]}catch{conversations=[]}
-const save=()=>localStorage.setItem(historyKey,JSON.stringify(conversations.slice(0,80)));
+const readStorage=(key,fallback)=>{try{return localStorage.getItem(key)??fallback}catch{return fallback}};
+const writeStorage=(key,value)=>{try{localStorage.setItem(key,value);return true}catch{return false}};
+try{conversations=JSON.parse(readStorage(historyKey,"[]"));if(!Array.isArray(conversations))conversations=[]}catch{conversations=[]}
+const save=()=>{const snapshot=conversations.slice(0,80).map(c=>({...c,messages:(Array.isArray(c.messages)?c.messages:[]).slice(-100)}));if(!writeStorage(historyKey,JSON.stringify(snapshot))){const status=$("model-status");if(status)status.textContent="Local history storage unavailable"}};
 const escapeText=s=>String(s??"");
 function current(){return conversations.find(c=>c.id===activeId)}
 function renderHistory(){const root=$("history");root.replaceChildren();for(const c of conversations){const b=document.createElement("button");b.textContent=c.title||"New conversation";b.className=c.id===activeId?"active":"";b.onclick=()=>{activeId=c.id;renderHistory();renderMessages()};root.append(b)}}
@@ -20,7 +22,7 @@ $("composer").addEventListener("submit",e=>{e.preventDefault();const value=$("pr
 $("prompt").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("composer").requestSubmit()}});
 $("prompt").addEventListener("input",e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,190)+"px"});
 $("new-chat").onclick=newConversation;$("stop").onclick=()=>{if(activeController)activeController.abort()};$("mobile-menu").onclick=()=>$("sidebar").classList.toggle("open");
-$("theme-toggle").onclick=()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";document.documentElement.dataset.theme=next;localStorage.setItem("rocksoul-theme",next)};
-const savedTheme=localStorage.getItem("rocksoul-theme");if(savedTheme)document.documentElement.dataset.theme=savedTheme;
+$("theme-toggle").onclick=()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";document.documentElement.dataset.theme=next;writeStorage("rocksoul-theme",next)};
+const savedTheme=readStorage("rocksoul-theme",null);if(savedTheme)document.documentElement.dataset.theme=savedTheme;
 renderHistory();if(conversations.length)activeId=conversations[0].id;else newConversation();renderMessages();void loadModels();
 })();
