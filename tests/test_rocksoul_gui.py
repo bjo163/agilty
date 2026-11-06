@@ -225,20 +225,32 @@ def _registered_website():
 
 
 def test_registered_flask_routes_serve_rocksoul_for_primary_pages(monkeypatch):
+    import g4f.gui.server.website as website_module
+
     monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "1")
+    monkeypatch.setattr(website_module, "render", lambda filename: f"legacy:{filename}")
     client = _registered_website()
     paths = (
         "/", "/home.html", "/index.html", "/chat/", "/chat/index.html",
         "/providers", "/providers/", "/providers.html", "/providers/ExampleProvider",
         "/status", "/status/", "/stats", "/stats/", "/logs", "/logs/",
         "/agent", "/agent/", "/browser", "/browser/", "/playground/",
-        "/playground/anything", "/apps/", "/apps/nested/page",
-        "/private/", "/private/nested/page",
+        "/playground/anything", "/apps/", "/private/",
     )
     for path in paths:
         response = client.get(path)
         assert response.status_code == 200, path
         assert response.headers.get("X-ROCKSOUL-UI") == "1", path
+
+    for path, expected in (
+        ("/chat/history.html", "legacy:chat/history.html"),
+        ("/apps/nested/page", "legacy:apps/nested/page"),
+        ("/private/nested/page", "legacy:private/nested/page"),
+    ):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert response.headers.get("X-ROCKSOUL-UI") is None, path
+        assert response.get_data(as_text=True) == expected
 
 
 def test_registered_flask_routes_preserve_legacy_fallback(monkeypatch):
