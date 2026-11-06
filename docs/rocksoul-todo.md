@@ -665,3 +665,25 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Poll the existing OAuth endpoint using the returned device code and provider interval; stop on success, explicit failure, expiry, or user cancellation.
 - [x] Add Playwright coverage for pending → success polling without live provider credentials.
 - [ ] Verify provider-specific OAuth behavior with real configured credentials; mock coverage is not live authentication certification.
+
+
+## Exact-main verification update — 2026-11-06 18:23 WIB
+
+This section supersedes earlier checklist notes that say the latest CI runs are queued or unconfirmed.
+
+Verified current `main` HEAD: `b2581bf45aa669819cf40ba33886bdef941ba534`.
+
+- [x] ROCKSOUL UI Browser Smoke on the exact HEAD — run [42207432717](https://github.com/bjo163/agilty/actions/runs/42207432717).
+- [x] Python Unittest on the exact HEAD — run [42207433060](https://github.com/bjo163/agilty/actions/runs/42207433060).
+- [x] CodeQL Advanced on the exact HEAD — run [42207432725](https://github.com/bjo163/agilty/actions/runs/42207432725).
+- [x] ROCKSOUL CI route/asset matrix (Linux + Windows, Python 3.10 + 3.13), wheel/sdist build, Compose validation, Docker image build, bundled asset verification, and persistent-volume write smoke — run [42207314832](https://github.com/bjo163/agilty/actions/runs/42207314832) on parent `ec49c0c3d14dfd441d483d5d5ab9e176a42b5683`. The UI source and Docker/packaging workflow were unchanged by the later media-classification code/test commit; exact-HEAD browser, unit, and CodeQL checks passed separately.
+- PyPI publish workflow was skipped as expected; no release was requested.
+
+Still not certified and must not be described as 100%:
+- Real provider streaming, provider-specific OAuth with actual credentials, and provider-side cancellation.
+- Document extraction/upload parity and live-provider returned-media behavior.
+- Server-side authorization for WebMCP invocation and cookie/HAR upload; until addressed, keep the service on localhost or behind a trusted authenticated reverse proxy/private network.
+- Full screen-reader, responsive, contrast, and Indonesian/English localization QA.
+- Legacy nested Apps/Private interaction parity where not covered by primary-page smoke tests.
+
+Coolify deployment certification is explicitly out of scope per project-owner direction. Local Docker Compose is the supported repository smoke path.
