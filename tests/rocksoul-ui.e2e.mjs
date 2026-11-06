@@ -27,7 +27,7 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/backend-api/v2/conversation") {
     for await (const chunk of req) { /* consume multipart attachment request */ }
     res.writeHead(200, { "content-type": "text/event-stream" });
-    res.end('event: content\ndata: {"type":"content","content":"attachment endpoint response"}\n\n');
+    res.end('event: content\ndata: {"type":"content","content":"attachment endpoint response","alt":"Generated test media","urls":["/media/generated.png","/media/generated.mp4","/media/generated.mp3"]}\n\n');
     return;
   }
   if (url.pathname === "/backend-api/v2/providers") return json([{ name: "DemoProvider", label: "Demo Provider", auth: true, live: true, login: true }]);
@@ -201,6 +201,9 @@ try {
   await page.locator("#prompt").fill("Summarize this file");
   await page.locator("#send").click();
   await page.getByText("attachment endpoint response").waitFor();
+  await page.locator(".markdown-image").last().waitFor();
+  await page.locator(".markdown-video").last().waitFor();
+  await page.locator(".markdown-audio").last().waitFor();
 
   await page.goto("http://127.0.0.1:4173/agent/");
   await page.locator(".tool-runner").waitFor();
