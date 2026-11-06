@@ -77,3 +77,10 @@ These checks have been added to automation, but they are **not marked passed** u
 ## Canonical Compose rollback
 
 The single-service `docker-compose.yml` now passes `ROCKSOUL_UI_ENABLED` into the existing g4f container and defaults it to `1`. To restore the legacy root/chat HTML, set `ROCKSOUL_UI_ENABLED=0` in the Coolify service environment and redeploy. No additional service or gateway is required.
+
+
+## Browser smoke automation
+
+A Playwright browser smoke test now exercises the packaged UI shell, static asset loading, `/v1/models` model discovery, a streamed `/v1/chat/completions` response, and new-chat interaction against a deterministic mocked g4f API. Workflow: `.github/workflows/rocksoul-ui-browser.yml`.
+
+This proves browser wiring only. It does not certify a live provider, provider authentication, cancellation propagation to upstream providers, server-backed history, attachments, tools/media parity, accessibility, or Coolify deployment.
