@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hmac
+import ipaddress
 import flask
 import os
 import re
@@ -246,6 +248,8 @@ class Backend_Api(Api):
                         "tools": tool_list
                     })
 
+                if not _privileged_request_allowed():
+                    return _privileged_forbidden()
                 body = request.get_json() or {}
                 method = body.get("method", "tools/call")
                 req_id = body.get("id", int(time.time()))
@@ -733,6 +737,8 @@ class Backend_Api(Api):
         def handle_log():
             cache_dir = Path(get_cookies_dir()) / ".logging"
             if request.method == "POST":
+                if not _privileged_request_allowed():
+                    return _privileged_forbidden()
                 cache_file = cache_dir / f"{datetime.date.today()}.jsonl"
                 cache_dir.mkdir(parents=True, exist_ok=True)
                 data = {"origin": request.headers.get("origin"), **(request.json or {})}
@@ -1136,12 +1142,8 @@ class Backend_Api(Api):
 
         @app.route("/backend-api/v2/upload_cookies", methods=["POST"])
         def upload_cookies():
-            # Security: restrict uploads to loopback clients while no API key
-            # is configured, matching the /v1/upload_cookies guard.
-            peer = request.remote or ""
-            if peer not in ("127.0.0.1", "::1") and not peer.startswith("127."):
-                if not AppConfig.g4f_api_key:
-                    return "Forbidden: cookie uploads require an API key", 403
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             file = None
             if "file" in request.files:
                 file = request.files["file"]
