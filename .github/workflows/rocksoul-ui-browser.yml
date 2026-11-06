@@ -1,0 +1,33 @@
+name: ROCKSOUL UI Browser Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'g4f/gui/rocksoul/**'
+      - 'tests/rocksoul-ui.e2e.mjs'
+      - '.github/workflows/rocksoul-ui-browser.yml'
+  pull_request:
+    paths:
+      - 'g4f/gui/rocksoul/**'
+      - 'tests/rocksoul-ui.e2e.mjs'
+      - '.github/workflows/rocksoul-ui-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install --no-save playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise bundled ROCKSOUL UI against mocked g4f API
+        run: node tests/rocksoul-ui.e2e.mjs
