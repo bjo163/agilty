@@ -114,11 +114,11 @@ Preferred deployment is one g4f Python application serving its API and the built
 
 Do not require a separate ROCKSOUL API container for chat. Optional operator tooling may be deployed separately only when explicitly needed.
 
-## 9. Migration phases and gates
+See [GUI route inventory and cutover notes](rocksoul-ui-route-inventory.md) for the current route map and initial UI limitations.\n\n## 9. Migration phases and gates
 
-- **R0 — Scope reset:** product docs and backlog consistently state UI-only.
+- **R0 — Scope reset:** complete; product docs and backlog consistently state UI-only.
 - **R1 — Route and capability inventory:** map every existing HTML route to its backend endpoints, cookies, session behavior and dependencies.
-- **R2 — App shell:** build the ROCKSOUL UI and integrate it with the existing GUI server.
+- **R2 — App shell:** initial bundled chat shell is mounted through the existing GUI server; full visual/product parity remains open.
 - **R3 — Chat parity:** streaming, history, model/provider selection, attachments and error states.
 - **R4 — Secondary parity:** settings, providers, login, status, logs and supported tools.
 - **R5 — Default cutover:** / and /chat/ serve ROCKSOUL; legacy rollback remains available.
