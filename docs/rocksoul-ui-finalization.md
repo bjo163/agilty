@@ -55,7 +55,7 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 - **WebMCP tools:** the browser confirmation is not a security boundary. The backend WebMCP route accepts direct tool calls and does not verify that a user confirmed them in ROCKSOUL. Use only behind a trusted private network or authenticated reverse proxy until the existing backend provides authorization.
 - **Cookie/HAR upload:** the existing upload handler's remote-access condition checks whether G4F_API_KEY is configured, but does not compare a supplied request key in that handler. ROCKSOUL removed the ineffective API-key input and warns operators to restrict this endpoint at the network/reverse-proxy layer.
 - **Tool audit:** metadata-only events are sent to the existing log endpoint. The endpoint is directly writable and does not provide tamper-proof audit guarantees.
-- **Public deployment:** Compose exposes the g4f HTTP service on host ports 8080 and 1337. Do not publish the service directly to an untrusted network; protect the whole GUI/API with an authenticated reverse proxy or private network. G4F_API_KEY does not provide authorization for every legacy `/backend-api/v2/*` route.
+- **Public deployment:** Canonical Compose binds host ports 8080 and 1337 to 127.0.0.1 by default (VNC 7900 is also loopback-only), preventing accidental LAN/WAN exposure. If remote access is intentionally configured, place the service behind an authenticated reverse proxy/private network; G4F_API_KEY does not provide authorization for every legacy `/backend-api/v2/*` route. G4F_API_KEY does not provide authorization for every legacy `/backend-api/v2/*` route.
 - **Extension links:** PA-provider links are restricted to same-origin relative paths or HTTP(S); javascript: and other active URL schemes are rejected.
 - **Offline deployment:** UI CSS no longer imports Google Fonts; it uses system font stacks. Compose sets pull_policy to build the checked-out source and mounts a named persistent volume for g4f config, cookies, buckets, logs, and cache. The Selenium/VNC port is bound to host loopback instead of all network interfaces.
 
@@ -120,3 +120,10 @@ Current `main` HEAD: `b2581bf45aa669819cf40ba33886bdef941ba534`.
 - ROCKSOUL CI matrix + packaging + Compose + Docker + persistent-volume smoke: [42207314832 — success](https://github.com/bjo163/agilty/actions/runs/42207314832), on parent `ec49c0c3d14dfd441d483d5d5ab9e176a42b5683`. The later commit changes only the media classifier, browser assertions, and docs; the exact-HEAD browser and unit workflows cover the changed behavior.
 
 **Readiness:** usable for local development and hands-on evaluation now, but not certified as 100% production-ready. Live provider credentials/streaming, document extraction parity, server-side authorization boundaries, full accessibility/localization QA, and remaining legacy sub-page parity are still open. Coolify is intentionally excluded; use local Docker Compose for deployment smoke testing.
+
+
+## Local Compose network hardening — 2026-11-06
+
+- Canonical `docker-compose.yml` now binds GUI/API host ports 8080 and 1337 to `127.0.0.1` by default; VNC 7900 was already loopback-only.
+- Added a regression test that rejects wildcard host bindings for those ports.
+- This makes the default local-development path safer. It does not add server-side authorization to legacy endpoints; do not expose the service remotely without a trusted authenticated reverse proxy/private network.
