@@ -203,10 +203,10 @@ async function loadPrivate(){
  const p=panel("Cookie import","Supported file types: JSON and HAR. Only upload files you trust.");
  const form=el("form","upload-form"),file=el("input","");file.type="file";file.accept=".json,.har,application/json";
  const submit=el("button","action-button","Upload cookie file");submit.type="submit";
- const result=el("p","notice","Local browser access is allowed. Remote requests require a valid G4F_API_KEY; configure your trusted reverse proxy to inject x-api-key.");
+ const result=el("p","notice","Local browser and configured Docker bridge access are allowed. Other remote requests require a valid G4F_API_KEY; configure your trusted reverse proxy to inject x-api-key.");
  result.setAttribute("aria-live","polite");form.append(file,submit,result);form.onsubmit=async event=>{event.preventDefault();if(!file.files?.length){result.textContent="Choose a JSON or HAR file first.";return}const data=new FormData();data.append("file",file.files[0]);submit.disabled=true;result.textContent="Uploading to the existing g4f runtime…";try{const response=await fetch("/backend-api/v2/upload_cookies",{method:"POST",body:data});const body=await response.text();if(!response.ok)throw Error(body||"HTTP "+response.status);result.textContent="Upload accepted by g4f runtime: "+body;file.value=""}catch(error){result.textContent="Upload failed: "+error.message}finally{submit.disabled=false}};
  p.append(form);root.append(p);
- const warning=panel("Security boundary","");warning.append(el("p","panel-subtitle","ROCKSOUL does not read, list, or expose cookie contents. The existing g4f endpoint accepts trusted loopback requests or remote requests carrying the configured API key. Do not expose the service directly to an untrusted network; use an authenticated reverse proxy and private networking."));root.append(warning)
+ const warning=panel("Security boundary","");warning.append(el("p","panel-subtitle","ROCKSOUL does not read, list, or expose cookie contents. The existing g4f endpoint accepts loopback requests, explicitly trusted source CIDRs, or remote requests carrying the configured API key. Do not expose the service directly to an untrusted network; use an authenticated reverse proxy and private networking."));root.append(warning)
 }
 function showChat(){ $("page-content").hidden=true;$("conversation").hidden=false;$("composer-wrap").hidden=false}
 function hideChat(){ $("page-content").hidden=false;$("conversation").hidden=true;$("composer-wrap").hidden=true}
