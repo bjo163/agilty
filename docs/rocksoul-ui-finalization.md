@@ -27,7 +27,7 @@ ROCKSOUL is the unified replacement UI for the primary live g4f GUI pages. It is
 - Legacy handlers remain available when `ROCKSOUL_UI_ENABLED=0`.
 - File/media delivery, `/dist/*`, API routes, nested non-HTML assets beneath legacy GUI paths, and historical `/v<version>/*` snapshots are not rewritten.
 - UI locale catalog and selector support Indonesian and English with browser-language default, persisted selection, and English fallback.
-- Accessibility baseline includes skip navigation, named workspace/conversation landmarks, active-route `aria-current`, visible keyboard focus, and reduced-motion styling. Full assistive-technology and contrast certification remains a manual QA gate.
+- Accessibility baseline includes skip navigation, named workspace/conversation landmarks, active-route `aria-current`, visible keyboard focus, and reduced-motion styling. Automated regression now checks 375px/768px/1440px layouts, visible button names, reduced-motion behavior, and WCAG AA contrast for primary text tokens in both themes; the light-theme muted token was darkened to meet the threshold. Full screen-reader/assistive-technology, zoom, and real-device certification remain manual QA gates.
 - Apps with missing or unsafe launch URLs are rendered as informational cards instead of dead or executable links.
 - Canonical Compose includes init/restart policy, g4f status healthcheck, optional `G4F_API_KEY` environment configuration, and documented named-volume backup/restore.
 - ROCKSOUL CI now builds the canonical image, verifies `locale.js` in the Docker image and wheel, starts the canonical Compose service without rebuilding, waits for its healthcheck, and always tears the Compose stack/volume down.
@@ -79,7 +79,8 @@ See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the pri
 - [x] Playwright mocked-browser tests cover all migrated workspace sections, private-chat persistence, failed-share behavior, locale persistence, skip navigation, and document upload/extraction/cleanup through the existing file API.
 - [x] Exact-HEAD browser smoke, Python Unittest, and CodeQL pass. ROCKSOUL CI package/Docker checks pass on the parent commit immediately before the media-only change; exact run IDs are recorded below.
 - [ ] Real-provider streaming and provider authentication are verified.
-- [ ] Full interaction parity, translation completeness, assistive-technology, contrast, and responsive accessibility review pass.
+- [x] Automated responsive viewport, visible-control-name, reduced-motion, and WCAG AA primary text-token checks are included in browser/Python regression suites.
+- [ ] Full interaction parity, translation completeness, screen-reader/assistive-technology, zoom, and real-device accessibility review pass.
 - [x] CI workflow is configured to validate Compose configuration, build the local Docker image, verify bundled ROCKSOUL assets, and smoke-test persistent-volume writes.
 - [x] Privileged g4f GUI endpoints have direct-request trust-boundary regression tests.
 - [x] Opt-in live-provider compatibility harness is available; live provider execution remains opt-in and has not been claimed as passed.
