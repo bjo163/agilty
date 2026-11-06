@@ -321,6 +321,7 @@ def test_privileged_gui_guard_requires_matching_remote_api_key(monkeypatch):
 
     monkeypatch.setattr(AppConfig, "g4f_api_key", "test-secret")
     monkeypatch.setenv("G4F_API_KEY", "test-secret")
+    monkeypatch.delenv("G4F_GUI_TRUSTED_IPS", raising=False)
     app = Flask(__name__)
     with app.test_request_context(
         "/", environ_base={"REMOTE_ADDR": "203.0.113.10"},
