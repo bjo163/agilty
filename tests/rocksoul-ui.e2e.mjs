@@ -71,7 +71,7 @@ const server = createServer(async (req, res) => {
       // Keep the stream open so the browser Stop control exercises AbortController.
       return;
     }
-    res.write('data: {"choices":[{"delta":{"content":"**ROCKSOUL browser test**\\n\\n```js\\nconst answer = 42;\\n```"}}]}\n\n');
+    res.write('data: {"choices":[{"delta":{"content":"**ROCKSOUL browser test**\\n\\n```js\\nconst answer = 42;\\n```\\n\\n![pixel](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j8WQAAAAASUVORK5CYII=)\\n\\n[audio sample](https://example.com/sample.mp3)"}}]}\n\n');
     res.write("data: [DONE]\n\n");
     res.end();
     return;
@@ -119,6 +119,17 @@ try {
   await page.locator(".code-copy").first().click();
   await page.getByRole("button", { name: "Copied" }).waitFor();
   assert.equal(await page.evaluate(() => window.__copiedCode), "const answer = 42;");
+  await page.locator(".markdown-image").waitFor();
+  await page.locator(".markdown-audio").waitFor();
+  assert.equal(await page.locator(".markdown-image").getAttribute("alt"), "pixel");
+  assert.equal(await page.locator(".message-action-regenerate").count(), 1);
+  const downloads = [];
+  page.on("download", download => downloads.push(download.suggestedFilename()));
+  await page.locator("#export-md").click();
+  await page.locator("#export-json").click();
+  await page.waitForTimeout(100);
+  assert.ok(downloads.includes("Say-hello.md"));
+  assert.ok(downloads.includes("Say-hello.json"));
   await page.locator(".message.assistant .message-action-copy").click();
   assert.ok((await page.evaluate(() => window.__copiedCode)).includes("const answer = 42;"));
   await page.addInitScript(() => { Object.defineProperty(window.crypto, "randomUUID", { configurable: true, value: undefined }); });
