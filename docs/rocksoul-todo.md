@@ -581,7 +581,7 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Record metadata-only WebMCP invocation outcomes via existing /backend-api/v2/log; do not persist raw tool arguments or secrets in the audit event.
 - [x] Add keyboard focus-visible and prefers-contrast affordances; preserve reduced-motion support.
 - [x] Expand Playwright mocks for shared conversation restoration, media attachment submission, provider health/login controls, and confirmed tool execution.
-- [x] Add canonical Docker image build and bundled ROCKSOUL asset smoke check to ROCKSOUL CI, alongside existing wheel and Compose checks.
+- [x] Add canonical Docker image build, bundled ROCKSOUL asset check, and persistent config-volume write smoke test to ROCKSOUL CI, alongside wheel and Compose checks.
 - [x] Parse-check the current app.js and browser E2E module source.
 - [ ] Await GitHub Actions execution on the final exact main HEAD. Runs observed for this continuation are queued; do not infer success from queued status.
 - [ ] Verify actual provider streaming, OAuth/device-code polling, returned image/audio/video rendering, and upstream disconnect behavior with configured provider credentials.
@@ -608,7 +608,8 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [ ] Exact-main GitHub Actions remain queued; do not mark test, CodeQL, package, or Docker jobs green until they complete.
 - [ ] Harden or externally protect WebMCP tool invocation: browser confirmation is not server authorization, and the existing endpoint accepts direct calls.
 - [ ] Harden or externally protect the existing cookie/HAR upload endpoint: it only checks whether G4F_API_KEY is configured for non-loopback access and does not validate a per-request key in this handler.
-- [ ] Decide whether to persist g4f config/cookies/share buckets in a named Docker volume. Current Compose bind-mounts the source tree but does not explicitly mount the platform config directory; chat share snapshots, usage/log data, cookies, and caches may be lost when the container is recreated depending on the runtime home/config path.
+- [x] Configure G4F_CONFIG_DIR=/data/g4f and a named g4f-data Docker volume; prepare directory ownership in the image and add a Docker CI write smoke test. Compose uses pull_policy: build to avoid accidentally running a pre-existing upstream image instead of this checkout.
+- [ ] Verify the named volume and local-source build behavior in a real Coolify deployment.
 - [ ] Verify production Coolify port exposure, reverse-proxy authentication, persistence, and real deployment behavior.
 - [ ] Complete real-provider, OAuth device-flow, returned-media rendering, localization, screen-reader, and responsive certification.
 
