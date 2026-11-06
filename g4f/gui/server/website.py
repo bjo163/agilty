@@ -278,8 +278,10 @@ class Website:
     def _rocksoul_asset(self, filename: str):
         """Serve only files contained by the bundled ROCKSOUL asset directory."""
         ui_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rocksoul"))
-        response = send_from_directory(ui_dir, filename, max_age=31536000)
-        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        response = send_from_directory(ui_dir, filename, max_age=0)
+        # Asset URLs are stable (not content-hashed), so immutable caching can
+        # pin stale JavaScript/CSS across deployments for up to a year.
+        response.headers["Cache-Control"] = "public, max-age=0, must-revalidate"
         return response
 
     def _index(self, filename="home"):
