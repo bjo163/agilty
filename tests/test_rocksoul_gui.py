@@ -278,3 +278,14 @@ def test_registered_provider_catalog_uses_legacy_template_when_disabled(monkeypa
     assert response.status_code == 200
     assert response.headers.get("X-ROCKSOUL-UI") is None
     assert b"Providers" in _body(response)
+
+
+def test_canonical_compose_binds_gui_and_api_ports_to_loopback():
+    from pathlib import Path
+
+    compose = (Path(__file__).parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "127.0.0.1:8080:8080" in compose
+    assert "127.0.0.1:1337:8080" in compose
+    assert "127.0.0.1:7900:7900" in compose
+    assert "\n      - '8080:8080'" not in compose
+    assert "\n      - '1337:8080'" not in compose
