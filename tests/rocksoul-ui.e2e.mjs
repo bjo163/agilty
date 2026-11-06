@@ -69,7 +69,8 @@ const server = createServer(async (req, res) => {
     let prompt = "";
     try {
       const payload = JSON.parse(raw);
-      prompt = payload.messages?.at(-1)?.content || "";\n      documentPromptReceived = prompt;
+      prompt = payload.messages?.at(-1)?.content || "";
+      documentPromptReceived = prompt;
     } catch {}
     if (prompt === "trigger error") {
       res.writeHead(503, { "content-type": "application/json" });
