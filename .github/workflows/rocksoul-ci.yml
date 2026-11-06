@@ -69,9 +69,32 @@ jobs:
         run: docker compose config --quiet
       - name: Build canonical Docker image and verify bundled ROCKSOUL assets
         run: |
-          docker build --build-arg G4F_VERSION=0.0.0-dev --tag rocksoul-ui-smoke --file docker/Dockerfile .
+          docker build --build-arg G4F_VERSION=0.0.0-dev --tag rocksoul-ui-smoke --tag hlohaus789/g4f:latest --file docker/Dockerfile .
           docker run --rm --entrypoint python -e G4F_CONFIG_DIR=/data/g4f -v rocksoul-ui-smoke-data:/data/g4f rocksoul-ui-smoke -c "from importlib.resources import files; from pathlib import Path; assets = files(\"g4f\").joinpath(\"gui\", \"rocksoul\"); assert all(assets.joinpath(name).is_file() for name in (\"index.html\", \"app.css\", \"app.js\")); data = Path(\"/data/g4f\"); data.mkdir(parents=True, exist_ok=True); probe = data / \"volume-smoke.txt\"; probe.write_text(\"ok\"); assert probe.read_text() == \"ok\""
           docker volume rm rocksoul-ui-smoke-data
+      - name: Start canonical Docker Compose service and wait for health
+        shell: bash
+        run: |
+          docker compose up -d --no-build
+          container="$(docker compose ps -q gpt4free)"
+          test -n "$container"
+          for attempt in $(seq 1 24); do
+            health="$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
+            if [ "$health" = "healthy" ]; then
+              docker compose ps
+              exit 0
+            fi
+            if [ "$health" = "unhealthy" ]; then
+              docker compose logs --no-color gpt4free
+              exit 1
+            fi
+            sleep 10
+          done
+          docker compose logs --no-color gpt4free
+          exit 1
+      - name: Stop canonical Docker Compose service
+        if: always()
+        run: docker compose down --volumes --remove-orphans
 
       - name: Install minimal runtime dependencies for entrypoint smoke tests
         run: python -m pip install -r requirements-min.txt
