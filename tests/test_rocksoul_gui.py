@@ -544,7 +544,7 @@ def test_rocksoul_theme_text_tokens_meet_wcag_aa_contrast():
 
     themes = (
         variables(r":root"),
-        variables(r":root\[data-theme=light\]),
+        variables(r":root\[data-theme=light\]"),
     )
     for theme in themes:
         assert contrast(theme["--ink"], theme["--bg"]) >= 4.5
