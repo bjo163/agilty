@@ -52,7 +52,7 @@ def test_rocksoul_assets_are_served_from_bundled_directory(monkeypatch):
 
     assert response.status_code == 200
     assert b".app-shell" in response.get_data()
-    assert response.headers.get("Cache-Control") == "public, max-age=31536000, immutable"
+    assert response.headers.get("Cache-Control") == "public, max-age=0, must-revalidate"
 
 
 def test_all_bundled_assets_are_present_and_served(monkeypatch):
