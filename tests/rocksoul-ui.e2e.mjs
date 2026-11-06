@@ -286,6 +286,7 @@ try {
       assert.deepEqual(unnamed, [], `visible buttons must have accessible names on ${route}`);
     }
   }
+  await page.goto("http://127.0.0.1:4173/");
   await page.emulateMedia({ reducedMotion: "reduce" });
   const reducedMotionDuration = await page.locator(".workspace-card").first().evaluate(node => getComputedStyle(node).transitionDuration).catch(() => "0s");
   assert.ok(reducedMotionDuration.split(",").every(value => parseFloat(value) === 0), "reduced-motion preference should disable card transitions");
