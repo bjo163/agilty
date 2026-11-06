@@ -117,6 +117,8 @@ try {
   await page.locator(".code-copy").first().click();
   await page.getByRole("button", { name: "Copied" }).waitFor();
   assert.equal(await page.evaluate(() => window.__copiedCode), "const answer = 42;");
+  await page.locator(".message.assistant .message-action-copy").click();
+  assert.ok((await page.evaluate(() => window.__copiedCode)).includes("const answer = 42;"));
   await page.addInitScript(() => { Object.defineProperty(window.crypto, "randomUUID", { configurable: true, value: undefined }); });
   await page.evaluate(() => { const key = "rocksoul-chat-history-v1"; const items = JSON.parse(localStorage.getItem(key) || "[]"); items[0].id = "1712345678901"; localStorage.setItem(key, JSON.stringify(items)); });
   await page.reload();
