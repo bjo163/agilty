@@ -7,9 +7,23 @@ import { chromium } from "playwright";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "g4f", "gui", "rocksoul");
 const mime = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" };
+const remoteChats = new Map([["shared-test-123", { id: "shared-test-123", title: "Shared fixture", messages: [{ role: "user", content: "server-restored conversation" }], updated: 1 }]]);
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://127.0.0.1");
   const json = (data) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(data)); };
+  if (url.pathname.startsWith("/backend-api/v2/chat/")) {
+    const id = url.pathname.split("/").at(-1);
+    if (req.method === "POST") { let raw = ""; for await (const chunk of req) raw += chunk; remoteChats.set(id, JSON.parse(raw)); return json({ share_id: id }); }
+    if (remoteChats.has(id)) return json(remoteChats.get(id));
+    res.writeHead(404).end(); return;
+  }
+  if (url.pathname === "/backend-api/v2/health/DemoProvider" || url.pathname === "/backend-api/v2/quota/DemoProvider") return json({ status: "healthy", remaining: 42 });
+  if (url.pathname === "/backend-api/v2/conversation") {
+    for await (const chunk of req) { /* consume multipart attachment request */ }
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.end('event: content\ndata: {"type":"content","content":"attachment endpoint response"}\n\n');
+    return;
+  }
   if (url.pathname === "/backend-api/v2/providers") return json([{ name: "DemoProvider", label: "Demo Provider", auth: false, live: true }]);
   if (url.pathname === "/backend-api/v2/models/DemoProvider") return json([{ id: "demo-model", label: "Demo Model" }]);
   if (url.pathname === "/backend-api/v2/status") return json({ status: "ok", version: "test", latest_version: "test", total_providers: 1, working_providers: 1, total_models: 1 });
@@ -108,6 +122,15 @@ try {
   await page.reload();
   await page.getByText("partial before stop").waitFor();
 
+  await page.goto("http://127.0.0.1:4173/chat/?chat=shared-test-123");
+  await page.getByText("server-restored conversation").waitFor();
+
+  await page.goto("http://127.0.0.1:4173/chat/");
+  await page.locator("#attachment-input").setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello from attachment") });
+  await page.locator("#prompt").fill("Summarize this file");
+  await page.locator("#send").click();
+  await page.getByText("attachment endpoint response").waitFor();
+
   await page.goto("http://127.0.0.1:4173/agent/");
   await page.locator(".tool-runner").waitFor();
   page.once("dialog", dialog => dialog.accept());
@@ -129,7 +152,7 @@ try {
   ]) {
     await page.goto("http://127.0.0.1:4173" + route);
     await page.locator(selector).first().waitFor();
-    if (route === "/providers/DemoProvider") await page.locator('[data-route="/providers/"].active').waitFor();
+    if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); }
   }
 
   const restrictedPage = await browser.newPage();
