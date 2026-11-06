@@ -732,6 +732,7 @@ The work packages in [docs/rocksoul-next-milestones.md](rocksoul-next-milestones
 #### RS-UI-M07 — local Compose operator experience
 - [x] Add init/restart policy, status healthcheck, optional `G4F_API_KEY` pass-through, and trusted Docker bridge CIDR configuration.
 - [x] Document readiness, logs, named-volume backup, and restore commands in README.
-- [ ] Run `docker compose config`, clean build/start/health, volume persistence, and backup/restore on a real Docker host. Coolify remains explicitly out of scope.
+- [x] Configure ROCKSOUL CI to build the canonical image, verify all bundled UI assets, start the canonical Compose service, wait for health, and clean up the stack/volume.
+- [ ] Confirm exact-main Compose runtime CI passes and perform a local named-volume backup/restore smoke on a real Docker host. Coolify remains explicitly out of scope.
 
 **Completion rule:** a checked implementation item above does not close its milestone if a separate acceptance gate remains unchecked. Keep the issue open until its complete acceptance criteria and exact-main evidence are satisfied.
