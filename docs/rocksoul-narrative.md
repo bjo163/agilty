@@ -1,109 +1,65 @@
-# ROCKSOUL — Product Narrative & Manifesto
+# ROCKSOUL — Product Narrative
 
-> **Intelligence should earn trust through evidence, not performance.**
+> **One runtime. A better way to work with AI.**
 
-## The thesis
+## The idea
 
-The next generation of AI infrastructure will not be won by the system that merely connects the most models, emits the most tokens, or produces the most convincing demonstrations. It will be won by systems that can turn uncertain machine intelligence into dependable outcomes.
+g4f already brings together Python interfaces, providers, models, tools, and inference APIs. ROCKSOUL gives that capability a distinctive, coherent product experience.
 
-ROCKSOUL is being built for that transition.
-
-ROCKSOUL is an **Evidence-Driven Intelligence & Execution Control Plane**. It coordinates models and tools, governs how work is executed, observes what actually happened, verifies whether the intended outcome was achieved, and uses trustworthy evidence to improve future decisions.
-
-It sits above an existing runtime substrate such as g4f. It does not attempt to become another provider implementation collection. The runtime performs provider-specific communication; ROCKSOUL governs the decision and execution lifecycle around it.
-
-## The problem we are solving
-
-Today's AI stack is fragmented across model gateways, agent frameworks, tool servers, observability products, evaluation suites, memory stores, and workflow engines. These pieces often optimize local metrics:
-
-- a gateway optimizes access and routing;
-- a model optimizes the next response;
-- an agent framework optimizes orchestration;
-- an evaluator scores a sample;
-- an observability tool records events.
-
-But a user does not buy tokens, routes, traces, or agent steps. A user needs a task completed correctly, safely, within constraints, with enough evidence to trust the result.
-
-The missing layer is a system that connects **intent → plan → capability → execution → verification → outcome → learning** without losing identity, provenance, budget, or accountability along the way.
+ROCKSOUL is the new face of g4f: a thoughtfully designed interface that replaces the default HTML experience while respecting the Python runtime that powers it.
 
 ## Mission
 
-Make every AI-assisted operation:
-
-1. **Purposeful** — tied to an explicit user goal and acceptance criteria.
-2. **Grounded** — based on known inputs, provenance, and declared uncertainty.
-3. **Verifiable** — checked against evidence appropriate to the task.
-4. **Bounded** — constrained by time, cost, permissions, retries, and blast radius.
-5. **Recoverable** — able to isolate failures, resume safely, or ask for human judgment.
-6. **Explainable** — able to show why a decision was made and what evidence supports it.
-7. **Improving** — able to learn from verified outcomes without silently rewriting policy.
+Make powerful, diverse AI capabilities approachable through one fast, expressive, reliable interface—without hiding limitations or duplicating the machinery underneath.
 
 ## Vision
 
-Build a model-agnostic, runtime-independent intelligence control plane that can coordinate a heterogeneous ecosystem of models, tools, agents, machines, and eventually long-running autonomous workflows.
+A unified AI workspace that feels modern and intentional across chat, models, providers, tools, media, settings, and conversation history. It should be easy for a first-time user and efficient for a developer who already knows g4f.
 
-The long horizon is **AGI-ready infrastructure**, not an AGI claim. ROCKSOUL should remain useful as models become more capable, multimodal, persistent, tool-using, collaborative, and increasingly autonomous. It must not depend on one model family, one vendor, one agent framework, or one definition of intelligence.
+## What ROCKSOUL is
 
-## The anti-slop position
+- The primary web UI and visual identity for g4f.
+- A chat-first workspace over existing g4f APIs.
+- A responsive experience for existing provider and model capabilities.
+- A coherent home for settings, history, diagnostics and supported tools.
+- A presentation layer that makes runtime capabilities understandable.
 
-Slop is not simply incorrect text. It is output that looks complete while failing the real task: plausible but unsupported claims, fabricated citations, generic filler, shallow reasoning, untested code, incomplete artifacts, hidden omissions, repeated retries that change nothing, or confident conclusions without evidence.
+## What ROCKSOUL is not
 
-ROCKSOUL treats quality as a property of the **delivered outcome**, not the fluency of the generated response.
+- A second Python runtime.
+- A new LLM gateway or provider aggregator.
+- A parallel provider registry, model catalog, router or fallback engine.
+- A replacement for g4f's API, Python SDK or provider implementations.
+- An autonomous-agent platform or an AGI claim.
+- A requirement to enable WorkItem, WorkGraph, Arena or Mesh for ordinary chat.
 
-Anti-slop rules:
+## Product principles
 
-- No success state based only on HTTP 200, non-empty text, or model self-assessment.
-- No factual claim without an appropriate evidence path when evidence is required.
-- No code completion without relevant tests, static checks, or an explicit unverified label.
-- No benchmark leaderboard without dataset provenance, evaluator identity, and reproducibility.
-- No silent substitution of a weaker model, tool, or capability.
-- No infinite self-reflection loops or retries without a measurable new hypothesis.
-- No fabricated certainty: abstention, clarification, or escalation are valid outcomes.
-- No quality score without a definition, evidence, and known limitations.
+1. **Runtime first:** g4f remains the source of truth for models, providers, execution and API behavior.
+2. **UI owns presentation:** ROCKSOUL owns interaction, navigation, visual hierarchy and accessibility—not inference.
+3. **Compatibility over reinvention:** preserve g4f routes, payloads, sessions and SDKs.
+4. **Honest capability display:** show only what the runtime actually supports.
+5. **Fast and direct:** streaming should feel immediate; avoid needless proxying and buffering.
+6. **Progressive complexity:** simple chat first; advanced controls appear when relevant.
+7. **Recoverability:** keep a fallback to the existing UI until replacement parity is proven.
+8. **Privacy by design:** never expose provider secrets or server credentials to the browser.
+
+## The experience
+
+ROCKSOUL should feel like a focused AI workspace, not an infrastructure dashboard. The primary screen is conversation-first. Model/provider selection, attachments, tools, and generation options are accessible without overwhelming the chat. History and workspace navigation remain predictable. Diagnostics are available but do not dominate the product.
+
+The visual language may be bold, experimental and distinctive, but readability, speed, keyboard access, responsive behavior and user control remain non-negotiable.
 
 ## Product promise
 
-**Every decision is explainable. Every execution is traceable. Every outcome is verifiable. Every policy change is reversible.**
+**One proven runtime. One coherent interface.**
 
-ROCKSOUL does not promise that models will always be right. It promises to make uncertainty visible, constrain the consequences of failure, and create a path from evidence to better decisions.
+We will not create a second gateway just to give the product a new face. We will preserve the working Python engine and make the experience around it substantially better.
 
-## What ROCKSOUL is — and is not
+## Optional engineering modules
 
-ROCKSOUL is:
-- an intelligence and execution control plane;
-- an evidence and provenance system for AI work;
-- a policy-governed router and orchestrator;
-- a reliability, recovery, and verification layer;
-- a foundation for controlled multi-agent and long-horizon autonomy.
-
-ROCKSOUL is not:
-- a new foundation model or a claim of sentience/AGI;
-- a replacement for g4f provider implementations;
-- a prompt collection marketed as an autonomous agent;
-- a benchmark score that proves general intelligence;
-- an unrestricted agent with ambient access to machines or accounts;
-- a system that equates model consensus with truth.
-
-## The north star
-
-Optimize for **verified useful outcomes per unit of cost, time, and risk**.
-
-A fast answer that is wrong is not a win. A cheap answer that creates expensive rework is not a win. A successful tool call that does not accomplish the user's intent is not a win. A cautious refusal when evidence is insufficient may be the correct result.
-
-## Product language
-
-- **ROCKSOUL Core** — identity, policy, execution lifecycle, and evidence contracts.
-- **ROCKSOUL Router** — capability-aware selection and route explanation.
-- **ROCKSOUL Trace** — immutable execution history and provenance.
-- **ROCKSOUL Guard** — budgets, permissions, safety boundaries, and recovery rules.
-- **ROCKSOUL Verify** — task-specific outcome verification and anti-slop gates.
-- **ROCKSOUL Memory** — scoped, provenance-aware, revisable knowledge (future).
-- **ROCKSOUL Arena** — reproducible evaluation and adversarial testing.
-- **ROCKSOUL Mesh** — distributed nodes, leases, and coordination.
-- **ROCKSOUL Console** — operator interface for inspection and control.
-
-These names describe product domains, not a claim that every future capability is already implemented.
+Arena, Mesh, WorkItem, WorkGraph, evidence verification and operator tooling may remain as optional experiments or developer utilities. They do not define the ROCKSOUL product and must not become dependencies of the normal chat experience.
 
 ## The commitment
 
-We will prefer a smaller system with auditable guarantees over a larger system with vague promises. We will publish what works, label what is experimental, preserve upstream attribution, and make evidence stronger than marketing.
+Ship the interface users can actually use. Preserve the runtime that already works. Label unfinished parity honestly. Remove legacy HTML only after the replacement is tested—not before.
