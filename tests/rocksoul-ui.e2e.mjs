@@ -9,6 +9,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "g4f", "gui"
 const mime = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" };
 const remoteChats = new Map([["shared-test-123", { id: "shared-test-123", title: "Shared fixture", messages: [{ role: "user", content: "server-restored conversation" }], updated: 1 }]]);
 const toolAuditEvents = [];
+const uploadedBuckets = new Map();
+let documentPromptReceived = "";
 let chatWriteCount = 0;
 let chatCompletionCount = 0;
 let oauthPollCount = 0;
@@ -25,6 +27,16 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname === "/backend-api/v2/health/DemoProvider" || url.pathname === "/backend-api/v2/quota/DemoProvider") return json({ status: "healthy", remaining: 42 });
   if (url.pathname === "/backend-api/v2/oauth/DemoProvider") { let raw = ""; for await (const chunk of req) raw += chunk; const payload = raw ? JSON.parse(raw) : {}; if (payload.action === "poll") { oauthPollCount += 1; return json(oauthPollCount === 1 ? { status: "pending", message: "Authorization pending" } : { status: "success", message: "GitHub OAuth successful" }); } return json({ status: "pending", verification_uri: "https://auth.example.test/device", user_code: "ROCK-SOUL", device_code: "mock-device-code", interval: 1, expires_in: 60 }); }
+  if (/^\\/backend-api\\/v2\\/files\\/[^/]+$/.test(url.pathname)) {
+    const bucket = url.pathname.split("/").at(-1);
+    if (req.method === "DELETE") { uploadedBuckets.delete(bucket); return json({ deleted: true }); }
+    if (req.method === "POST") { for await (const chunk of req) { /* consume multipart document upload */ } uploadedBuckets.set(bucket, "Mock document extracted text"); return json({ bucket_id: bucket, files: ["notes.txt"], media: [] }); }
+  }
+  if (/^\\/backend-api\\/v2\\/files\\/[^/]+\\/stream$/.test(url.pathname)) {
+    const bucket = url.pathname.split("/").at(-2);
+    if (uploadedBuckets.has(bucket)) { res.writeHead(200, { "content-type": "text/plain" }); res.end(uploadedBuckets.get(bucket)); return; }
+    res.writeHead(404).end(); return;
+  }
   if (url.pathname === "/backend-api/v2/conversation") {
     for await (const chunk of req) { /* consume multipart attachment request */ }
     res.writeHead(200, { "content-type": "text/event-stream" });
@@ -57,7 +69,7 @@ const server = createServer(async (req, res) => {
     let prompt = "";
     try {
       const payload = JSON.parse(raw);
-      prompt = payload.messages?.at(-1)?.content || "";
+      prompt = payload.messages?.at(-1)?.content || "";\n      documentPromptReceived = prompt;
     } catch {}
     if (prompt === "trigger error") {
       res.writeHead(503, { "content-type": "application/json" });
@@ -106,6 +118,14 @@ try {
   page.on("pageerror", error => startupErrors.push(error.stack || error.message));
   page.on("requestfailed", request => failedRequests.push(request.url() + ": " + (request.failure()?.errorText || "failed")));
   await page.goto("http://127.0.0.1:4173/");
+  await page.keyboard.press("Tab");
+  assert.equal(await page.evaluate(() => document.activeElement.className), "skip-link", "keyboard users should reach skip navigation first");
+  await page.locator("#locale-select").selectOption("id");
+  await page.getByRole("link", { name: /Ringkasan/ }).waitFor();
+  await page.reload();
+  assert.equal(await page.locator("#locale-select").inputValue(), "id", "locale should persist across reload");
+  await page.locator("#locale-select").selectOption("en");
+  await page.getByRole("link", { name: /Overview/ }).waitFor();
   try { await page.locator(".metric-card").first().waitFor({ timeout: 12000 }); }
   catch { throw new Error("Overview metrics did not render. startupErrors=" + JSON.stringify(startupErrors) + " failedRequests=" + JSON.stringify(failedRequests)); }
   assert.equal(await page.locator("#model-select option[value='browser-test-model']").count(), 1, "runtime model should be listed");
@@ -207,6 +227,14 @@ try {
   await page.locator(".markdown-audio[src=\"/media/generated.mp3\"]").waitFor();
   await page.locator(".markdown-audio").last().waitFor();
   assert.ok((await page.locator(".markdown-audio").last().getAttribute("src")).startsWith("data:audio/mpeg;base64,"));
+
+  await page.goto("http://127.0.0.1:4173/chat/");
+  await page.locator("#attachment-input").setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("Document fixture") });
+  await page.locator("#prompt").fill("Summarize this document");
+  await page.locator("#send").click();
+  await page.getByText("ROCKSOUL browser test").last().waitFor();
+  assert.ok(documentPromptReceived.includes("Mock document extracted text"), "document extraction should use the existing g4f files API and pass extracted text to chat");
+  assert.equal(uploadedBuckets.size, 0, "temporary document buckets should be cleaned up");
 
   await page.goto("http://127.0.0.1:4173/agent/");
   await page.locator(".tool-runner").waitFor();
