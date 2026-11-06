@@ -110,7 +110,14 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    package_data={"g4f": ["providers.json"]},
+    package_data={
+        "g4f": [
+            "providers.json",
+            "gui/rocksoul/*.html",
+            "gui/rocksoul/*.css",
+            "gui/rocksoul/*.js",
+        ]
+    },
     include_package_data=True,
     install_requires=INSTALL_REQUIRE,
     extras_require=EXTRA_REQUIRE,
