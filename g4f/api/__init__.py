@@ -259,6 +259,13 @@ def _redact_sensitive_body(value):
     return value
 
 
+def _safe_body_for_log(body_bytes: bytes, content_type: str):
+    """Keep only redacted JSON diagnostics; never persist arbitrary text or multipart data."""
+    if "application/json" not in (content_type or "").lower():
+        return f"<{len(body_bytes)} bytes omitted>"
+    return _redact_sensitive_body(_try_parse_body(body_bytes, content_type))
+
+
 def _try_parse_body(body_bytes: bytes, content_type: str):
     if not body_bytes:
         return None
@@ -763,9 +770,9 @@ def create_app():
         req_body = None
         if capture_body:
             req_body_bytes = await request.body()
-            req_body = _redact_sensitive_body(_try_parse_body(
+            req_body = _safe_body_for_log(
                 req_body_bytes, request.headers.get("content-type", "")
-            ))
+            )
 
         start = time.monotonic()
         response = await call_next(request)
@@ -783,7 +790,7 @@ def create_app():
                 async for chunk in response.body_iterator:
                     chunks.append(chunk)
                 resp_body_bytes = b"".join(chunks)
-                resp_body = _redact_sensitive_body(_try_parse_body(resp_body_bytes, resp_content_type))
+                resp_body = _safe_body_for_log(resp_body_bytes, resp_content_type)
                 # Reconstruct response so it can still be sent to the client
                 resp_headers = {
                     k: v
@@ -816,7 +823,7 @@ def create_app():
                             sse_truncated = True
                         yield chunk
                     raw = bytes(sse_capture)
-                    log_entry["response_body"] = _redact_sensitive_body(_try_parse_body(raw, "text/plain"))
+                    log_entry["response_body"] = f"<{len(raw)} diagnostic bytes omitted>"
                     if sse_truncated:
                         log_entry["response_body_truncated"] = True
                     # The retained tail still captures terminal SSE errors while
