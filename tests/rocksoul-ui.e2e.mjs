@@ -8,6 +8,7 @@ import { chromium } from "playwright";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "g4f", "gui", "rocksoul");
 const mime = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" };
 const remoteChats = new Map([["shared-test-123", { id: "shared-test-123", title: "Shared fixture", messages: [{ role: "user", content: "server-restored conversation" }], updated: 1 }]]);
+const toolAuditEvents = [];
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://127.0.0.1");
   const json = (data) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(data)); };
@@ -30,7 +31,7 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/backend-api/v2/status") return json({ status: "ok", version: "test", latest_version: "test", total_providers: 1, working_providers: 1, total_models: 1 });
   if (url.pathname === "/backend-api/v2/version") return json({ version: "test", latest_version: "test" });
   if (url.pathname === "/backend-api/v2/stats") return json({ totals: { requests: 2, prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }, models: {}, providers: {} });
-  if (url.pathname === "/backend-api/v2/log") return json({ logs: [{ timestamp: "now", event: "browser-test" }], count: 1 });
+  if (url.pathname === "/backend-api/v2/log") { if (req.method === "POST") { let raw = ""; for await (const chunk of req) raw += chunk; toolAuditEvents.push(JSON.parse(raw)); return json({}); } return json({ logs: [{ timestamp: "now", event: "browser-test" }], count: 1 }); }
   if (url.pathname === "/backend-api/v2/webmcp/tools") {
     if (req.method === "POST") {
       for await (const chunk of req) { /* consume mock tool request */ }
@@ -147,6 +148,7 @@ try {
   await page.locator(".tool-runner textarea").fill('{"query":"test"}');
   await page.locator(".tool-runner button[type=submit]").click();
   await page.getByText(/mock tool executed/).waitFor();
+  await page.waitForFunction(() => true);
 
   for (const [route, selector] of [
     ["/providers/", ".workspace-card"],
@@ -162,7 +164,7 @@ try {
   ]) {
     await page.goto("http://127.0.0.1:4173" + route);
     await page.locator(selector).first().waitFor();
-    if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); await page.getByRole("button", { name: "Start login" }).click(); await page.getByText("Continue authentication").waitFor(); }
+    if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); await page.getByRole("button", { name: "Check quota" }).click(); await page.getByText(/remaining/).waitFor(); await page.getByRole("button", { name: "Start login" }).click(); await page.getByText("Continue authentication").waitFor(); }
   }
 
   const restrictedPage = await browser.newPage();
@@ -174,7 +176,8 @@ try {
   assert.deepEqual(pageErrors, []);
   await restrictedPage.close();
 
-  console.log("ROCKSOUL browser smoke passed: all migrated workspace pages, confirmed WebMCP execution, model discovery, SSE EOF flush, provider errors, stop, history reload, and blocked-storage resilience.");
+  assert.ok(toolAuditEvents.some(event => event.event === "rocksoul.webmcp.invocation" && event.status === "success"));
+  console.log("ROCKSOUL browser smoke passed: unified pages, shared conversations, media attachments, provider login/health/quota, WebMCP confirmation/audit, SSE handling, stop, and restricted-storage resilience.");
 } finally {
   if (browser) await browser.close();
   await new Promise((resolveClose) => server.close(resolveClose));
