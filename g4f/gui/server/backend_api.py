@@ -114,6 +114,34 @@ def _get_webmcp_server():
     return MCPServer(github_token=os.environ.get("GITHUB_TOKEN"))
 
 
+def _privileged_request_allowed() -> bool:
+    """Allow privileged GUI writes only from loopback or with the configured API key.
+
+    This is defense in depth for legacy GUI routes. Remote deployments must
+    still use an authenticated reverse proxy and must not expose the service
+    directly to untrusted networks.
+    """
+    peer = request.remote or ""
+    try:
+        if ipaddress.ip_address(peer).is_loopback:
+            return True
+    except ValueError:
+        pass
+
+    expected = os.environ.get("G4F_API_KEY") or AppConfig.g4f_api_key
+    if not expected:
+        return False
+    supplied = request.headers.get("x-api-key", "")
+    authorization = request.headers.get("authorization", "")
+    if not supplied and authorization.lower().startswith("bearer "):
+        supplied = authorization[7:].strip()
+    return bool(supplied) and hmac.compare_digest(str(supplied), str(expected))
+
+
+def _privileged_forbidden():
+    return jsonify({"error": {"message": "Privileged operation requires a trusted local client or valid API key"}}), 403
+
+
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
