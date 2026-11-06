@@ -296,6 +296,24 @@ def _body_to_text(body) -> str:
             return str(body)
     return str(body)
 
+def _append_bounded_capture(buffer: bytearray, chunk: bytes, limit: int) -> bool:
+    """Append a chunk to a bounded tail buffer; return whether data was truncated."""
+    if not chunk:
+        return False
+    if limit <= 0:
+        return True
+    if len(chunk) >= limit:
+        buffer[:] = chunk[-limit:]
+        return True
+    overflow = len(buffer) + len(chunk) - limit
+    if overflow > 0:
+        del buffer[:overflow]
+        buffer.extend(chunk)
+        return True
+    buffer.extend(chunk)
+    return False
+
+
 def _sse_body_has_error(raw: bytes) -> bool:
     """Detect error payloads in an SSE body.
 
@@ -763,18 +781,7 @@ def create_app():
                     nonlocal sse_truncated
                     async for chunk in orig_iterator:
                         encoded = chunk if isinstance(chunk, bytes) else chunk.encode("utf-8", errors="replace")
-                        if capture_limit:
-                            if len(encoded) >= capture_limit:
-                                sse_capture[:] = encoded[-capture_limit:]
-                                sse_truncated = True
-                            elif len(sse_capture) + len(encoded) > capture_limit:
-                                overflow = len(sse_capture) + len(encoded) - capture_limit
-                                del sse_capture[:overflow]
-                                sse_capture.extend(encoded)
-                                sse_truncated = True
-                            else:
-                                sse_capture.extend(encoded)
-                        elif encoded:
+                        if _append_bounded_capture(sse_capture, encoded, capture_limit):
                             sse_truncated = True
                         yield chunk
                     raw = bytes(sse_capture)
