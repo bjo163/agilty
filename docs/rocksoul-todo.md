@@ -656,3 +656,12 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [ ] Verify document extraction/upload parity and real-provider media behavior with configured providers.
 - [ ] Verify exact-main GitHub Actions completion after this change.
 - [ ] Coolify deployment testing is explicitly not required by project owner; do not spend time or block on it.
+
+
+### Provider device-flow completion — 2026-11-06
+
+- [x] Start device authorization through the existing `/backend-api/v2/oauth/<provider>` endpoint.
+- [x] Display the provider verification URL and user code when returned.
+- [x] Poll the existing OAuth endpoint using the returned device code and provider interval; stop on success, explicit failure, expiry, or user cancellation.
+- [x] Add Playwright coverage for pending → success polling without live provider credentials.
+- [ ] Verify provider-specific OAuth behavior with real configured credentials; mock coverage is not live authentication certification.
