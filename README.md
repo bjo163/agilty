@@ -81,7 +81,7 @@ Table of contents
 - Docker images (full and slim).
 - Multi-provider adapters (LLMs, media providers, local inference backends).
 - Tooling for image/audio/video generation and media persistence.
-- Optional ROCKSOUL execution-control, Mesh coordination, and Arena benchmarking modules.
+- Optional ROCKSOUL operator/experimental modules (Arena, Mesh, WorkItem, WorkGraph and evidence tooling); not required for ordinary chat.
 
 
 ## ROCKSOUL UI
@@ -282,6 +282,8 @@ Notes:
 ## Running the app
 
 ### GUI (web client)
+
+When GUI mode is enabled, the bundled ROCKSOUL chat UI is served at `/` and `/chat/` by the existing g4f Python GUI server. Set `ROCKSOUL_UI_ENABLED=0` to temporarily restore the legacy g4f home/chat HTML during migration. The UI calls the same-origin g4f inference API; it does not start another runtime.
 - Run via Python:
 ```python
 from g4f.gui import run_gui
