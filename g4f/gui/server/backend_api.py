@@ -124,6 +124,8 @@ def _privileged_request_allowed() -> bool:
     peer = request.remote or ""
     try:
         peer_address = ipaddress.ip_address(peer)
+        if getattr(peer_address, "ipv4_mapped", None):
+            peer_address = peer_address.ipv4_mapped
         if peer_address.is_loopback:
             return True
         trusted_networks = os.environ.get("G4F_GUI_TRUSTED_IPS", "")
