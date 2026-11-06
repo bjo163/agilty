@@ -90,7 +90,16 @@ try {
   await page.reload();
   await page.getByText("partial before stop").waitFor();
 
-  console.log("ROCKSOUL browser smoke passed: shell, model discovery, SSE EOF flush, provider errors, stop, and persisted local history.");
+  const restrictedPage = await browser.newPage();
+  const pageErrors = [];
+  restrictedPage.on("pageerror", error => pageErrors.push(error.message));
+  await restrictedPage.addInitScript(() => Object.defineProperty(window, "localStorage", { get() { throw new DOMException("blocked", "SecurityError"); } }));
+  await restrictedPage.goto("http://127.0.0.1:4173/");
+  await restrictedPage.locator("#new-chat").click();
+  assert.deepEqual(pageErrors, []);
+  await restrictedPage.close();
+
+  console.log("ROCKSOUL browser smoke passed: shell, model discovery, SSE EOF flush, provider errors, stop, history reload, and blocked-storage resilience.");
 } finally {
   if (browser) await browser.close();
   await new Promise((resolveClose) => server.close(resolveClose));
