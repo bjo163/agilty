@@ -70,7 +70,7 @@ form.onsubmit=async event=>{event.preventDefault();let parsed;try{parsed=JSON.pa
 const selected=select.value;if(!selected)return;
 if(!window.confirm("Run the g4f tool '"+selected+"' with the arguments shown? This may access external services or perform actions."))return;
 run.disabled=true;output.textContent="Executing through g4f WebMCP…";
-try{const result=await api("/backend-api/v2/webmcp/tools",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:Date.now(),method:"tools/call",params:{name:selected,arguments:parsed}})});output.textContent=JSON.stringify(result,null,2)}catch(error){output.textContent="Tool execution failed: "+error.message}finally{run.disabled=false}
+try{const result=await api("/backend-api/v2/webmcp/tools",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:Date.now(),method:"tools/call",params:{name:selected,arguments:parsed}})});output.textContent=JSON.stringify(result,null,2);void api("/backend-api/v2/log",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"rocksoul.webmcp.invocation",tool:selected,status:"success",timestamp:new Date().toISOString()})}).catch(()=>{})}catch(error){output.textContent="Tool execution failed: "+error.message;void api("/backend-api/v2/log",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"rocksoul.webmcp.invocation",tool:selected,status:"failure",timestamp:new Date().toISOString()})}).catch(()=>{})}finally{run.disabled=false}
 };
 runner.append(form);target.append(runner);
 }catch(error){setNotice(target,"Tool registry unavailable: "+error.message,true)}
