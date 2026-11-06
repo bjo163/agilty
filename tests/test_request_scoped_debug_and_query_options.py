@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 import threading
 import unittest
+from unittest.mock import patch
 
 from g4f import debug
-from g4f.gui.server.backend_api import _parse_bool_query
+from g4f.gui.server.backend_api import _bounded_int_env, _parse_bool_query
 
 
 class RequestDebugContextTests(unittest.TestCase):
@@ -56,6 +58,16 @@ class RequestDebugContextTests(unittest.TestCase):
             debug.logging = previous_logging
             debug.log_handler = previous_handler
         self.assertEqual(captured, [("inside",)])
+
+
+class UploadLimitConfigurationTests(unittest.TestCase):
+    def test_upload_limits_use_defaults_and_clamp_values(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(_bounded_int_env("G4F_MAX_UPLOAD_FILES", 10, 1, 50), 10)
+        with patch.dict(os.environ, {"G4F_MAX_UPLOAD_FILES": "999"}, clear=True):
+            self.assertEqual(_bounded_int_env("G4F_MAX_UPLOAD_FILES", 10, 1, 50), 50)
+        with patch.dict(os.environ, {"G4F_MAX_UPLOAD_FILES": "invalid"}, clear=True):
+            self.assertEqual(_bounded_int_env("G4F_MAX_UPLOAD_FILES", 10, 1, 50), 10)
 
 
 class BooleanQueryParsingTests(unittest.TestCase):
