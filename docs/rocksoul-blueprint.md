@@ -47,7 +47,7 @@ The ROCKSOUL UI is a presentation client. The Python runtime remains the sole au
 - Model/provider selector backed by runtime metadata.
 - Rendering of streaming text, tool activity, errors and supported media.
 - Attachments and multimodal composition where g4f supports them.
-- History/session presentation backed by existing g4f behavior.
+- Initial browser-local conversation history; server-backed session parity is a later migration task.
 - Settings and provider login entry points using existing routes.
 - Theme, localization, responsive behavior, keyboard access and accessibility.
 - Optional diagnostics links without duplicating runtime state.
@@ -132,7 +132,7 @@ Do not mark R2–R6 complete merely because a separate Next.js operator console 
 - Existing g4f Python SDK and API tests remain green.
 - UI uses live runtime model/provider metadata.
 - Streaming is incremental and cancellation-safe to the extent supported by g4f.
-- Conversation continuity and supported uploads work.
+- Conversation history behavior is explicit and tested; server-backed session continuity and supported uploads are certified before being claimed.
 - / and /chat/ use ROCKSOUL by default after cutover.
 - Legacy routes remain available until individually migrated.
 - Docker Compose/Coolify deploys the same g4f runtime with the UI assets.
