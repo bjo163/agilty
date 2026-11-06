@@ -204,7 +204,7 @@ try {
   await page.locator(".markdown-image").last().waitFor();
   await page.locator(".markdown-video").last().waitFor();
   await page.locator(".markdown-audio").last().waitFor();
-  assert.match(await page.locator(".markdown-audio").last().getAttribute("src"), /^data:audio\\/mpeg;base64,/);
+  assert.match(await page.locator(".markdown-audio").last().getAttribute("src"), /^data:audio\/mpeg;base64,/);
 
   await page.goto("http://127.0.0.1:4173/agent/");
   await page.locator(".tool-runner").waitFor();
