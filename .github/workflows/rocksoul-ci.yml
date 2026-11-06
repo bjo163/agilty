@@ -17,6 +17,8 @@ on:
     paths:
       - 'g4f/gui/**'
       - 'tests/test_rocksoul_gui.py'
+      - 'tests/rocksoul-ui.e2e.mjs'
+      - 'tests/rocksoul-provider-smoke.mjs'
       - 'docs/rocksoul-*.md'
       - 'setup.py'
       - 'docker-compose.yml'
