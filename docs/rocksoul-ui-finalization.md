@@ -59,3 +59,16 @@ The initial ROCKSOUL UI is mounted by default, with the legacy UI retained as a 
 - The browser aborts the in-flight fetch using AbortController. If text has already streamed, the partial assistant response is retained in browser-local history; otherwise the UI reports that generation was stopped.
 - This is client-side cancellation. It does not claim provider-side cancellation beyond the disconnect behavior supported by the existing g4f API.
 - Automated browser verification for this interaction remains open.
+
+
+## UI hardening completed in code
+
+- Stable asset URLs now use revalidation (`max-age=0, must-revalidate`) rather than a one-year immutable cache. This avoids stale CSS/JS remaining pinned after a deployment.
+- The SSE reader consumes a final buffered event even if the provider closes without a trailing newline.
+- The Stop control aborts the browser request; already received text is retained in the local conversation. Provider-side cancellation is not guaranteed by this UI behavior.
+- Flask route/asset tests now cover default root cutover, chat cutover, legacy fallback for both routes, bundled asset delivery, traversal rejection, and cache headers.
+- ROCKSOUL CI now uses pytest for function-style tests, watches `g4f/gui/**` changes on pushes and pull requests, and checks that the built wheel contains all three UI assets.
+
+## Verification state
+
+These checks have been added to automation, but they are **not marked passed** until GitHub Actions reports success on the exact latest `main` commit. The workflow does not currently perform a real provider call or a full browser automation run. Those remain explicit release gates.
