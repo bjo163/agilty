@@ -17,7 +17,7 @@ This inventory defines the live GUI migration boundary. ROCKSOUL is a bundled st
 | `/browser`, `/browser/`, `/browser.html` | Research/browser tool discovery | `/backend-api/v2/webmcp/tools` (only tools actually advertised are shown) |
 | `/playground/`, `/playground/*`, `/playground.html` | Prompt experiment workspace | `/v1/models`, `/v1/chat/completions` |
 | `/apps/`, `/apps/*`, `/apps.html` | Extension and PA provider catalog | `/pa/providers` |
-| `/private/`, `/private/*`, `/private.html` | Private utilities and guarded cookie import | `/backend-api/v2/upload_cookies` |
+| `/private/`, `/private/*`, `/private.html` | Private utilities and existing cookie import endpoint | `/backend-api/v2/upload_cookies` |
 
 The existing navigation is unified in `g4f/gui/rocksoul/index.html`; route-aware rendering and data loading live in `app.js`. The shell reuses same-origin APIs and keeps provider execution, authentication, tools, files, and data ownership inside g4f.
 
