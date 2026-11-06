@@ -615,7 +615,8 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [ ] Verify the named volume and local-source build behavior in a real Coolify deployment.
 - [ ] Verify production Coolify port exposure, reverse-proxy authentication, persistence, and real deployment behavior.
 - [x] Render safe Markdown blocks and fenced code blocks with copy controls; raw HTML is never injected from model output.
-- [ ] Complete message actions (copy/edit/regenerate/delete/export) and richer conversation management.
+- [x] Add per-message copy, edit-last-user-turn, and delete controls.
+- [ ] Add regenerate, export, and richer conversation management.
 - [ ] Complete real-provider, OAuth device-flow, returned-media rendering, localization, screen-reader, and responsive certification.
 
 **Security review:** the browser confirmation and metadata log are UX conveniences, not authorization or compliance-grade audit controls. The existing chat share endpoint is an unauthenticated bearer-link API: anyone with the ID can read or replace the snapshot. Do not put secrets or credentials into a shared chat.
@@ -629,3 +630,5 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Scope ROCKSOUL CI to the UI route/asset contract tests rather than unrelated optional operator-module test suites; remove optional CLI smoke gates from the UI release workflow.
 - [x] Fix Flask direct-passthrough test response handling for `send_file` responses.
 - [ ] Await exact-main CI and browser smoke results; live provider and Coolify checks remain external release gates.
+
+- [x] Add browser smoke coverage for assistant-message copy in addition to code-block copy.
