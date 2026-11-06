@@ -98,8 +98,13 @@ let browser;
 try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
+  const pageErrors = [];
+  const failedRequests = [];
+  page.on("pageerror", error => pageErrors.push(error.stack || error.message));
+  page.on("requestfailed", request => failedRequests.push(request.url() + ": " + (request.failure()?.errorText || "failed")));
   await page.goto("http://127.0.0.1:4173/");
-  await page.locator(".metric-card").first().waitFor();
+  try { await page.locator(".metric-card").first().waitFor({ timeout: 12000 }); }
+  catch { throw new Error("Overview metrics did not render. pageErrors=" + JSON.stringify(pageErrors) + " failedRequests=" + JSON.stringify(failedRequests)); }
   await page.locator("#model-select option[value='browser-test-model']").waitFor();
   assert.equal(await page.locator("#model-select").inputValue(), "auto");
 
