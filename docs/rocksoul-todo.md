@@ -479,3 +479,34 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - Added package entrypoint and ROCKSOUL CI smoke coverage for `rocksoul-work-graph`; Console Playwright navigation coverage was also extended.
 - All changes were committed directly to `main`; no branch or PR was created.
 - CI certification on the exact final HEAD is still pending/unconfirmed. The visible Vercel status is a build-rate-limit failure and is not a ROCKSOUL unit-test result.
+
+
+
+## Product scope reset — 2026-11-06 (authoritative)
+
+**ROCKSOUL is the UI replacement for g4f's built-in HTML/web interface. It is not a gateway, router, provider registry, inference runtime, or execution control plane.** The existing g4f Python runtime and API remain the sole source of truth.
+
+### Scope correction
+
+- [x] Reset product identity, narrative, blueprint, roadmap and README to UI-first.
+- [x] Reclassify the existing Next.js operator console as optional/experimental tooling, not the primary ROCKSOUL user interface.
+- [x] Clarify that Arena, Mesh, WorkItem, WorkGraph, verifier/evidence and operator APIs are optional modules and must not be required for ordinary chat.
+- [ ] Audit all g4f GUI routes in g4f/gui/server/website.py and map route → HTML asset → backend API/session behavior.
+- [ ] Create the ROCKSOUL chat-first frontend shell and build pipeline.
+- [ ] Mount the built frontend through the existing g4f GUI serving boundary; preserve the existing Python runtime and API.
+- [ ] Implement streaming chat using existing g4f contracts, including disconnect/cancellation behavior where supported.
+- [ ] Implement runtime-backed model/provider discovery and selection; no duplicate registry.
+- [ ] Preserve conversation history, cookies, provider login, attachments, tools, media and settings where supported.
+- [ ] Add desktop/mobile, dark/light, keyboard/accessibility and Indonesian/English UI verification.
+- [ ] Make / and /chat/ serve ROCKSOUL by default only after parity tests pass.
+- [ ] Keep a documented legacy UI rollback path until at least one certified release.
+- [ ] Simplify canonical Docker/Coolify deployment to one g4f Python runtime serving API plus ROCKSOUL assets; operator stack remains optional.
+- [ ] Remove legacy HTML assets only after route parity, API/SDK compatibility, UI tests and deployment checks pass.
+
+### Important status correction
+
+The existing frontend/rocksoul-console is an operator cockpit and is **not** the requested HTML replacement. Its successful build or E2E checks do not certify ROCKSOUL chat UI. The existing docker-compose.rocksoul.yml is an optional operator stack and is **not** the canonical deployment for the UI-only product.
+
+### Completion rule
+
+ROCKSOUL UI replacement is not complete until the actual frontend is mounted in g4f/gui, / and /chat/ use it, ordinary chat/streaming/history/model selection work through the existing Python runtime, and the exact final main commit passes the required CI and compatibility tests. Do not mark the unchecked tasks complete based on documentation or mockups.
