@@ -1,9 +1,6 @@
-import os
-
 import pytest
-from werkzeug.exceptions import NotFound
-
 from flask import Flask
+from werkzeug.exceptions import NotFound
 
 from g4f.gui.server.website import Website
 
