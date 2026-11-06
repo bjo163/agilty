@@ -146,9 +146,10 @@ try {
   await page.locator(".tool-runner").waitFor();
   page.once("dialog", dialog => dialog.accept());
   await page.locator(".tool-runner textarea").fill('{"query":"test"}');
+  const auditResponse = page.waitForResponse(response => response.url().endsWith("/backend-api/v2/log") && response.request().method() === "POST");
   await page.locator(".tool-runner button[type=submit]").click();
   await page.getByText(/mock tool executed/).waitFor();
-  await page.waitForFunction(() => true);
+  await auditResponse;
 
   for (const [route, selector] of [
     ["/providers/", ".workspace-card"],
