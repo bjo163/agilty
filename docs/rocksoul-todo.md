@@ -613,6 +613,7 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Bind the Selenium/VNC host port to 127.0.0.1 so the default VNC password is not exposed on every network interface.
 - [ ] Verify the named volume and local-source build behavior in a real Coolify deployment.
 - [ ] Verify production Coolify port exposure, reverse-proxy authentication, persistence, and real deployment behavior.
+- [ ] Complete Markdown/code-block rendering, message actions (copy/edit/regenerate/delete/export), and richer conversation management.
 - [ ] Complete real-provider, OAuth device-flow, returned-media rendering, localization, screen-reader, and responsive certification.
 
 **Security review:** the browser confirmation and metadata log are UX conveniences, not authorization or compliance-grade audit controls. The existing chat share endpoint is an unauthenticated bearer-link API: anyone with the ID can read or replace the snapshot. Do not put secrets or credentials into a shared chat.
