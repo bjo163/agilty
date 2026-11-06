@@ -42,7 +42,7 @@ Nested non-HTML assets requested beneath legacy `/chat/*`, `/apps/*`, `/private/
 - **Status:** displays runtime version, provider counts, and the current public model catalog.
 - **Stats:** displays stored request/token totals and top models/providers with selectable windows.
 - **Logs:** reads recent events from the existing backend log endpoint.
-- **Agent / Browser:** discovers the WebMCP tools the runtime actually advertises and can invoke selected tools through the existing endpoint after a per-invocation browser confirmation; outcome metadata is written to the existing log API without raw arguments or secrets.
+- **Agent / Browser:** discovers tools actually advertised by WebMCP. ROCKSOUL asks for per-invocation browser confirmation and writes metadata-only outcome events, but this is not server authorization; the existing endpoint accepts direct calls. Restrict it to trusted networks or an authenticated reverse proxy.
 - **Playground:** uses the same chat runtime in a focused prompt experimentation layout.
 - **Apps:** lists the existing PA provider registry.
 - **Private utilities:** exposes the existing JSON/HAR cookie import endpoint while preserving its loopback/API-key restrictions. It never reads or displays cookie contents.
