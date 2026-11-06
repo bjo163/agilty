@@ -202,6 +202,10 @@ def test_ui_assets_include_stream_cancellation_and_sse_flush():
     assert "message-action-regenerate" in script
     assert 'id="export-md"' in markup
     assert 'id="export-json"' in markup
+    assert 'id="history-search"' in markup
+    assert 'id="clear-history"' in markup
+    assert "history-mini-action" in script
+    assert "function renderHistory()" in script
     assert "function exportConversation" in script
     assert "function safeMediaSrc" in script
     assert 'key.value=""' not in script
