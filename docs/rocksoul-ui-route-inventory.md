@@ -49,3 +49,18 @@ Set ROCKSOUL_UI_ENABLED=0 in the g4f process environment and restart the process
 - Exercise real /v1/models and /v1/chat/completions requests with at least one provider.
 - Verify incremental SSE output, provider errors, browser disconnects and reloads.
 - Verify deployment from an installed wheel and from the repository Docker image.
+
+
+## Canonical deployment boundary
+
+The canonical deployment is the existing docker-compose.yml g4f Python service. ROCKSOUL is packaged static UI content served by that same GUI server. The optional Next.js operator console and optional ROCKSOUL operator API are not required for chat.
+
+## Release gate (open)
+
+- [ ] Automated Flask tests for enabled/disabled / and /chat/, asset path traversal rejection, and packaged asset availability.
+- [ ] Browser tests for model discovery, SSE chunk boundaries, provider errors, cancellation/disconnect, and history reload.
+- [ ] Real-provider streaming check against the exact candidate runtime.
+- [ ] Built wheel and Docker image asset inclusion checks.
+- [ ] Canonical Compose deployment smoke test using Coolify-compatible settings.
+- [ ] Keyboard, screen-reader, contrast, reduced-motion, Indonesian and English review.
+- [ ] Remove legacy HTML only after the preceding gates pass.
