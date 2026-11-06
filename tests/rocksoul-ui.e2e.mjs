@@ -112,12 +112,6 @@ try {
   await page.locator(".code-copy").first().click();
   await page.getByRole("button", { name: "Copied" }).waitFor();
   assert.equal(await page.evaluate(() => window.__copiedCode), "const answer = 42;");
-  await page.locator(".markdown-body strong").filter({ hasText: "ROCKSOUL browser test" }).waitFor();
-  await page.locator(".code-block code").filter({ hasText: "const answer = 42;" }).waitFor();
-  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { window.__copiedCode = value; } } }));
-  await page.locator(".code-copy").first().click();
-  await page.getByRole("button", { name: "Copied" }).waitFor();
-  assert.equal(await page.evaluate(() => window.__copiedCode), "const answer = 42;");
   await page.addInitScript(() => { Object.defineProperty(window.crypto, "randomUUID", { configurable: true, value: undefined }); });
   await page.evaluate(() => { const key = "rocksoul-chat-history-v1"; const items = JSON.parse(localStorage.getItem(key) || "[]"); items[0].id = "1712345678901"; localStorage.setItem(key, JSON.stringify(items)); });
   await page.reload();
