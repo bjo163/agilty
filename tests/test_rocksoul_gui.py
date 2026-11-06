@@ -517,3 +517,36 @@ def test_registered_privileged_backend_routes_allow_loopback_and_valid_key(monke
         environ_base={"REMOTE_ADDR": "203.0.113.10"},
     )
     assert remote.status_code == 200
+
+
+def test_rocksoul_theme_text_tokens_meet_wcag_aa_contrast():
+    import re
+    from pathlib import Path
+
+    styles = (Path(__file__).parents[1] / "g4f" / "gui" / "rocksoul" / "app.css").read_text(encoding="utf-8")
+
+    def variables(selector):
+        match = re.search(selector + r"\\{([^}]+)\\}", styles)
+        assert match, selector
+        return dict(re.findall(r"(--[a-z-]+):(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))", match.group(1)))
+
+    def luminance(color):
+        value = color.lstrip("#")
+        if len(value) == 3:
+            value = "".join(char * 2 for char in value)
+        channels = [int(value[index:index + 2], 16) / 255 for index in (0, 2, 4)]
+        linear = [channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    def contrast(first, second):
+        high, low = sorted((luminance(first), luminance(second)), reverse=True)
+        return (high + 0.05) / (low + 0.05)
+
+    themes = (
+        variables(r":root"),
+        variables(r":root\\[data-theme=light\\]"),
+    )
+    for theme in themes:
+        assert contrast(theme["--ink"], theme["--bg"]) >= 4.5
+        assert contrast(theme["--muted"], theme["--bg"]) >= 4.5
+        assert contrast(theme["--muted"], theme["--panel"]) >= 4.5
