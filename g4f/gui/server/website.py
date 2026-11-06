@@ -743,15 +743,17 @@ class Website:
         return response
 
     def _chat(self, filename=""):
-        extension = os.path.splitext(filename or "")[1].lower()
-        if self._rocksoul_enabled() and extension in {"", ".html"}:
+        # Replace only the legacy chat landing page. Preserve nested HTML
+        # resources/routes that belong to the original GUI.
+        if self._rocksoul_enabled() and filename in {"", "index", "index.html"}:
             return self._rocksoul_app("chat")
         filename = f"chat/{filename}" if filename else "chat/index"
         return render(filename)
 
     def _private(self, filename=""):
-        extension = os.path.splitext(filename or "")[1].lower()
-        if self._rocksoul_enabled() and extension in {"", ".html"}:
+        # The private workspace is a single landing page; nested legacy pages
+        # must continue to resolve through their original template handlers.
+        if self._rocksoul_enabled() and filename in {"", "index", "index.html"}:
             return self._rocksoul_app("private")
         filename = f"private/{filename}" if filename else "private/index"
         return render(filename)
@@ -760,8 +762,8 @@ class Website:
         return render(f"dist/{name}")
 
     def _apps(self, filename: str = "index.html"):
-        extension = os.path.splitext(filename or "")[1].lower()
-        if self._rocksoul_enabled() and extension in {"", ".html"}:
+        # Keep nested app HTML routes intact; ROCKSOUL replaces only /apps/.
+        if self._rocksoul_enabled() and filename in {"", "index", "index.html"}:
             return self._rocksoul_app("apps")
         return render(f"apps/{filename}")
 
