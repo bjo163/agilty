@@ -12,6 +12,22 @@ Each milestone below is an independently executable work package. It must be imp
 
 Priority meanings: P0 = security/release risk; P1 = user-facing parity; P2 = quality and polish.
 
+## Current implementation snapshot — 2026-11-06
+
+The following work has been implemented on `main`, but none of the seven issues is being closed until its remaining acceptance gates pass:
+
+| Milestone | Current state | Tracking |
+|---|---|---|
+| RS-UI-M01 | Trust guard and regression coverage implemented; exact-main and remote-proxy verification pending | [#25](https://github.com/bjo163/agilty/issues/25) |
+| RS-UI-M02 | Accessibility baseline implemented; manual certification pending | [#26](https://github.com/bjo163/agilty/issues/26) |
+| RS-UI-M03 | EN/ID selector and initial catalog implemented; translation completeness QA pending | [#27](https://github.com/bjo163/agilty/issues/27) |
+| RS-UI-M04 | Opt-in live-provider harness implemented; actual provider run pending | [#28](https://github.com/bjo163/agilty/issues/28) |
+| RS-UI-M05 | Existing file API document flow implemented and mocked; real-format fixture validation pending | [#29](https://github.com/bjo163/agilty/issues/29) |
+| RS-UI-M06 | Unsafe/missing app actions are non-clickable; deeper legacy parity audit pending | [#30](https://github.com/bjo163/agilty/issues/30) |
+| RS-UI-M07 | Compose health/restart/backup guidance implemented; real Docker host smoke pending | [#31](https://github.com/bjo163/agilty/issues/31) |
+
+Evidence and remaining gates are tracked in `docs/rocksoul-todo.md`, `docs/rocksoul-ui-finalization.md`, and the linked issues. "Implemented" is not equivalent to "certified".
+
 ## Milestones
 
 ### RS-UI-M01 — Backend trust-boundary hardening
