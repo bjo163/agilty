@@ -84,17 +84,22 @@ try {
   report.checks.client_disconnect = "not_run";
   if (process.env.ROCKSOUL_SMOKE_CANCEL === "1") {
     const cancelController = new AbortController();
-    const cancelResponse = await fetch(base + "/v1/chat/completions", {
-      method: "POST", headers: { ...headers, accept: "text/event-stream" },
-      body: JSON.stringify({ model, messages: [{ role: "user", content: "Write a long detailed essay." }], stream: true }),
-      signal: cancelController.signal,
-    });
-    if (!cancelResponse.ok || !cancelResponse.body) throw new Error("Cancellation probe could not open a streaming response");
-    const cancelReader = cancelResponse.body.getReader();
-    await cancelReader.read();
-    cancelController.abort();
-    try { await cancelReader.read(); } catch {}
-    report.checks.client_disconnect = "abort signal sent; upstream cancellation semantics remain provider-dependent";
+    const cancelTimeout = setTimeout(() => cancelController.abort(), timeoutMs);
+    try {
+      const cancelResponse = await fetch(base + "/v1/chat/completions", {
+        method: "POST", headers: { ...headers, accept: "text/event-stream" },
+        body: JSON.stringify({ model, messages: [{ role: "user", content: "Write a long detailed essay." }], stream: true }),
+        signal: cancelController.signal,
+      });
+      if (!cancelResponse.ok || !cancelResponse.body) throw new Error("Cancellation probe could not open a streaming response");
+      const cancelReader = cancelResponse.body.getReader();
+      await cancelReader.read();
+      cancelController.abort();
+      try { await cancelReader.read(); } catch {}
+      report.checks.client_disconnect = "abort signal sent; upstream cancellation semantics remain provider-dependent";
+    } finally {
+      clearTimeout(cancelTimeout);
+    }
   }
   process.stdout.write(JSON.stringify(report, null, 2) + "\n");
 } catch (error) {
