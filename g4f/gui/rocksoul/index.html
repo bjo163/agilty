@@ -54,7 +54,7 @@
         <div class="composer-tools">
           <label class="model-label" for="model-select">MODEL</label>
           <select id="model-select" aria-label="Model"><option value="auto">Auto · runtime default</option></select>
-          <span id="composer-model-status" class="model-status">Loading models…</span>
+          <span id="composer-model-status" class="model-status">Loading models…</span><button id="attach-files" class="action-button" type="button">Attach files</button><input id="attachment-input" type="file" multiple hidden accept=".pdf,.docx,.txt,.md,.csv,.json,.html,.xlsx,.pptx,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.mp4,.webm"><span id="attachment-status" class="model-status" aria-live="polite"></span>
         </div>
         <form id="composer" class="composer">
           <textarea id="prompt" rows="1" placeholder="Ask anything. Build something. Explore an idea…" aria-label="Message" required></textarea>
