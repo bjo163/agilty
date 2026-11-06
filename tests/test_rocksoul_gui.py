@@ -289,3 +289,44 @@ def test_canonical_compose_binds_gui_and_api_ports_to_loopback():
     assert "127.0.0.1:7900:7900" in compose
     assert "\n      - '8080:8080'" not in compose
     assert "\n      - '1337:8080'" not in compose
+
+
+
+def test_privileged_gui_guard_allows_loopback_without_api_key(monkeypatch):
+    from g4f.config import AppConfig
+    from g4f.gui.server.backend_api import _privileged_request_allowed
+
+    monkeypatch.setattr(AppConfig, "g4f_api_key", None)
+    app = Flask(__name__)
+    with app.test_request_context("/", environ_base={"REMOTE_ADDR": "127.0.0.1"}):
+        assert _privileged_request_allowed()
+
+
+def test_privileged_gui_guard_rejects_remote_without_api_key(monkeypatch):
+    from g4f.config import AppConfig
+    from g4f.gui.server.backend_api import _privileged_request_allowed
+
+    monkeypatch.setattr(AppConfig, "g4f_api_key", None)
+    monkeypatch.delenv("G4F_API_KEY", raising=False)
+    app = Flask(__name__)
+    with app.test_request_context("/", environ_base={"REMOTE_ADDR": "203.0.113.10"}):
+        assert not _privileged_request_allowed()
+
+
+def test_privileged_gui_guard_requires_matching_remote_api_key(monkeypatch):
+    from g4f.config import AppConfig
+    from g4f.gui.server.backend_api import _privileged_request_allowed
+
+    monkeypatch.setattr(AppConfig, "g4f_api_key", "test-secret")
+    monkeypatch.setenv("G4F_API_KEY", "test-secret")
+    app = Flask(__name__)
+    with app.test_request_context(
+        "/", environ_base={"REMOTE_ADDR": "203.0.113.10"},
+        headers={"x-api-key": "wrong-secret"},
+    ):
+        assert not _privileged_request_allowed()
+    with app.test_request_context(
+        "/", environ_base={"REMOTE_ADDR": "203.0.113.10"},
+        headers={"Authorization": "Bearer test-secret"},
+    ):
+        assert _privileged_request_allowed()
