@@ -492,11 +492,11 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - [x] Reclassify the existing Next.js operator console as optional/experimental tooling, not the primary ROCKSOUL user interface.
 - [x] Clarify that Arena, Mesh, WorkItem, WorkGraph, verifier/evidence and operator APIs are optional modules and must not be required for ordinary chat.
 - [ ] Audit all g4f GUI routes in g4f/gui/server/website.py and map route → HTML asset → backend API/session behavior.
-- [ ] Create the ROCKSOUL chat-first frontend shell and build pipeline.
-- [ ] Mount the built frontend through the existing g4f GUI serving boundary; preserve the existing Python runtime and API.
-- [ ] Implement streaming chat using existing g4f contracts, including disconnect/cancellation behavior where supported.
-- [ ] Implement runtime-backed model/provider discovery and selection; no duplicate registry.
-- [ ] Preserve conversation history, cookies, provider login, attachments, tools, media and settings where supported.
+- [x] Create the initial bundled ROCKSOUL chat-first frontend shell (HTML/CSS/JS) with desktop/mobile layout.
+- [x] Mount the frontend through the existing g4f GUI serving boundary; / and /chat/ use it by default and ROCKSOUL_UI_ENABLED=0 restores legacy home/chat HTML.
+- [x] Implement initial incremental SSE text streaming through the existing /v1/chat/completions API; real-provider/disconnect regression tests remain open.
+- [x] Populate the model selector from the existing /v1/models endpoint; no duplicate registry.
+- [x] Implement initial browser-local conversation list/history. Server-backed session continuity, cookies, provider login, attachments, tools, media and settings parity remain open.
 - [ ] Add desktop/mobile, dark/light, keyboard/accessibility and Indonesian/English UI verification.
 - [ ] Make / and /chat/ serve ROCKSOUL by default only after parity tests pass.
 - [ ] Keep a documented legacy UI rollback path until at least one certified release.
