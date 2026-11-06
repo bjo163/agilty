@@ -229,7 +229,7 @@ class WorkItem:
             raise ContractValidationError("at least one acceptance criterion must be required")
         if not isinstance(self.permissions, tuple) or len(self.permissions) > 100:
             raise ContractValidationError("permissions must be a tuple containing at most 100 capabilities")
-        normalized_permissions = tuple(_non_empty_string(item, "permission", 128).lower() for item in self.permissions)
+        normalized_permissions = tuple(_non_empty_string(item, "permission", 128) for item in self.permissions)
         if any(not _PERMISSION_PATTERN.fullmatch(item) for item in normalized_permissions):
             raise ContractValidationError("permissions must be exact lowercase capability identifiers; wildcards are forbidden")
         if len(normalized_permissions) != len(set(normalized_permissions)):
@@ -273,6 +273,8 @@ class WorkItem:
             "schema_version", "work_id", "goal", "acceptance_criteria", "risk",
             "budget", "permissions", "created_at", "deadline_at", "human_approval_required",
         }, "WorkItem")
+        if "schema_version" not in value:
+            raise ContractValidationError("WorkItem schema_version is required")
         criteria = value.get("acceptance_criteria")
         permissions = value.get("permissions", [])
         if not isinstance(criteria, list):
@@ -295,7 +297,7 @@ class WorkItem:
                 created_at=value.get("created_at", datetime.now(timezone.utc).isoformat(timespec="seconds")),
                 deadline_at=value.get("deadline_at"),
                 human_approval_required=value.get("human_approval_required"),
-                schema_version=value.get("schema_version", 1),
+                schema_version=value["schema_version"],
             )
         except TypeError as exc:
             raise ContractValidationError(f"WorkItem is missing or has invalid fields: {exc}") from exc
