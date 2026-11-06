@@ -267,13 +267,18 @@ class Website:
         ui_index = os.path.join(os.path.dirname(__file__), "..", "rocksoul", "index.html")
         return enabled not in {"0", "false", "no", "off"} and os.path.isfile(ui_index)
 
-    def _rocksoul_app(self):
-        """Serve the local ROCKSOUL app shell without introducing another backend."""
+    def _rocksoul_app(self, page: str = "workspace"):
+        """Serve the unified ROCKSOUL shell for a page backed by the existing g4f runtime."""
         ui_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "rocksoul"))
         response = send_from_directory(ui_dir, "index.html", max_age=0)
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-ROCKSOUL-UI"] = "1"
+        response.headers["X-ROCKSOUL-PAGE"] = page
         return response
+
+    def _rocksoul_page(self, page: str):
+        """Return the unified UI shell when the ROCKSOUL migration is enabled."""
+        return self._rocksoul_app(page) if self._rocksoul_enabled() else None
 
     def _rocksoul_asset(self, filename: str):
         """Serve only files contained by the bundled ROCKSOUL asset directory."""
@@ -285,8 +290,14 @@ class Website:
         return response
 
     def _index(self, filename="home"):
-        if filename == "home" and self._rocksoul_enabled():
-            return self._rocksoul_app()
+        page_aliases = {
+            "home": "overview", "index": "overview", "providers": "providers",
+            "stats": "stats", "status": "status", "logs": "logs",
+            "agent": "agent", "browser": "browser", "playground": "playground",
+            "apps": "apps", "private": "private", "chat": "chat",
+        }
+        if filename in page_aliases and self._rocksoul_enabled():
+            return self._rocksoul_app(page_aliases[filename])
         try:
             result = render(filename)
         except requests.RequestException:
@@ -314,19 +325,19 @@ class Website:
         return seo_document(result, filename, "en")
 
     def _agent(self):
-        return render("agent")
+        return self._rocksoul_page("agent") or render("agent")
 
     def _stats(self):
-        return render("stats")
+        return self._rocksoul_page("stats") or render("stats")
 
     def _status(self):
-        return render("status")
+        return self._rocksoul_page("status") or render("status")
 
     def _browser(self):
-        return render("browser")
+        return self._rocksoul_page("browser") or render("browser")
 
     def _logs(self):
-        return render("logs")
+        return self._rocksoul_page("logs") or render("logs")
 
     def _get_providers(self):
         """Load all providers and return a list of dicts with their attributes (cached with 300s TTL)."""
@@ -375,6 +386,8 @@ class Website:
         return providers
 
     def _providers(self):
+        if self._rocksoul_enabled():
+            return self._rocksoul_app("providers")
         global _providers_cards_cache
         providers = self._get_providers()
 
@@ -435,6 +448,8 @@ class Website:
         return seo_document(result, "providers", "en")
 
     def _provider_detail(self, name: str = ""):
+        if self._rocksoul_enabled():
+            return self._rocksoul_app("provider-detail")
         from html import escape
 
         providers = self._get_providers()
@@ -729,11 +744,13 @@ class Website:
 
     def _chat(self, filename=""):
         if self._rocksoul_enabled():
-            return self._rocksoul_app()
+            return self._rocksoul_app("chat")
         filename = f"chat/{filename}" if filename else "chat/index"
         return render(filename)
 
     def _private(self, filename=""):
+        if self._rocksoul_enabled():
+            return self._rocksoul_app("private")
         filename = f"private/{filename}" if filename else "private/index"
         return render(filename)
 
@@ -741,9 +758,13 @@ class Website:
         return render(f"dist/{name}")
 
     def _apps(self, filename: str = "index.html"):
+        if self._rocksoul_enabled():
+            return self._rocksoul_app("apps")
         return render(f"apps/{filename}")
 
     def _playground(self, filename: str = "index.html"):
+        if self._rocksoul_enabled():
+            return self._rocksoul_app("playground")
         PLAYGROUND_URL = (
             "https://raw.githubusercontent.com/gpt4free/playground/refs/heads/main/"
         )
