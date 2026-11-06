@@ -232,10 +232,31 @@ def _record_outgoing_request(entry: dict) -> None:
         _save_har_entry(
             log_entry,
             url,
-            request_body=entry.get("request_body"),
+            request_body=None,
             response_body=None,
         )
     _request_log.append(log_entry)
+
+
+_SENSITIVE_BODY_KEYS = {
+    "api_key", "apikey", "authorization", "access_token", "refresh_token",
+    "id_token", "password", "passwd", "secret", "client_secret",
+    "cookie", "cookies", "session", "session_id", "token", "credential",
+    "credentials", "private_key", "g4f_api_key",
+}
+
+
+def _redact_sensitive_body(value):
+    """Redact credential-bearing JSON fields before optional diagnostic retention."""
+    if isinstance(value, dict):
+        return {
+            key: ("***" if str(key).lower().replace("-", "_") in _SENSITIVE_BODY_KEYS
+                  else _redact_sensitive_body(item))
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_sensitive_body(item) for item in value]
+    return value
 
 
 def _try_parse_body(body_bytes: bytes, content_type: str):
@@ -734,18 +755,17 @@ def create_app():
         user_info = f" user={user}" if user else ""
         logger.debug("→ %s %s%s%s", request.method, path, qs, user_info)
 
-        audit_body = os.environ.get("G4F_ENABLE_AUDIT_LOG", "").lower() in ("1", "true", "yes")
-        # In debug mode, request/response pairs are saved as HAR files
-        # (see _save_request_har) so they can be inspected later.
+        # Prompt and response bodies are privacy-sensitive. Capture is disabled
+        # unless an operator explicitly opts in, independently of debug logging.
+        capture_body = os.environ.get("G4F_CAPTURE_BODIES", "").lower() in ("1", "true", "yes")
         har_log_enabled = g4f.debug.logging
         har_min_status = _har_log_min_status()
-        capture_body = audit_body or har_log_enabled
         req_body = None
         if capture_body:
             req_body_bytes = await request.body()
-            req_body = _try_parse_body(
+            req_body = _redact_sensitive_body(_try_parse_body(
                 req_body_bytes, request.headers.get("content-type", "")
-            )
+            ))
 
         start = time.monotonic()
         response = await call_next(request)
@@ -763,7 +783,7 @@ def create_app():
                 async for chunk in response.body_iterator:
                     chunks.append(chunk)
                 resp_body_bytes = b"".join(chunks)
-                resp_body = _try_parse_body(resp_body_bytes, resp_content_type)
+                resp_body = _redact_sensitive_body(_try_parse_body(resp_body_bytes, resp_content_type))
                 # Reconstruct response so it can still be sent to the client
                 resp_headers = {
                     k: v
@@ -796,7 +816,7 @@ def create_app():
                             sse_truncated = True
                         yield chunk
                     raw = bytes(sse_capture)
-                    log_entry["response_body"] = _try_parse_body(raw, "text/plain")
+                    log_entry["response_body"] = _redact_sensitive_body(_try_parse_body(raw, "text/plain"))
                     if sse_truncated:
                         log_entry["response_body_truncated"] = True
                     # The retained tail still captures terminal SSE errors while
