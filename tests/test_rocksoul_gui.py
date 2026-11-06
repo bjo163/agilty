@@ -99,3 +99,17 @@ def test_legacy_chat_handler_is_used_when_ui_is_disabled(monkeypatch):
         response = website._chat()
 
     assert response == "legacy:chat/index"
+
+
+def test_ui_assets_include_stream_cancellation_and_sse_flush():
+    from pathlib import Path
+
+    asset_dir = Path(__file__).parents[1] / "g4f" / "gui" / "rocksoul"
+    script = (asset_dir / "app.js").read_text(encoding="utf-8")
+    markup = (asset_dir / "index.html").read_text(encoding="utf-8")
+    styles = (asset_dir / "app.css").read_text(encoding="utf-8")
+
+    assert "new AbortController()" in script
+    assert 'if(buffer.trim())consumeLine(buffer.trim())' in script
+    assert 'id="stop"' in markup
+    assert ".stop-button" in styles
