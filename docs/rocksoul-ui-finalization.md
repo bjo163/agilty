@@ -17,7 +17,7 @@ ROCKSOUL is the replacement web UI for the existing g4f Python runtime. It is no
 - `/rocksoul-assets/<path>` serves packaged assets.
 - Model list is read from the existing `GET /v1/models` endpoint.
 - Chat uses the existing `POST /v1/chat/completions` streaming endpoint.
-- Browser-local conversation history and dark/light theme preference.
+- Browser-local conversation history and dark/light theme preference, with graceful handling when browser storage is blocked or unavailable.
 - Legacy UI rollback is supported with `ROCKSOUL_UI_ENABLED=0`.
 - Assets are declared in Python package data in `setup.py`.
 - Canonical deployment remains the single g4f Python service in `docker-compose.yml`; `docker-compose.rocksoul.yml` is optional operator tooling.
