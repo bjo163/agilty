@@ -32,16 +32,16 @@ ROCKSOUL is the unified replacement UI for the primary live g4f GUI pages. It is
 
 The primary page routes now render the ROCKSOUL shell, but a route migration is not proof of complete feature parity. These capabilities still require implementation or verification where applicable:
 
-- Server-backed conversation/session persistence; current chat history is browser-local.
-- Full attachment/upload workflow in chat and rich image/audio/video/media rendering.
-- Full provider login/OAuth UX and provider-specific quota/health controls.
-- Fine-grained per-tool permissions, durable approval/audit UX, and provider-specific action controls. Agent/Browser currently require a browser confirmation for each WebMCP invocation but do not implement a separate permission or audit control plane.
+- Server persistence is opt-in through **Share chat** and the existing `/backend-api/v2/chat/<id>` API. Private chats remain browser-local by default. Anyone with a shared URL can read its contents; do not share secrets or credentials.
+- Image/audio/video attachments are submitted through the existing multipart `/backend-api/v2/conversation` endpoint. Rich rendering of returned image/audio/video and document extraction/upload parity still require completion.
+- Provider detail now exposes the existing OAuth/login, quota, and health endpoints when the provider advertises login support; device-flow polling and provider-specific credential UX still require verification.
+- WebMCP calls require an explicit browser confirmation and outcome metadata is recorded through the existing `/backend-api/v2/log` endpoint. Fine-grained permissions, durable approval policies, and audit search/filter UX remain out of scope for the UI-only cutover.
 - Full browser research/navigation workflow; the Browser page only displays capabilities advertised by WebMCP.
 - Complete legacy Apps/private sub-page interaction parity beyond the migrated primary surfaces.
-- Indonesian/English translations and full keyboard, screen-reader, contrast, reduced-motion, and responsive QA.
+- Keyboard focus-visible and reduced-motion/contrast affordances are present; full screen-reader, contrast, responsive QA, and Indonesian/English localization are not yet certified.
 - Real-provider end-to-end streaming and upstream disconnect behavior.
-- Successful GitHub Actions runs on the exact final `main` commit.
-- Built wheel and Docker image asset verification plus canonical Compose/Coolify runtime smoke test.
+- Successful GitHub Actions runs on the exact final `main` commit. Current GitHub Actions runs are queued; no green result is claimed.
+- CI checks wheel assets, Compose configuration, and builds a Docker image with bundled ROCKSOUL asset verification. A live Coolify deployment/runtime smoke test still requires a reachable deployment environment.
 
 ## Route inventory
 
@@ -56,10 +56,10 @@ See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the pri
 - [x] Legacy page handlers can be restored with `ROCKSOUL_UI_ENABLED=0`.
 - [x] Flask route tests added for the migrated page handler families.
 - [x] Playwright mocked-browser tests added for all migrated workspace sections.
-- [ ] Automated route and browser workflows pass on the exact final `main` commit.
+- [ ] Automated route and browser workflows pass on the exact final `main` commit; GitHub Actions is currently queued and cannot yet be certified.
 - [ ] Real-provider streaming and provider authentication are verified.
 - [ ] Full interaction parity, localization, and accessibility review pass.
-- [ ] Canonical Compose/Coolify deployment is verified.
+- [x] CI validates Compose configuration and builds the canonical Docker image with bundled ROCKSOUL assets.\n- [ ] A live Coolify deployment/runtime smoke test is verified.
 
 ## Important boundary
 
