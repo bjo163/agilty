@@ -391,13 +391,13 @@ class Api:
                 "error", type(e).__name__, message=get_error_message(e)
             )
             return
-        if not isinstance(provider_handler, BaseRetryProvider):
-            yield self.handle_provider(provider_handler, model)
-            if hasattr(provider_handler, "get_parameters"):
-                yield self._format_json(
-                    "parameters", provider_handler.get_parameters(as_json=True)
-                )
         try:
+            if not isinstance(provider_handler, BaseRetryProvider):
+                yield self.handle_provider(provider_handler, model)
+                if hasattr(provider_handler, "get_parameters"):
+                    yield self._format_json(
+                        "parameters", provider_handler.get_parameters(as_json=True)
+                    )
             result = iter_run_tools(
                 provider_handler,
                 **{
