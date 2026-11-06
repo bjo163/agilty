@@ -92,7 +92,7 @@ The existing g4f Python runtime remains the source of truth for provider impleme
 
 The repository also contains optional engineering/operator modules (Arena, Mesh, WorkItem, WorkGraph, verifier/evidence stores and diagnostics). These are not required for ordinary chat and do not define the ROCKSOUL product.
 
-**UI replacement status:** the product boundary and blueprint have been reset, but the final ROCKSOUL chat UI has not yet been mounted as the default g4f GUI. Existing g4f HTML routes remain the compatibility fallback until route parity and streaming/session tests pass. See [Product](docs/rocksoul-product.md), [Narrative](docs/rocksoul-narrative.md), [Blueprint](docs/rocksoul-blueprint.md), and [Backlog](docs/rocksoul-todo.md).
+**UI replacement status:** the product boundary and blueprint have been reset, but the final ROCKSOUL chat UI has not yet been mounted as the default g4f GUI. Existing g4f HTML routes remain the compatibility fallback until route parity and streaming/session tests pass. See [Product](docs/rocksoul-product.md), [Narrative](docs/rocksoul-narrative.md), [Blueprint](docs/rocksoul-blueprint.md), [GUI route inventory](docs/rocksoul-ui-route-inventory.md), and [Backlog](docs/rocksoul-todo.md).
 
 ---
  
