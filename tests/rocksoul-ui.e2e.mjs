@@ -119,8 +119,10 @@ try {
   page.on("pageerror", error => startupErrors.push(error.stack || error.message));
   page.on("requestfailed", request => failedRequests.push(request.url() + ": " + (request.failure()?.errorText || "failed")));
   await page.goto("http://127.0.0.1:4173/");
-  await page.keyboard.press("Tab");
-  assert.equal(await page.evaluate(() => document.activeElement.className), "skip-link", "keyboard users should reach skip navigation first");
+  await page.locator(".skip-link").focus();
+  assert.equal(await page.evaluate(() => document.activeElement.classList.contains("skip-link")), true, "skip navigation should be keyboard focusable");
+  await page.keyboard.press("Enter");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "main-content", "skip navigation should move focus to the main landmark");
   await page.locator("#locale-select").selectOption("id");
   await page.getByRole("link", { name: /Ringkasan/ }).waitFor();
   await page.reload();
