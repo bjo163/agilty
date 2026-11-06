@@ -189,6 +189,18 @@ _request_log: deque = deque(maxlen=_MAX_LOG_ENTRIES)
 _log_id_counter: int = 0
 
 
+def _sanitize_query(query: str) -> str:
+    """Redact credential-like query parameters before logging URLs."""
+    from urllib.parse import parse_qsl, urlencode
+
+    sensitive = {"api_key", "apikey", "access_token", "refresh_token", "token",
+                 "password", "secret", "key", "authorization", "cookie", "session"}
+    return urlencode([
+        (key, "***" if key.lower().replace("-", "_") in sensitive else value)
+        for key, value in parse_qsl(query, keep_blank_values=True)
+    ])
+
+
 def _sanitize_headers(headers: dict) -> dict:
     return {
         k: ("***" if k.lower() in _SENSITIVE_HEADERS else v) for k, v in headers.items()
@@ -204,6 +216,8 @@ def _record_outgoing_request(entry: dict) -> None:
     global _log_id_counter
     url = str(entry.get("url") or "")
     parsed = urlsplit(url)
+    safe_query = _sanitize_query(parsed.query)
+    safe_url = parsed._replace(query=safe_query).geturl() if url else None
     _log_id_counter += 1
     log_entry = {
         "id": _log_id_counter,
@@ -211,9 +225,9 @@ def _record_outgoing_request(entry: dict) -> None:
         or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "method": str(entry.get("method") or "GET").upper(),
         "path": parsed.path or "/",
-        "url": url or None,
+        "url": safe_url,
         "host": parsed.netloc or None,
-        "query": parsed.query or None,
+        "query": safe_query or None,
         "status": entry.get("status") if entry.get("status") is not None else 0,
         "duration_ms": entry.get("duration_ms", 0),
         "user": None,
@@ -263,7 +277,10 @@ def _safe_body_for_log(body_bytes: bytes, content_type: str):
     """Keep only redacted JSON diagnostics; never persist arbitrary text or multipart data."""
     if "application/json" not in (content_type or "").lower():
         return f"<{len(body_bytes)} bytes omitted>"
-    return _redact_sensitive_body(_try_parse_body(body_bytes, content_type))
+    parsed = _try_parse_body(body_bytes, content_type)
+    if not isinstance(parsed, (dict, list)):
+        return f"<{len(body_bytes)} invalid JSON bytes omitted>"
+    return _redact_sensitive_body(parsed)
 
 
 def _try_parse_body(body_bytes: bytes, content_type: str):
@@ -757,7 +774,8 @@ def create_app():
         ):
             return await call_next(request)
 
-        qs = f"?{request.url.query}" if request.url.query else ""
+        safe_request_query = _sanitize_query(request.url.query)
+        qs = f"?{safe_request_query}" if safe_request_query else ""
         user = request.headers.get("x-user", "")
         user_info = f" user={user}" if user else ""
         logger.debug("→ %s %s%s%s", request.method, path, qs, user_info)
@@ -857,7 +875,7 @@ def create_app():
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "method": request.method,
                 "path": path,
-                "query": request.url.query or None,
+                "query": _sanitize_query(request.url.query) or None,
                 "status": response.status_code,
                 "duration_ms": duration_ms,
                 "user": user or None,
