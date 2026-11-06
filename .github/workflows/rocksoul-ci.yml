@@ -13,7 +13,6 @@ on:
       - '.github/workflows/rocksoul-ci.yml'
   pull_request:
     paths:
-      - 'g4f/rocksoul_*.py'
       - 'g4f/gui/**'
       - 'tests/test_rocksoul_gui.py'
       - 'docs/rocksoul-*.md'
