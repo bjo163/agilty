@@ -33,7 +33,7 @@ ROCKSOUL is the unified replacement UI for the primary live g4f GUI pages. It is
 The primary page routes now render the ROCKSOUL shell, but a route migration is not proof of complete feature parity. These capabilities still require implementation or verification where applicable:
 
 - Server persistence is opt-in through **Share chat** and the existing `/backend-api/v2/chat/<id>` API. Private chats remain browser-local by default. Anyone with a shared URL can read its contents; do not share secrets or credentials.
-- Image/audio/video attachments are submitted through the existing multipart `/backend-api/v2/conversation` endpoint. Rich rendering of returned image/audio/video and document extraction/upload parity still require completion.
+- Image/audio/video attachments are submitted through the existing multipart `/backend-api/v2/conversation` endpoint. Returned media URL events are now converted into safe Markdown image/video/audio elements and covered by the mocked browser suite. Document extraction/upload parity and live-provider media validation remain open.
 - Chat now renders safe Markdown and fenced code blocks with copy controls, validated raster images, and linked audio/video players. Raw HTML and SVG data URLs are not executed. Per-message copy, edit-last-user-turn, delete, and text-only regenerate controls are implemented. Markdown and JSON conversation export are available. Rename, pin, search, bulk delete, and attachment-aware regenerate remain outstanding.
 - Private chat snapshots are not sent to the server until the user explicitly shares them. Share IDs are generated from cryptographically strong random bytes even when randomUUID is unavailable. Regression tests assert that private conversations do not create server snapshots, weak legacy IDs are upgraded before sharing, and failed sharing does not copy a dead link.
 - Provider detail now exposes the existing OAuth/login, quota, and health endpoints when the provider advertises login support; device-flow polling and provider-specific credential UX still require verification.
@@ -41,7 +41,7 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 - Full browser research/navigation workflow; the Browser page only displays capabilities advertised by WebMCP.
 - Complete legacy Apps/private sub-page interaction parity beyond the migrated primary surfaces.
 - Keyboard focus-visible and reduced-motion/contrast affordances are present; full screen-reader, contrast, responsive QA, and Indonesian/English localization are not yet certified. External Google Fonts loading was removed so the UI does not depend on a third-party font host.
-- Real-provider end-to-end streaming and upstream disconnect behavior.
+- Real-provider end-to-end streaming, provider OAuth/device-flow polling, and upstream disconnect behavior. Mocked media URL rendering is covered; live provider media output is not certified.
 - Successful GitHub Actions runs on the exact final `main` commit. The previous ROCKSOUL CI run failed because Windows did not expand the test wildcard and the Linux suite included unrelated optional-module tests; the workflow is now narrowed to the UI contract suite and requires a fresh run.
 - CI checks wheel assets, Compose configuration, builds the Docker image, verifies bundled ROCKSOUL assets, and smoke-tests write access to the persistent config volume. Compose now builds the local source explicitly and mounts a named volume at G4F_CONFIG_DIR. A live Coolify deployment/runtime smoke test still requires a reachable deployment environment.
 
@@ -74,7 +74,7 @@ See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the pri
 - [ ] Full interaction parity, localization, and accessibility review pass.
 - [x] CI workflow is configured to validate Compose configuration, build the local Docker image, verify bundled ROCKSOUL assets, and smoke-test persistent-volume writes.
 - [ ] Those CI jobs complete successfully on the current main commit.
-- [ ] A live Coolify deployment/runtime smoke test is verified.
+- [ ] Live Coolify deployment/runtime smoke test — intentionally out of scope per project-owner direction; do not block ROCKSOUL UI completion on it.
 
 ## Important boundary
 
