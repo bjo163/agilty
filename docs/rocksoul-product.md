@@ -2,146 +2,93 @@
 
 ## Product identity
 
-**ROCKSOUL is an Evidence-Driven Intelligence & Execution Control Plane.**
+**ROCKSOUL is the user interface and visual identity for g4f.**
 
-It governs how models, tools, agents, and execution nodes are selected, composed, executed, verified, observed, and improved. It is built around the existing g4f runtime substrate and does not duplicate or replace provider implementations.
+ROCKSOUL replaces the default g4f HTML/web interface with a modern, cohesive experience while continuing to use the existing g4f Python runtime, API routes, SDKs, provider implementations, model registry, routing, streaming, tools, and configuration.
 
-## Product thesis
+ROCKSOUL is not a second LLM runtime, provider aggregator, gateway, router, orchestration engine, or backend control plane.
 
-The next AI infrastructure advantage is not the number of providers connected or tokens generated. It is the ability to turn uncertain model behavior into dependable, bounded, verifiable user outcomes.
+## Product promise
 
-**Product promise:** Every decision is explainable. Every execution is traceable. Every outcome is verifiable. Every policy change is reversible.
+**One proven Python runtime. One coherent interface. No duplicated execution stack.**
 
-## What ROCKSOUL does today
+Users should be able to use familiar g4f capabilities through a polished ROCKSOUL experience without learning a second API or maintaining a second set of provider integrations.
 
-The current implementation provides a meaningful control-plane foundation:
-- provider discovery and capability-aware route explanation;
-- bounded execution, retry classification, health evidence, quarantine and recovery;
-- persistent traces and execution history;
-- authenticated Mesh node coordination, leases and failure isolation;
-- deterministic Arena benchmark foundation and immutable campaign-integrity verification;
-- product CLI, versioned FastAPI adapter, and Next.js operator console.
+## Responsibility boundary
 
-These capabilities are not equivalent to a complete autonomous agent platform. The current Arena production reports explicitly remain `quality_certification=NOT_CERTIFIED`.
+| Layer | Authority |
+|---|---|
+| g4f Python runtime | Provider adapters, model/provider discovery, model selection, request execution, retries supported by g4f, streaming, tools, media, sessions and persistence |
+| g4f API and Python SDK | Public programmatic interfaces and compatibility contracts |
+| ROCKSOUL UI | Chat experience, navigation, settings, model/provider selection presentation, history presentation, responsive design, accessibility and visual identity |
+| Optional operator/developer tools | Diagnostics and advanced administration; never required for ordinary chat |
 
-## Work Contract Foundation — implemented
+The UI calls existing g4f interfaces. It must not reimplement provider transport, maintain a competing model catalog, make independent routing decisions, or proxy around the runtime's established request lifecycle.
 
-The current P0 foundation includes:
+## Primary user experience
 
-- Canonical WorkItem, bounded budgets, exact permissions, risk/approval policy, strict schema parsing, and lifecycle validation.
-- Immutable SQLite WorkItem contracts, idempotent creation, atomic expected-state transitions, append-only hash-chained events, and tamper readback.
-- Immutable versioned verification profiles with allowlisted adapter identifiers and evidence requirements.
-- Built-in deterministic `artifact_digest` and bounded `json_schema` verifier adapters. Other declared adapter IDs fail with `ERROR`.
-- Persisted verifier results and evidence receipts linked to lifecycle events; acceptance requires the latest persisted PASS for every required criterion.
-- Authenticated API and `rocksoul-work` CLI for contracts, profiles, verification, transitions, and event-chain checks.
-- Optional API-level WorkItem-to-execution trace linkage with exact `model.execute` permission, deadline/approval gates, and wall-time/attempt budget caps; provider transport success remains separate from task outcome.
+ROCKSOUL is the replacement for the default g4f web client. Its primary product surface is an AI workspace:
 
-**Scope boundary:** the engine verifies the exact bytes supplied by the caller; it does not prove the truth of the source URI or authenticate a remote artifact. `pytest`, `http_contract`, and `source_provenance` adapters remain unimplemented. Native execution_runs foreign-key correlation and Console workflow remain future work. See [Work Contracts & Verification Profiles](rocksoul-work-contracts.md).
+- Multi-conversation chat with streaming responses.
+- Model and provider selection sourced from the live g4f runtime.
+- Existing g4f capabilities exposed progressively: attachments, vision, tools, media and other supported modalities.
+- Conversation history and session continuity using existing g4f behavior.
+- Provider/model information and diagnostics presented without duplicating backend state.
+- Responsive desktop and mobile layouts.
+- Dark and light themes, keyboard navigation, accessible controls and clear loading/error states.
+- Indonesian and English UI foundations, with locale selection that does not alter runtime behavior.
 
-## What ROCKSOUL is becoming
+The UI must accurately reflect runtime capability. It must not advertise unsupported models, tools, modalities, or provider health.
 
-The strategic direction expands the control plane from request routing to a full **intent-to-outcome loop**:
+## Non-goals
 
-```text
-intent → work contract → plan → capability selection → bounded execution
-       → evidence ledger → task-specific verification → outcome
-       → offline learning → controlled policy promotion
-```
+- Building another OpenAI-compatible gateway.
+- Creating a second provider registry or model catalog.
+- Replacing or forking g4f's Python execution engine.
+- Reimplementing retry, fallback, routing, provider authentication, streaming, or tool execution in the frontend.
+- Making WorkItem or WorkGraph mandatory for ordinary chat.
+- Treating Arena, Mesh, WorkItem, WorkGraph, verifier stores, or operator APIs as the core user-facing product.
+- Claiming AGI, autonomous execution, or certification from the presence of advanced modules.
 
-The core unit becomes a WorkItem with a goal, constraints, acceptance criteria, permissions, budgets, and evidence requirements—not simply a prompt or completion.
+## Integration rules
 
-## Product pillars
+1. Preserve existing g4f API paths and payload contracts.
+2. Use the existing g4f backend for every inference request.
+3. Use runtime-provided model/provider metadata; do not hardcode a parallel catalog.
+4. Keep secrets and provider credentials on the server/runtime side.
+5. Stream directly from the existing g4f streaming contract; do not buffer a stream unnecessarily.
+6. Preserve cancellation and disconnect semantics supported by the backend.
+7. Keep optional diagnostic/admin surfaces separate from the main chat flow.
+8. The default root/chat experience must use the ROCKSOUL UI when the UI bundle is installed; a documented development/fallback path may remain available.
 
-### Route
-Select eligible models/tools/nodes using verified capabilities, health, historical outcomes, cost, latency, risk, and diversity. Hard policy constraints always precede ranking.
+## Migration strategy
 
-### Execute
-Coordinate work through existing runtime adapters. Enforce total budgets, bounded retries, scoped permissions, idempotency, checkpoints, and safe cancellation.
+- **Phase 0 — Boundary reset:** update product docs, backlog, deployment guidance and naming so UI-only ownership is unambiguous.
+- **Phase 1 — UI parity audit:** inventory every current g4f HTML route and its backing API/session behavior. Record route parity and unsupported UI-only behavior.
+- **Phase 2 — ROCKSOUL shell:** implement the new frontend shell and mount it into the existing g4f GUI serving path. Do not introduce a separate inference backend.
+- **Phase 3 — Chat parity:** implement conversations, streaming, model/provider selection, attachments and session/history compatibility.
+- **Phase 4 — Secondary screens:** port providers, settings, status, logs and playground surfaces selectively; preserve existing endpoints.
+- **Phase 5 — Cutover:** make ROCKSOUL the default / and /chat/ experience, retain an explicit rollback/fallback switch, and verify all existing API/SDK contracts.
+- **Phase 6 — Cleanup:** remove obsolete HTML assets only after route parity and regression gates pass.
 
-### Verify
-Judge the delivered artifact or postcondition against task-specific acceptance criteria. Use deterministic checks where possible and independent evaluators where necessary. Model confidence and consensus are not proof.
+## Acceptance gates
 
-### Explain
-Preserve candidate eligibility, rejected alternatives, policy revision, evidence, and counterfactual route rationale.
+ROCKSOUL is not considered the completed HTML replacement until:
 
-### Recover
-Classify failures, isolate unhealthy resources, retry only with a justified changed hypothesis, and stop or escalate when uncertainty exceeds policy.
+- / and /chat/ serve the ROCKSOUL frontend by default.
+- Existing g4f inference API and Python SDK behavior remain unchanged.
+- Non-streaming and streaming chat work through the existing runtime.
+- Model/provider lists are obtained from the runtime.
+- Conversation/session continuity and supported attachments work.
+- Existing provider login/cookie flows remain reachable where needed.
+- Mobile, desktop, dark/light and accessibility smoke tests pass.
+- The legacy UI remains recoverable until the cutover is certified.
+- Docker/Coolify deployment runs the same g4f Python service and serves the ROCKSOUL UI without requiring a second inference/control-plane service.
 
-### Learn
-Use verified outcomes to propose offline policy improvements. Replay, evaluate on held-out workloads, stage rollout, monitor, and roll back. No silent production self-modification.
+## Optional advanced modules
 
-### Coordinate
-Use Mesh for authenticated node identity, bounded leases, capability/capacity selection, and failure isolation. Online status alone does not imply trust.
-
-### Observe
-Expose health, decisions, traces, evidence, campaign results, policy changes, and operator actions through CLI/API/Console.
-
-## Architecture boundary
-
-ROCKSOUL owns policy, coordination, evidence, verification contracts, and product interfaces. The underlying runtime owns provider-specific transports and integrations.
-
-ROCKSOUL must not become a second provider registry or fork provider behavior merely to gain execution control.
-
-## Anti-slop contract
-
-ROCKSOUL must not declare success from HTTP 200, non-empty text, a model's self-evaluation, or majority vote alone. Quality is evaluated against the task's acceptance criteria.
-
-A work item can finish as:
-- `ACCEPTED` — required checks passed with sufficient evidence;
-- `UNVERIFIED` — output exists but proof is incomplete;
-- `REJECTED` — acceptance criteria failed;
-- `UNCERTAIN` — evidence conflicts or is insufficient;
-- `BLOCKED` — policy, permission, or dependency prevents safe execution;
-- `CANCELLED` / `EXPIRED` — execution stopped by lifecycle rules.
-
-Verification must be task-specific: code requires test/build evidence; factual research requires source-to-claim provenance; data work requires schema and invariant checks; tool workflows require permission and postcondition receipts.
-
-## AGI-ready, not AGI-claiming
-
-ROCKSOUL is designed to remain relevant as models become more general, multimodal, persistent, tool-using, and autonomous. This means stable work contracts, capability passports, provenance-aware memory, work graphs, scoped action permissions, long-running checkpoints, multi-agent role separation, and controlled learning.
-
-These are future architectural targets. ROCKSOUL does not claim AGI, consciousness, or general competence. Any increase in autonomy must be earned through independent evaluation, explicit authority, bounded budgets, sandboxing, auditability, and rollback.
-
-## North-star metric
-
-**Verified Useful Outcome Rate (VUOR):** eligible work items that satisfy their declared acceptance criteria with evidence, within configured cost/time/risk budgets.
-
-Report by task family and verifier confidence. Do not collapse correctness, safety, usefulness, evidence quality, and efficiency into one opaque score.
-
-## Current implementation vs future direction
-
-| Area | Current state | Future direction |
-|---|---|---|
-| Runtime | Existing g4f substrate | Reusable multi-runtime adapters |
-| Routing | Explainable capability-aware foundation | Historical, contextual, step-level routing |
-| Execution | Bounded attempts/time, traceability, persisted WorkItems, verifier receipts, hash-chained lifecycle and API-level execution trace linkage | Native execution_runs correlation, checkpoints, scoped tools |
-| Reliability | Health, quarantine, recovery | Drift-aware capability re-verification |
-| Mesh | Authenticated nodes and leases | Attestation, isolation, data locality |
-| Arena | Deterministic foundation and integrity audit | Adversarial, held-out, provenance-rich evaluation |
-| API/Console | Authenticated WorkItem lifecycle, verifier execution, profile registry, and API-level trace linkage; Console remains a foundation | Native execution correlation, outcome cockpit and policy lifecycle |
-| Anti-slop | Artifact SHA-256 and bounded JSON Schema adapters with persisted evidence receipts | Code/test, HTTP-contract, source-provenance and independent evaluators |
-| Learning | Evidence capture foundation | Offline learning and controlled policy promotion |
-| Memory/autonomy | Not yet a complete product capability | Provenance-aware memory and bounded long-running workflows |
-
-
-## Product roadmap
-
-- **Horizon 0 — Trust:** evidence contracts, capability passports, privacy and anti-slop semantics.
-- **Horizon 1 — Outcomes:** task-specific verification and outcome records.
-- **Horizon 2 — Adaptive intelligence:** historical outcome routing, candidate recall, contextual retrieval, cost/quality cascades.
-- **Horizon 3 — Agentic control:** WorkGraph, step-level routing, checkpoints, scoped tool permissions, verified repair.
-- **Horizon 4 — Controlled autonomy:** provenance-aware memory, Mesh attestation, multimodal and multi-agent governance.
-- **Horizon 5 — General intelligence operations:** only capabilities proven reliable and safe on independent evaluations.
-
-See:
-- [Product narrative and manifesto](rocksoul-narrative.md)
-- [Strategic blueprint](rocksoul-blueprint.md)
-- [Future roadmap and research hypotheses](rocksoul-future-roadmap.md)
-- [Current implementation backlog](rocksoul-todo.md)
-- [API contract](rocksoul-api.md)
-- [Mesh contract](rocksoul-mesh.md)
-- [Arena contract](rocksoul-arena.md)
+This repository contains optional ROCKSOUL experiments and operator modules (Arena, Mesh, WorkItem, WorkGraph, verifier/evidence stores and diagnostics). They are not the product's core identity and must not be prerequisites for the normal chat UI. Keep them isolated, accurately documented, and independently removable without breaking g4f runtime or ROCKSOUL chat.
 
 ## Product decision filter
 
-Every proposed feature must identify its user outcome, evidence of improvement, failure modes, permission and budget boundaries, reproducibility, rollback path, and overlap with the existing runtime. Otherwise it remains research—not production scope.
+A proposed feature belongs in ROCKSOUL UI only if it improves the user's interaction with existing g4f capabilities. If it changes provider execution, routing authority, model state, or public API behavior, it belongs to g4f runtime/API and must not be duplicated in the frontend.
