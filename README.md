@@ -106,6 +106,8 @@ Open **http://localhost:8080** (the alternate mapped port is **http://localhost:
 
 **Optional remote API key:** set `G4F_API_KEY` in the shell or a private `.env` file before starting Compose. The guarded privileged GUI endpoints accept loopback calls, explicitly trusted source CIDRs (`G4F_GUI_TRUSTED_IPS`, preconfigured for common Docker bridge peers), or a matching `x-api-key` / Bearer key from other remote clients. Never commit the key or expose it in browser JavaScript. For remote access, keep the Python service private and use an authenticated reverse proxy that injects the key server-side; other legacy API routes still require the proxy's own access policy.
 
+**Upload limits:** the Flask GUI file endpoint enforces a 25 MiB aggregate request limit by default and a 10-file per-request limit. Operators can set `G4F_MAX_UPLOAD_BYTES` (clamped to 1–256 MiB) and `G4F_MAX_UPLOAD_FILES` (clamped to 1–50). Oversized requests return HTTP 413. These limits bound multipart ingress; parser isolation and extraction CPU/output budgets remain separate hardening work.
+
 **Back up the persistent volume (PowerShell):**
 ```powershell
 $volume = docker volume ls -q --filter "name=g4f-data" | Select-Object -First 1
