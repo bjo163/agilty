@@ -121,7 +121,7 @@ def _privileged_request_allowed() -> bool:
     still use an authenticated reverse proxy and must not expose the service
     directly to untrusted networks.
     """
-    peer = request.remote or ""
+    peer = request.remote_addr or ""
     try:
         peer_address = ipaddress.ip_address(peer)
         if getattr(peer_address, "ipv4_mapped", None):
