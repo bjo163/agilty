@@ -95,7 +95,7 @@ for(const [index,m] of c.messages.entries()){const row=el("article","message "+m
 const secureId=()=>{const source=window.crypto;if(source?.randomUUID)return source.randomUUID();if(source?.getRandomValues){const bytes=new Uint8Array(16);source.getRandomValues(bytes);return Array.from(bytes,value=>value.toString(16).padStart(2,"0")).join("")}return null};
 const isStrongShareId=value=>/^[a-f0-9]{32}$/i.test(String(value||""))||/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(String(value||""));
 const mediaExtensions=new Set(["jpeg","jpg","png","gif","webp","wav","mp3","flac","opus","ogg","m4a","mkv","webm","mp4","mov","avi","ogv","mpg","mpeg"]);
-const documentExtensions=new Set(["pdf","docx","odt","epub","xlsx","html","txt","xml","json","js","har","sh","py","php","css","yaml","sql","log","csv","twig","md","arc","zip"]);
+const documentExtensions=new Set(["pdf","docx","odt","epub","xlsx","html","txt","xml","json","js","har","sh","py","php","css","yaml","sql","log","csv","twig","md","arc"]);
 async function extractDocumentText(file){
  const bucket=secureId();if(!bucket)throw new Error("Secure upload identifiers are unavailable");
  try{
