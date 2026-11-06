@@ -55,13 +55,13 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 - **WebMCP tools:** the browser confirmation is not a security boundary. The backend WebMCP route accepts direct tool calls and does not verify that a user confirmed them in ROCKSOUL. Use only behind a trusted private network or authenticated reverse proxy until the existing backend provides authorization.
 - **Cookie/HAR upload:** the existing upload handler's remote-access condition checks whether G4F_API_KEY is configured, but does not compare a supplied request key in that handler. ROCKSOUL removed the ineffective API-key input and warns operators to restrict this endpoint at the network/reverse-proxy layer.
 - **Tool audit:** metadata-only events are sent to the existing log endpoint. The endpoint is directly writable and does not provide tamper-proof audit guarantees.
-- **Public deployment:** Canonical Compose binds host ports 8080 and 1337 to 127.0.0.1 by default (VNC 7900 is also loopback-only), preventing accidental LAN/WAN exposure. If remote access is intentionally configured, place the service behind an authenticated reverse proxy/private network; G4F_API_KEY does not provide authorization for every legacy `/backend-api/v2/*` route. G4F_API_KEY does not provide authorization for every legacy `/backend-api/v2/*` route.
+- **Public deployment:** Canonical Compose binds host ports 8080 and 1337 to 127.0.0.1 by default (VNC 7900 is also loopback-only), preventing accidental LAN/WAN exposure. If remote access is intentionally configured, place the service behind an authenticated reverse proxy/private network; G4F_API_KEY does not provide authorization for every legacy `/backend-api/v2/*` route.
 - **Extension links:** PA-provider links are restricted to same-origin relative paths or HTTP(S); javascript: and other active URL schemes are rejected.
 - **Offline deployment:** UI CSS no longer imports Google Fonts; it uses system font stacks. Compose sets pull_policy to build the checked-out source and mounts a named persistent volume for g4f config, cookies, buckets, logs, and cache. The Selenium/VNC port is bound to host loopback instead of all network interfaces.
 
 ## Route inventory
 
-See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the primary route map, preserved non-page routes, data sources, and rollback contract.
+See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the primary route map, preserved non-page routes, data sources, and rollback contract. See [rocksoul-next-milestones.md](rocksoul-next-milestones.md) for independently executable follow-up work packages.
 
 ## Acceptance checks
 
