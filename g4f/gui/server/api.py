@@ -367,12 +367,14 @@ class Api:
         download_media: bool = True,
         tempfiles: list[str] = [],
     ) -> Iterator:
+        request_logs: list[str] = []
+
         def decorated_log(*values: str, file=None):
-            debug.logs.append(" ".join([str(value) for value in values]))
+            request_logs.append(" ".join(str(value) for value in values))
             if debug.logging:
                 debug.log_handler(*values, file=file)
 
-        debug.log = decorated_log
+        log_token = debug.set_request_log_sink(decorated_log)
         proxy = os.environ.get("G4F_PROXY")
         try:
             model = kwargs.get("model")
@@ -383,6 +385,7 @@ class Api:
                 debug.error("Referrer:", kwargs.get("referer", ""))
                 debug.error("User-Agent:", kwargs.get("user-agent", ""))
         except Exception as e:
+            debug.reset_request_log_sink(log_token)
             logger.exception(e)
             yield self._format_json(
                 "error", type(e).__name__, message=get_error_message(e)
@@ -536,18 +539,19 @@ class Api:
                 "error", type(e).__name__, message=get_error_message(e)
             )
         finally:
-            yield from self._yield_logs()
-            for tempfile in tempfiles:
-                try:
-                    os.remove(tempfile)
-                except Exception as e:
-                    logger.exception(e)
+            try:
+                yield from self._yield_logs(request_logs)
+            finally:
+                debug.reset_request_log_sink(log_token)
+                for tempfile in tempfiles:
+                    try:
+                        os.remove(tempfile)
+                    except Exception as e:
+                        logger.exception(e)
 
-    def _yield_logs(self):
-        if debug.logs:
-            for log in debug.logs:
-                yield self._format_json("log", log)
-            debug.logs = []
+    def _yield_logs(self, request_logs: list[str] | None = None):
+        for log in request_logs or ():
+            yield self._format_json("log", log)
 
     def _format_json(self, response_type: str, content=None, **kwargs):
         if content is not None and isinstance(response_type, str):
