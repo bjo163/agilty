@@ -591,3 +591,25 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 **Privacy boundary:** Share chat is opt-in because the existing g4f share endpoint stores a JSON snapshot in the server bucket and exposes it to anyone with the generated ID. Unshared conversations are not sent to that endpoint. Attachment files are uploaded only when the user sends a message containing selected media.
 
 **Verification boundary:** source syntax checks are not a substitute for executing Playwright/Pytest. Mocked browser coverage is not live-provider validation. Docker CI configuration is not a successful Docker build until its job completes; a repository commit is not a live Coolify deployment.
+
+
+
+### Whole-project cross-check — 2026-11-06
+
+- [x] Re-read the current main route integration, frontend, backend API contracts, packaging, Docker, Compose, tests, and CI workflow definitions.
+- [x] Fix privacy regression: successful private chats no longer write snapshots to the server; only already-shared conversations are synchronized.
+- [x] Fix failed-share UX: do not copy a share URL unless the server accepted the snapshot; restore the conversation to private state on failure.
+- [x] Add Playwright regression assertions that private chats cause zero server writes, explicit sharing creates the snapshot, and failed sharing does not copy a dead URL.
+- [x] Restrict extension-card/link URL schemes to same-origin paths or HTTP(S); reject javascript: and other active schemes.
+- [x] Remove the ineffective per-request API-key field from Private utilities. The existing upload handler does not validate that request key; the UI now warns operators to protect remote access at the network/reverse-proxy layer.
+- [x] Remove the Google Fonts network dependency; the bundled UI uses system font stacks for offline/self-hosted deployments.
+- [x] Add Flask test-client coverage for actual registered route mappings and legacy rollback, not only direct handler calls.
+- [x] Fix literal escaped newline in finalization checklist.
+- [ ] Exact-main GitHub Actions remain queued; do not mark test, CodeQL, package, or Docker jobs green until they complete.
+- [ ] Harden or externally protect WebMCP tool invocation: browser confirmation is not server authorization, and the existing endpoint accepts direct calls.
+- [ ] Harden or externally protect the existing cookie/HAR upload endpoint: it only checks whether G4F_API_KEY is configured for non-loopback access and does not validate a per-request key in this handler.
+- [ ] Decide whether to persist g4f config/cookies/share buckets in a named Docker volume. Current Compose bind-mounts the source tree but does not explicitly mount the platform config directory; chat share snapshots, usage/log data, cookies, and caches may be lost when the container is recreated depending on the runtime home/config path.
+- [ ] Verify production Coolify port exposure, reverse-proxy authentication, persistence, and real deployment behavior.
+- [ ] Complete real-provider, OAuth device-flow, returned-media rendering, localization, screen-reader, and responsive certification.
+
+**Security review:** the browser confirmation and metadata log are UX conveniences, not authorization or compliance-grade audit controls. The existing chat share endpoint is an unauthenticated bearer-link API: anyone with the ID can read or replace the snapshot. Do not put secrets or credentials into a shared chat.
