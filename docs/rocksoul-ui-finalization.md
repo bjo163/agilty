@@ -20,7 +20,7 @@ ROCKSOUL is the unified replacement UI for the primary live g4f GUI pages. It is
 - Provider catalog and detail use `/backend-api/v2/providers` and `/backend-api/v2/models/<provider>`.
 - Status uses `/backend-api/v2/status`, `/backend-api/v2/version`, and `/v1/models`.
 - Usage analytics use `/backend-api/v2/stats`; recent logs use `/backend-api/v2/log`.
-- Agent/browser discovery and confirmed tool invocation use the existing `/backend-api/v2/webmcp/tools` registry; only tools actually advertised by g4f are shown, and every invocation requires a browser confirmation.
+- Agent/browser discovery and tool invocation use the existing `/backend-api/v2/webmcp/tools` registry; only tools actually advertised by g4f are shown, and ROCKSOUL prompts for browser confirmation (a UI affordance, not server authorization).
 - Apps use the existing `/pa/providers` registry.
 - Private utilities use the existing `/backend-api/v2/upload_cookies` endpoint; ROCKSOUL does not read or display cookie contents. The existing handler only applies a loopback restriction when G4F_API_KEY is absent and does not validate a per-request key in that handler. The UI therefore no longer presents a misleading API-key field; protect remote access at the network/reverse-proxy layer.
 - Chat and playground use the existing `/v1/models` and `/v1/chat/completions` endpoints.
@@ -70,7 +70,8 @@ See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the pri
 - [ ] Automated route and browser workflows pass on the exact final `main` commit; GitHub Actions is currently queued and cannot yet be certified.
 - [ ] Real-provider streaming and provider authentication are verified.
 - [ ] Full interaction parity, localization, and accessibility review pass.
-- [x] CI validates Compose configuration and builds the canonical Docker image with bundled ROCKSOUL assets.
+- [x] CI workflow is configured to validate Compose configuration, build the local Docker image, verify bundled ROCKSOUL assets, and smoke-test persistent-volume writes.
+- [ ] Those CI jobs complete successfully on the current main commit.
 - [ ] A live Coolify deployment/runtime smoke test is verified.
 
 ## Important boundary
