@@ -189,3 +189,17 @@ Keep each GitHub issue open until its own acceptance gates have evidence. Exact-
 - Requiring optional Arena, Mesh, WorkItem, WorkGraph, or operator Console modules for ordinary chat.
 - Claiming production readiness from mocked browser tests alone.
 - Enabling remote public exposure before privileged backend endpoints enforce server-side authorization.
+
+
+## Backend hardening progress — 2026-11-07
+
+The following source changes are staged in [PR #60](https://github.com/bjo163/agilty/pull/60); they are implementation progress, not certified completion until exact-head CI and the remaining environment-specific gates pass:
+
+- Request-scoped GUI debug log sinks replace mutation of the process-global debug callback and shared log list; concurrent isolation regression tests added.
+- SSE diagnostic capture is bounded to a configurable tail buffer (64 KiB default, 1 MiB maximum), and the client stream remains incremental.
+- Diagnostic body capture is disabled by default. Explicit capture redacts known JSON credential fields and omits non-JSON, multipart, and raw SSE bodies; credential-like query parameters and sensitive headers are redacted before log/HAR persistence.
+- Flask file uploads have a configurable aggregate request limit (25 MiB default, 1–256 MiB clamp) and file-count limit (10 default, 1–50 clamp); parser isolation and extraction CPU/output limits remain separate work.
+- File extraction boolean query parameters are parsed strictly and invalid values return HTTP 400.
+- Provider-independent /health/live and /health/ready endpoints are added; Compose now checks readiness rather than the provider-discovery status route.
+
+PR #60 also contains the test coverage and documentation for these changes. Do not close backend issues #34, #35, #37, #38, #43, or #45 until exact-head CI passes and each issue's remaining acceptance criteria are satisfied. The larger P0 security boundary/authentication work (#32–33), WorkGraph orchestration (#22–24), and UI/host certification (#25–31) remain open.
