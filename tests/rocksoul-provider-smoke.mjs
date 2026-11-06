@@ -7,7 +7,7 @@ const base = (process.env.ROCKSOUL_BASE_URL || "http://127.0.0.1:8080").replace(
 const model = process.env.ROCKSOUL_SMOKE_MODEL || "";
 const timeoutMs = Math.max(10_000, Math.min(120_000, Number(process.env.ROCKSOUL_SMOKE_TIMEOUT_MS || 45_000)));
 const apiKey = process.env.G4F_API_KEY || "";
-const displayBase = (() => { try { const url = new URL(base); return url.origin + url.pathname.replace(/\\/$/, ""); } catch { return "[configured endpoint]"; } })();
+const displayBase = (() => { try { const url = new URL(base); return url.origin + url.pathname.replace(/\/$/, ""); } catch { return "[configured endpoint]"; } })();
 const headers = { "content-type": "application/json", accept: "application/json" };
 if (apiKey) headers.authorization = "Bearer " + apiKey;
 
