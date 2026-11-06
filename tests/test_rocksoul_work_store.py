@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -202,13 +203,14 @@ class WorkItemStoreTests(unittest.TestCase):
 
     def test_execution_trace_store_migrates_legacy_runs_table(self):
         legacy_path = Path(self.temp.name) / "legacy.sqlite3"
-        with sqlite3.connect(legacy_path) as conn:
-            conn.execute("""CREATE TABLE execution_runs (
-                id TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE, model TEXT NOT NULL,
-                started_at REAL NOT NULL, finished_at REAL, status TEXT NOT NULL,
-                selected_provider_id INTEGER, attempt_count INTEGER NOT NULL DEFAULT 0,
-                final_error_class TEXT
-            )""")
+        with closing(sqlite3.connect(legacy_path)) as conn:
+            with conn:
+                conn.execute("""CREATE TABLE execution_runs (
+                    id TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE, model TEXT NOT NULL,
+                    started_at REAL NOT NULL, finished_at REAL, status TEXT NOT NULL,
+                    selected_provider_id INTEGER, attempt_count INTEGER NOT NULL DEFAULT 0,
+                    final_error_class TEXT
+                )""")
         legacy_db = RocksoulDB(legacy_path)
         ExecutionTraceStore(legacy_db)
         with legacy_db.connect() as conn:
