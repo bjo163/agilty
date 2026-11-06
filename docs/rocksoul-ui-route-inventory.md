@@ -1,67 +1,67 @@
 # ROCKSOUL UI — g4f GUI Route Inventory
 
-This is the route-level handoff for replacing the built-in HTML UI without changing the Python runtime or API.
+This inventory defines the live GUI migration boundary. ROCKSOUL is a bundled static frontend served by the existing g4f Python GUI process. It does not add a gateway, provider runtime, model registry, or separate backend.
 
-## GUI serving boundary
+## Primary GUI pages migrated
 
-The current Flask GUI is assembled by g4f/gui/__init__.py and g4f/gui/server/website.py, then mounted by the existing FastAPI application when GUI mode is enabled.
-
-The bundled ROCKSOUL assets live in g4f/gui/rocksoul and are included in package data.
-
-| Route | Current behavior after UI mount | Notes |
+| Existing URL | ROCKSOUL workspace | Existing g4f data/API source |
 |---|---|---|
-| / | ROCKSOUL app shell by default | Set ROCKSOUL_UI_ENABLED=0 to fall back to legacy g4f home HTML |
-| /chat/ | ROCKSOUL app shell by default | Same fallback switch |
-| /rocksoul-assets/<path> | Bundled CSS/JS assets | Static files served from the package asset directory |
-| /providers/, /providers/<name> | Existing g4f provider pages | Kept available during migration |
-| /status/, /stats/, /logs/ | Existing g4f diagnostics pages | Kept available during migration |
-| /agent, /browser | Existing g4f pages | Kept available during migration |
-| /playground/, /apps/ | Existing g4f pages | Kept available during migration |
-| /private/ | Existing g4f private page | Kept available during migration |
-| /v<version>/* | Existing version-pinned GUI snapshots | Not rewritten by the initial ROCKSOUL mount |
-| /<filename>.html | Existing legacy content pages | Kept available during migration |
-| /media/, /dist/* | Existing media/static paths | Existing behavior preserved |
+| `/`, `/home.html`, `/index.html` | Overview / command center | `/backend-api/v2/status`, `/backend-api/v2/stats` |
+| `/chat/`, `/chat/*`, `/chat.html` | Chat workspace | `/v1/models`, `/v1/chat/completions` |
+| `/providers`, `/providers/`, `/providers.html` | Provider catalog | `/backend-api/v2/providers` |
+| `/providers/<name>` | Provider detail and model list | `/backend-api/v2/providers`, `/backend-api/v2/models/<provider>` |
+| `/status`, `/status/`, `/status.html` | Runtime status and model catalog | `/backend-api/v2/status`, `/backend-api/v2/version`, `/v1/models` |
+| `/stats`, `/stats/`, `/stats.html` | Usage and token analytics | `/backend-api/v2/stats` |
+| `/logs`, `/logs/`, `/logs.html` | Recent backend events | `/backend-api/v2/log` |
+| `/agent`, `/agent/`, `/agent.html` | WebMCP tool registry | `/backend-api/v2/webmcp/tools` |
+| `/browser`, `/browser/`, `/browser.html` | Research/browser tool discovery | `/backend-api/v2/webmcp/tools` (only tools actually advertised are shown) |
+| `/playground/`, `/playground/*`, `/playground.html` | Prompt experiment workspace | `/v1/models`, `/v1/chat/completions` |
+| `/apps/`, `/apps/*`, `/apps.html` | Extension and PA provider catalog | `/pa/providers` |
+| `/private/`, `/private/*`, `/private.html` | Private utilities and guarded cookie import | `/backend-api/v2/upload_cookies` |
 
-The g4f FastAPI routes, including the OpenAI-compatible inference API, are registered by the existing API application. The ROCKSOUL browser client calls /v1/models and /v1/chat/completions on the same origin. It does not create another inference service.
+The existing navigation is unified in `g4f/gui/rocksoul/index.html`; route-aware rendering and data loading live in `app.js`. The shell reuses same-origin APIs and keeps provider execution, authentication, tools, files, and data ownership inside g4f.
 
-## Initial UI capability
+## Preserved non-page routes
 
-The first bundled shell provides:
+| Route family | Behavior |
+|---|---|
+| `/rocksoul-assets/*` | Serves the bundled ROCKSOUL CSS/JS assets |
+| `/v1/*`, `/backend-api/*`, `/pa/*` | Existing inference and backend APIs remain unchanged |
+| `/media/*`, `/images/*`, `/thumbnail/*`, `/files/*` | Existing media and file delivery remains unchanged |
+| `/dist/*` | Existing g4f static distribution assets remain unchanged |
+| `/v<version>/*` | Historical version-pinned GUI snapshots remain available and are not rewritten |
+| `/headers`, `/country-ip`, `/meta`, `/sitemap.xml` | Existing metadata/diagnostic endpoints remain unchanged |
 
-- Chat-first responsive layout with desktop sidebar and mobile navigation.
-- Runtime model list populated from GET /v1/models.
-- Streaming text generation through POST /v1/chat/completions.
-- Browser-local conversation list and message history.
-- Dark/light theme preference.
-- Basic request errors and runtime status links.
+Unknown legacy content pages continue through their existing handlers. The migration targets the primary interactive GUI surfaces, not arbitrary upstream content URLs or immutable historical snapshots.
 
-This is an initial UI cut, not full legacy GUI parity. Only `/` and `/chat/` are provisionally replaced; the provider, diagnostics, agent, browser, playground, apps, private, versioned, and legacy content routes still use their existing handlers/pages. Browser-local history is not server-side g4f conversation persistence. Attachments, provider login management, rich tool/media rendering, settings parity, localization, and full accessibility review remain open.
+## Workspace behavior
+
+- **Overview:** summarizes live provider/model/request counts using the runtime's status and usage APIs.
+- **Chat:** uses the OpenAI-compatible g4f model and streaming endpoints; history remains browser-local.
+- **Providers:** filters the existing provider registry and loads provider-specific models through the existing API.
+- **Status:** displays runtime version, provider counts, and the current public model catalog.
+- **Stats:** displays stored request/token totals and top models/providers with selectable windows.
+- **Logs:** reads recent events from the existing backend log endpoint.
+- **Agent / Browser:** discovers the WebMCP tools the runtime actually advertises; it does not fabricate tools or start another agent service.
+- **Playground:** uses the same chat runtime in a focused prompt experimentation layout.
+- **Apps:** lists the existing PA provider registry.
+- **Private utilities:** exposes the existing JSON/HAR cookie import endpoint while preserving its loopback/API-key restrictions. It never reads or displays cookie contents.
 
 ## Rollback
 
-Set ROCKSOUL_UI_ENABLED=0 in the g4f process environment and restart the process. The original g4f home and chat HTML handlers are used again. The new asset route remains inert unless requested directly.
+Set `ROCKSOUL_UI_ENABLED=0` in the existing g4f process environment and restart. Primary GUI routes return to their legacy handlers. The same single Python service remains the canonical deployment.
 
 ## Verification requirements
 
-- Test root and chat route selection with ROCKSOUL enabled and disabled.
-- Test static asset serving and package/wheel inclusion.
-- Run existing g4f GUI/API tests.
-- Exercise real /v1/models and /v1/chat/completions requests with at least one provider.
-- Verify incremental SSE output, provider errors, browser disconnects and reloads.
-- Verify deployment from an installed wheel and from the repository Docker image.
+- [x] Route-level tests cover all primary GUI handler families and preserved non-page route registrations.
+- [x] Playwright mocked-browser coverage includes overview, chat, provider catalog/detail, status, stats, logs, agent tools, browser tool discovery, playground, apps, and private utilities.
+- [ ] Run route and browser workflows successfully on the exact final `main` commit.
+- [ ] Verify live provider authentication and streaming, including upstream disconnect semantics.
+- [ ] Verify built wheel and Docker image asset inclusion.
+- [ ] Run canonical Compose/Coolify smoke test.
+- [ ] Complete keyboard, screen-reader, contrast, reduced-motion, Indonesian and English review.
+- [ ] Retire legacy page templates only after the preceding gates pass.
 
+## Product boundary
 
-## Canonical deployment boundary
-
-The canonical deployment is the existing docker-compose.yml g4f Python service. ROCKSOUL is packaged static UI content served by that same GUI server. The optional Next.js operator console and optional ROCKSOUL operator API are not required for chat.
-
-## Release gate (open)
-
-- [ ] Automated Flask tests for enabled/disabled / and /chat/, asset path traversal rejection, and packaged asset availability.
-- [x] Mocked browser tests for model discovery, normal SSE, EOF flush, provider errors, Stop/abort, and history reload.
-- [ ] Live-provider browser tests for upstream disconnect semantics and provider authentication.
-- [ ] Real-provider streaming check against the exact candidate runtime.
-- [ ] Built wheel and Docker image asset inclusion checks.
-- [ ] Canonical Compose deployment smoke test using Coolify-compatible settings.
-- [ ] Keyboard, screen-reader, contrast, reduced-motion, Indonesian and English review.
-- [ ] Remove legacy HTML only after the preceding gates pass.
+ROCKSOUL is the UI. g4f Python remains authoritative for provider discovery, model discovery, execution, streaming, OAuth/login, files, media, sessions, and public APIs. Optional operator-console services are not required for these pages.
