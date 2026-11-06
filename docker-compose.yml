@@ -10,8 +10,8 @@ services:
       - .:/app
       - g4f-data:/data/g4f
     ports:
-      - '8080:8080'
-      - '1337:8080'
+      - '127.0.0.1:8080:8080'
+      - '127.0.0.1:1337:8080'
       - '127.0.0.1:7900:7900'
     environment:
       - OLLAMA_HOST=host.docker.internal
