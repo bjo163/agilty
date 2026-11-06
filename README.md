@@ -34,7 +34,7 @@ This README is a consolidated, improved, and complete guide to installing, runni
 
 Table of contents
 - [What’s included](#whats-included)
-- [ROCKSOUL control plane](#rocksoul-control-plane)
+- [ROCKSOUL UI](#rocksoul-ui)
 - [Quick links](#quick-links)
 - [Requirements & compatibility](#requirements--compatibility)
 - [Installation](#installation)
