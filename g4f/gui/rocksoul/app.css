@@ -90,4 +90,4 @@ button:disabled{cursor:not-allowed}
 :where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid var(--orange);outline-offset:3px}
 .locale-select{max-width:92px;padding:8px 9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:10px ui-monospace,SFMono-Regular,Consolas,monospace}
 @media(max-width:760px){.top-actions{gap:8px}.locale-select{max-width:76px}.top-actions .action-button{padding:8px 9px;font-size:10px}}
-@media(prefers-reduced-motion:reduce){.skip-link{transition:none}.workspace-card:hover{transform:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:0s!important;animation-iteration-count:1!important;transition-duration:0s!important;scroll-timeline:none!important}.skip-link{transition:none}.workspace-card:hover{transform:none}}
