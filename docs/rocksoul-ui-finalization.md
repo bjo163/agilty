@@ -35,7 +35,7 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 - Server-backed conversation/session persistence; current chat history is browser-local.
 - Full attachment/upload workflow in chat and rich image/audio/video/media rendering.
 - Full provider login/OAuth UX and provider-specific quota/health controls.
-- Executable agent tool invocation UX with explicit permissions/confirmation; current Agent/Browser pages are registry/discovery views.
+- Fine-grained per-tool permissions, durable approval/audit UX, and provider-specific action controls. Agent/Browser currently require a browser confirmation for each WebMCP invocation but do not implement a separate permission or audit control plane.
 - Full browser research/navigation workflow; the Browser page only displays capabilities advertised by WebMCP.
 - Complete legacy Apps/private sub-page interaction parity beyond the migrated primary surfaces.
 - Indonesian/English translations and full keyboard, screen-reader, contrast, reduced-motion, and responsive QA.
