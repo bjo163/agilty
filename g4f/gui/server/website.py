@@ -262,7 +262,7 @@ class Website:
         return Response(xml, mimetype="application/xml")
 
     def _rocksoul_enabled(self) -> bool:
-        """Return whether the bundled ROCKSOUL UI should replace the legacy home/chat HTML."""
+        """Return whether the bundled ROCKSOUL UI should replace primary live GUI pages."""
         enabled = os.environ.get("ROCKSOUL_UI_ENABLED", "1").strip().lower()
         ui_index = os.path.join(os.path.dirname(__file__), "..", "rocksoul", "index.html")
         return enabled not in {"0", "false", "no", "off"} and os.path.isfile(ui_index)
