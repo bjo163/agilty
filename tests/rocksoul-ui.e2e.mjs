@@ -21,7 +21,7 @@ const server = createServer(async (req, res) => {
     res.end();
     return;
   }
-  const relative = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\\/rocksoul-assets\\//, "");
+  const relative = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/rocksoul-assets\//, "");
   if (relative.includes("..") || relative.startsWith("/")) {
     res.writeHead(404).end();
     return;
