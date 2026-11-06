@@ -27,7 +27,8 @@
         <a href="/apps/" data-route="/apps/">▦ <span>Apps & modules</span></a>
         <a href="/private/" data-route="/private/">◇ <span>Private utilities</span></a>
       </nav>
-      <div class="side-label recent-label">RECENT CHATS</div>
+      <div class="history-heading"><div class="side-label recent-label">RECENT CHATS</div><button id="clear-history" class="history-clear" type="button" title="Clear local conversation list">Clear</button></div>
+      <input id="history-search" class="history-search" type="search" placeholder="Search conversations…" aria-label="Search conversations">
       <nav id="history" class="history" aria-label="Conversation history"></nav>
       <div class="sidebar-bottom"><span class="runtime-dot"></span><span id="runtime-indicator">g4f runtime</span><button id="theme-toggle" class="icon-button" aria-label="Toggle theme">◐</button></div>
     </aside>
