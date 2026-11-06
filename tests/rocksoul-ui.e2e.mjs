@@ -71,7 +71,7 @@ const server = createServer(async (req, res) => {
       // Keep the stream open so the browser Stop control exercises AbortController.
       return;
     }
-    res.write('data: {"choices":[{"delta":{"content":"**ROCKSOUL browser test**\n\n```js\nconst answer = 42;\n```"}}]}\n\n');
+    res.write('data: {"choices":[{"delta":{"content":"**ROCKSOUL browser test**\\n\\n```js\\nconst answer = 42;\\n```"}}]}\n\n');
     res.write("data: [DONE]\n\n");
     res.end();
     return;
@@ -106,6 +106,12 @@ try {
   await page.locator("#prompt").fill("Say hello");
   await page.locator("#send").click();
   await page.getByText("ROCKSOUL browser test").waitFor();
+  await page.locator(".markdown-body strong").filter({ hasText: "ROCKSOUL browser test" }).waitFor();
+  await page.locator(".code-block code").filter({ hasText: "const answer = 42;" }).waitFor();
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { window.__copiedCode = value; } } }));
+  await page.locator(".code-copy").first().click();
+  await page.getByRole("button", { name: "Copied" }).waitFor();
+  assert.equal(await page.evaluate(() => window.__copiedCode), "const answer = 42;");
   await page.locator(".markdown-body strong").filter({ hasText: "ROCKSOUL browser test" }).waitFor();
   await page.locator(".code-block code").filter({ hasText: "const answer = 42;" }).waitFor();
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { window.__copiedCode = value; } } }));
