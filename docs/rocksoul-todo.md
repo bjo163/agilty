@@ -1,10 +1,14 @@
-# ROCKSOUL Product Backlog
+# ROCKSOUL UI Product Backlog
 
-> Canonical detailed execution backlog for the ROCKSOUL product layer. GitHub Issues are enabled in this repository; this file remains the technical source of truth until a later governance pass synchronizes individual tasks with GitHub Issues.
+> Canonical backlog for replacing the built-in g4f HTML/web interface with ROCKSOUL. The existing g4f Python runtime, API, provider implementations, model registry, routing and execution remain authoritative.
 
 ## Product identity
 
-ROCKSOUL is the product/control-plane layer built on top of the existing g4f runtime. The runtime remains the provider execution substrate. ROCKSOUL owns routing intelligence, execution policy, health evidence, traceability, recovery, Mesh coordination, Arena benchmarking, and product-facing interfaces. ROCKSOUL does not duplicate provider implementations.
+ROCKSOUL is the user interface and visual identity for g4f. It is not a second gateway, router, provider registry, model catalog, execution engine or control plane.
+
+## Backlog scope note
+
+The historical F3–F10 engineering workstreams below describe optional ROCKSOUL operator/experimental modules implemented before the product-boundary correction. They are not required for ordinary chat and must not be treated as the primary product roadmap. The authoritative UI replacement tasks and completion gate are in the Product scope reset section near the end of this file. Keep optional modules isolated and independently removable.
 
 ## Status legend
 
