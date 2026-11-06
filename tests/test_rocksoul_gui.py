@@ -229,7 +229,6 @@ def test_registered_flask_routes_preserve_legacy_fallback(monkeypatch):
     cases = {
         "/": "legacy:home",
         "/chat/": "legacy:chat/index",
-        "/providers/": "legacy:providers",
         "/status/": "legacy:status",
         "/stats/": "legacy:stats",
         "/logs/": "legacy:logs",
@@ -242,3 +241,20 @@ def test_registered_flask_routes_preserve_legacy_fallback(monkeypatch):
         response = client.get(path)
         assert response.status_code == 200, path
         assert response.get_data(as_text=True) == expected, path
+
+
+def test_registered_provider_catalog_uses_legacy_template_when_disabled(monkeypatch):
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "0")
+    website = _website()
+    monkeypatch.setattr(website, "_get_providers", lambda: [])
+    for index, (route, config) in enumerate(website.routes.items()):
+        website.app.add_url_rule(
+            route,
+            endpoint=f"provider_legacy_test_{index}",
+            view_func=config["function"],
+            methods=config["methods"],
+        )
+    response = website.app.test_client().get("/providers/")
+    assert response.status_code == 200
+    assert response.headers.get("X-ROCKSOUL-UI") is None
+    assert b"Providers" in response.get_data()
