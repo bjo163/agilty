@@ -1,5 +1,8 @@
 import os
 
+import pytest
+from werkzeug.exceptions import NotFound
+
 from flask import Flask
 
 from g4f.gui.server.website import Website
@@ -71,9 +74,8 @@ def test_asset_handler_rejects_parent_traversal():
     website = _website()
 
     with website.app.test_request_context("/rocksoul-assets/../server/website.py"):
-        response = website._rocksoul_asset("../server/website.py")
-
-    assert response.status_code == 404
+        with pytest.raises(NotFound):
+            website._rocksoul_asset("../server/website.py")
 
 
 def test_legacy_root_handler_is_used_when_ui_is_disabled(monkeypatch):
