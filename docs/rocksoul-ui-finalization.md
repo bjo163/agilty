@@ -126,7 +126,7 @@ Current `main` HEAD: `b2581bf45aa669819cf40ba33886bdef941ba534`.
 - CodeQL Advanced: [42207432725 — success](https://github.com/bjo163/agilty/actions/runs/42207432725).
 - ROCKSOUL CI matrix + packaging + Compose + Docker + persistent-volume smoke: [42207314832 — success](https://github.com/bjo163/agilty/actions/runs/42207314832), on parent `ec49c0c3d14dfd441d483d5d5ab9e176a42b5683`. The later commit changes only the media classifier, browser assertions, and docs; the exact-HEAD browser and unit workflows cover the changed behavior.
 
-**Readiness:** usable for local development and hands-on evaluation now, but not certified as 100% production-ready. Live provider credentials/streaming, document extraction parity, server-side authorization boundaries, full accessibility/localization QA, and remaining legacy sub-page parity are still open. Coolify is intentionally excluded; use local Docker Compose for deployment smoke testing.
+**Readiness:** usable for local development and hands-on evaluation, but not certified as production-ready. The guarded privileged endpoints, document upload/extraction path, EN/ID selector, accessibility baseline, provider smoke harness, and Compose operator improvements are implemented. Still open: exact-main CI completion, live-provider credentials/streaming, real document fixture validation, reverse-proxy/remote request verification, full screen-reader/contrast/responsive and translation-completeness QA, deeper legacy Apps/Private parity, and a real Docker-host backup/restore smoke. Coolify is intentionally excluded.
 
 
 ## Local Compose network hardening — 2026-11-06
@@ -134,3 +134,17 @@ Current `main` HEAD: `b2581bf45aa669819cf40ba33886bdef941ba534`.
 - Canonical `docker-compose.yml` now binds GUI/API host ports 8080 and 1337 to `127.0.0.1` by default; VNC 7900 was already loopback-only.
 - Added a regression test that rejects wildcard host bindings for those ports.
 - This makes the default local-development path safer. It does not add server-side authorization to legacy endpoints; do not expose the service remotely without a trusted authenticated reverse proxy/private network.
+
+
+## Milestone implementation checkpoint — 2026-11-06
+
+Current `main` implementation includes all seven milestone workstreams in partial or baseline form. See [independent milestone status](rocksoul-next-milestones.md) and [product backlog continuation](rocksoul-todo.md). The seven GitHub issues remain open intentionally because their live/manual acceptance gates have not all been satisfied.
+
+- Backend trust guard: direct Flask-route tests now cover denied untrusted remote calls and allowed loopback/API-key calls. Trusted CIDRs are explicit; canonical Compose defaults to common Docker bridge peers while host ports remain loopback-only.
+- Accessibility/localization: automated baseline and mocked browser coverage added; manual certification and complete translation coverage remain open.
+- Live provider: opt-in harness exists; no provider credential or live run is assumed.
+- Documents: mocked upload/extract/context/cleanup flow added; optional dependency and real file-format fixtures remain open.
+- Apps/Private: unsafe extension destinations are non-clickable; remaining legacy nested actions need inventory.
+- Compose: healthcheck/restart/API-key/trusted-peer/backup guidance added; a real Docker host run remains required.
+
+The exact-main GitHub Actions runs for this checkpoint are tracked on the latest commit; do not treat queued runs as passing.
