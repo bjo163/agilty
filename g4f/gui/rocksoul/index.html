@@ -42,7 +42,7 @@
         </div>
         <form id="composer" class="composer">
           <textarea id="prompt" rows="1" placeholder="Ask anything. Build something. Explore an idea…" aria-label="Message" required></textarea>
-          <div class="composer-bottom"><span class="composer-hint">Enter to send · Shift + Enter for a new line</span><button id="send" type="submit" aria-label="Send message">↑</button></div>
+          <div class="composer-bottom"><span class="composer-hint">Enter to send · Shift + Enter for a new line</span><div class="composer-actions"><button id="stop" class="stop-button" type="button" aria-label="Stop generation" hidden>■</button><button id="send" type="submit" aria-label="Send message">↑</button></div></div>
         </form>
         <div class="disclaimer">ROCKSOUL is the interface. Inference, providers and model execution stay in the g4f Python runtime.</div>
       </div>
