@@ -150,6 +150,18 @@ def _privileged_forbidden():
     return jsonify({"error": {"message": "Privileged operation requires a trusted client or valid API key"}}), 403
 
 
+def _parse_bool_query(value: str | None, default: bool) -> bool:
+    """Parse a query-string boolean without treating non-empty 'false' as true."""
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "off"}:
+        return False
+    raise ValueError("Expected a boolean value: true/false, 1/0, yes/no, or on/off")
+
+
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -1024,10 +1036,15 @@ class Backend_Api(Api):
                     logger.exception(e)
                     return jsonify({"error": {"message": "Failed to delete bucket"}}), 500
 
-            delete_files = request.args.get("delete_files", True)
-            refine_chunks_with_spacy = request.args.get(
-                "refine_chunks_with_spacy", False
-            )
+            try:
+                delete_files = _parse_bool_query(
+                    request.args.get("delete_files"), default=True
+                )
+                refine_chunks_with_spacy = _parse_bool_query(
+                    request.args.get("refine_chunks_with_spacy"), default=False
+                )
+            except ValueError as error:
+                return jsonify({"error": {"message": str(error)}}), 400
             event_stream = event_stream or "text/event-stream" in request.headers.get(
                 "Accept", ""
             )
