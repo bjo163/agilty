@@ -92,6 +92,20 @@ The existing g4f Python runtime remains the source of truth for provider impleme
 
 The repository also contains optional engineering/operator modules (Arena, Mesh, WorkItem, WorkGraph, verifier/evidence stores and diagnostics). These are not required for ordinary chat and do not define the ROCKSOUL product.
 
+
+### Start ROCKSOUL locally with Docker Compose
+
+From the repository root (Windows PowerShell, macOS, or Linux):
+
+```bash
+docker compose up -d --build
+docker compose logs -f gpt4free
+```
+
+Open **http://localhost:8080** (the alternate mapped port is **http://localhost:1337**). The canonical Compose file builds this checkout and persists g4f configuration, cookies, share snapshots, logs, and cache in the named `g4f-data` volume. By default, the host ports bind to `127.0.0.1` only; they are not published to the LAN. Stop the service with `docker compose down`. This preserves the volume; do not add `-v` unless you intend to delete persisted data.
+
+This starts the ROCKSOUL UI and existing g4f Python runtime together—there is no separate ROCKSOUL gateway. Provider availability still depends on the providers and credentials configured in g4f. Keep the service local until you have put all legacy API routes behind a trusted authenticated reverse proxy before remote exposure.
+
 **UI replacement status:** ROCKSOUL is now the unified shell for the primary live GUI pages: overview (`/`), chat (`/chat/`), providers and provider details (`/providers/`), status, stats, logs, agent tools, browser workspace, playground, apps/modules, and private utilities. These screens use existing g4f endpoints such as `/v1/models`, `/v1/chat/completions`, `/backend-api/v2/providers`, `/backend-api/v2/status`, `/backend-api/v2/stats`, `/backend-api/v2/log`, `/backend-api/v2/webmcp/tools`, and `/pa/providers`. Agent/browser tools prompt for a per-call confirmation in the UI, but this is not server-side authorization: protect the existing WebMCP endpoint behind a trusted network or authenticated reverse proxy before public deployment. Cookie/HAR upload also requires network protection because the existing handler does not validate a per-request API key. No second runtime or gateway is added. File/media routes, `/dist/*`, API routes, and version-pinned historical snapshots remain their existing non-page handlers. Set `ROCKSOUL_UI_ENABLED=0` to roll back the primary GUI pages to their legacy handlers. Conversation history stays browser-local unless the user explicitly chooses **Share chat**; shared conversations are persisted through g4f’s existing `/backend-api/v2/chat/<id>` endpoint, and anyone with the generated link can read or replace that snapshot. Image/audio/video attachments are submitted through g4f’s existing multipart `/backend-api/v2/conversation` endpoint. Returned media URL events are rendered as safe images and native audio/video players when their file types are recognized. Provider detail exposes the existing login, health, and quota endpoints where advertised, including device-code polling through the existing OAuth endpoint; WebMCP invocations require confirmation and write metadata-only outcome events to the existing log endpoint. Compose builds the checked-out source and persists g4f configuration/cookies/share buckets/logs/cache in a named volume. The browser suite mocks runtime APIs, so live-provider behavior, document extraction parity, accessibility/localization QA, and upstream disconnect behavior remain release gates. Coolify deployment testing is intentionally out of scope. See [Product](docs/rocksoul-product.md), [Narrative](docs/rocksoul-narrative.md), [Blueprint](docs/rocksoul-blueprint.md), [GUI route inventory](docs/rocksoul-ui-route-inventory.md), [Finalization status](docs/rocksoul-ui-finalization.md), and [Backlog](docs/rocksoul-todo.md).
 
 ---
