@@ -128,7 +128,7 @@ try {
   await page.getByText("ROCKSOUL browser test").last().waitFor();
   assert.equal(chatWriteCount, 1, "a second private chat must remain local");
 
-  await page.evaluate(() => fetch("/__test/fail-share"));
+  await page.evaluate(() => { window.__copiedShareUrl = ""; return fetch("/__test/fail-share"); });
   await page.once("dialog", dialog => dialog.accept());
   await page.locator("#share-chat").click();
   await page.getByRole("button", { name: "Share failed" }).waitFor();
