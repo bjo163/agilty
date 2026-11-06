@@ -18,6 +18,7 @@ on:
       - 'tests/test_rocksoul_*.py'
       - 'docs/rocksoul-*.md'
       - 'setup.py'
+      - 'docker-compose.yml'
       - '.github/workflows/rocksoul-ci.yml'
   workflow_dispatch:
 
