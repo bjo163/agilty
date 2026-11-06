@@ -101,6 +101,43 @@ def test_legacy_chat_handler_is_used_when_ui_is_disabled(monkeypatch):
     assert response == "legacy:chat/index"
 
 
+
+def test_all_primary_gui_pages_use_the_rocksoul_shell(monkeypatch):
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "1")
+    website = _website()
+    handlers = (
+        (website._agent, "/agent/"),
+        (website._browser, "/browser/"),
+        (website._logs, "/logs/"),
+        (website._status, "/status/"),
+        (website._stats, "/stats/"),
+        (website._providers, "/providers/"),
+        (lambda: website._provider_detail("ExampleProvider"), "/providers/ExampleProvider"),
+        (website._private, "/private/"),
+        (website._apps, "/apps/"),
+        (website._playground, "/playground/"),
+        (lambda: website._index("stats"), "/stats.html"),
+        (lambda: website._index("providers"), "/providers.html"),
+    )
+
+    for handler, path in handlers:
+        with website.app.test_request_context(path):
+            response = handler()
+        assert response.status_code == 200, path
+        assert response.headers.get("X-ROCKSOUL-UI") == "1", path
+
+
+def test_rocksoul_route_inventory_keeps_non_ui_assets_and_apis(monkeypatch):
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "1")
+    website = _website()
+
+    assert "/rocksoul-assets/<path:filename>" in website.routes
+    assert "/dist/<path:name>" in website.routes
+    assert "/media/" in website.routes
+    assert "/v<version>/<path:filename>" in website.routes
+    assert "/meta" in website.routes
+    assert "/sitemap.xml" in website.routes
+
 def test_ui_assets_include_stream_cancellation_and_sse_flush():
     from pathlib import Path
 
