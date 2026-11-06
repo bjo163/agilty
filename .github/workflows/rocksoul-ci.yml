@@ -84,7 +84,7 @@ jobs:
           python - <<'PY'
           from importlib.resources import files
           assets = files("g4f").joinpath("gui", "rocksoul")
-          required = ("index.html", "app.css", "app.js")
+          required = ("index.html", "app.css", "app.js", "locale.js")
           missing = [name for name in required if not assets.joinpath(name).is_file()]
           assert not missing, f"Missing ROCKSOUL wheel assets: {missing}"
           PY
