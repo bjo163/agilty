@@ -635,6 +635,17 @@ from ..proxy.constants import (
 
 def create_app():
     app = FastAPI(lifespan=lifespan)
+
+    @app.get("/health/live", include_in_schema=False)
+    async def liveness():
+        """Cheap process liveness; never performs provider/model discovery."""
+        return {"status": "ok"}
+
+    @app.get("/health/ready", include_in_schema=False)
+    async def readiness():
+        """Local application readiness; provider availability is diagnostic only."""
+        return {"status": "ready"}
+
     add_request_sink(_record_outgoing_request)
 
     # CDP relay: let the g4f browser extension act as a CDP provider.
@@ -1018,6 +1029,7 @@ class Api:
             remove_authorization_header = False
             if (
                 request.method != "OPTIONS"
+                and request.url.path not in {"/health/live", "/health/ready"}
                 and AppConfig.g4f_api_key is not None
             ):
                 try:
