@@ -126,7 +126,7 @@ try {
   await page.getByText("server-restored conversation").waitFor();
 
   await page.goto("http://127.0.0.1:4173/chat/");
-  await page.locator("#attachment-input").setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello from attachment") });
+  await page.locator("#attachment-input").setInputFiles({ name: "attachment.png", mimeType: "image/png", buffer: Buffer.from("hello from attachment") });
   await page.locator("#prompt").fill("Summarize this file");
   await page.locator("#send").click();
   await page.getByText("attachment endpoint response").waitFor();
