@@ -198,6 +198,25 @@ class Backend_Api(Api):
         self.chat_cache = {}
         self.client = Client()
 
+        # Bound multipart uploads at the WSGI layer before parsing file parts.
+        try:
+            max_upload_bytes = int(os.environ.get("G4F_MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
+        except ValueError:
+            max_upload_bytes = 25 * 1024 * 1024
+        self.app.config["MAX_CONTENT_LENGTH"] = max(1024 * 1024, min(max_upload_bytes, 256 * 1024 * 1024))
+        try:
+            self.max_upload_files = int(os.environ.get("G4F_MAX_UPLOAD_FILES", "10"))
+        except ValueError:
+            self.max_upload_files = 10
+        self.max_upload_files = max(1, min(self.max_upload_files, 50))
+
+        @self.app.errorhandler(413)
+        def request_entity_too_large(error):
+            return jsonify({"error": {
+                "code": "request_too_large",
+                "message": "Request exceeds the configured upload size limit",
+            }}), 413
+
         # Warm the shared MCP registry during startup so the first
         # /backend-api/v2/webmcp/tools request is served from cache instead of
         # paying the import and schema-building cost.
@@ -1060,13 +1079,21 @@ class Backend_Api(Api):
         def upload_files(bucket_id: str):
             if not _privileged_request_allowed():
                 return _privileged_forbidden()
+            uploaded_files = request.files.getlist("files")
+            if not uploaded_files:
+                return jsonify({"error": {"code": "empty_upload", "message": "At least one file is required"}}), 400
+            if len(uploaded_files) > self.max_upload_files:
+                return jsonify({"error": {
+                    "code": "too_many_files",
+                    "message": f"Upload exceeds the {self.max_upload_files}-file limit",
+                }}), 413
             bucket_id = secure_filename(bucket_id)
             bucket_dir = get_bucket_dir(bucket_id)
             media_dir = os.path.join(bucket_dir, "media")
             os.makedirs(bucket_dir, exist_ok=True)
             filenames = []
             media = []
-            for file in request.files.getlist("files"):
+            for file in uploaded_files:
                 filename = secure_filename(file.filename)
                 mimetype = file.mimetype.split(";")[0]
                 if (not filename or filename == "blob") and mimetype in MEDIA_TYPE_MAP:
