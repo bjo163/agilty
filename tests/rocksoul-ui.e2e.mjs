@@ -27,12 +27,12 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname === "/backend-api/v2/health/DemoProvider" || url.pathname === "/backend-api/v2/quota/DemoProvider") return json({ status: "healthy", remaining: 42 });
   if (url.pathname === "/backend-api/v2/oauth/DemoProvider") { let raw = ""; for await (const chunk of req) raw += chunk; const payload = raw ? JSON.parse(raw) : {}; if (payload.action === "poll") { oauthPollCount += 1; return json(oauthPollCount === 1 ? { status: "pending", message: "Authorization pending" } : { status: "success", message: "GitHub OAuth successful" }); } return json({ status: "pending", verification_uri: "https://auth.example.test/device", user_code: "ROCK-SOUL", device_code: "mock-device-code", interval: 1, expires_in: 60 }); }
-  if (/^\\/backend-api\\/v2\\/files\\/[^/]+$/.test(url.pathname)) {
+  if (/^\/backend-api\/v2\/files\/[^/]+$/.test(url.pathname)) {
     const bucket = url.pathname.split("/").at(-1);
     if (req.method === "DELETE") { uploadedBuckets.delete(bucket); return json({ deleted: true }); }
     if (req.method === "POST") { for await (const chunk of req) { /* consume multipart document upload */ } uploadedBuckets.set(bucket, "Mock document extracted text"); return json({ bucket_id: bucket, files: ["notes.txt"], media: [] }); }
   }
-  if (/^\\/backend-api\\/v2\\/files\\/[^/]+\\/stream$/.test(url.pathname)) {
+  if (/^\/backend-api\/v2\/files\/[^/]+\/stream$/.test(url.pathname)) {
     const bucket = url.pathname.split("/").at(-2);
     if (uploadedBuckets.has(bucket)) { res.writeHead(200, { "content-type": "text/plain" }); res.end(uploadedBuckets.get(bucket)); return; }
     res.writeHead(404).end(); return;
