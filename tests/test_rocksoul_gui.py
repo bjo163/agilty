@@ -526,7 +526,7 @@ def test_rocksoul_theme_text_tokens_meet_wcag_aa_contrast():
     styles = (Path(__file__).parents[1] / "g4f" / "gui" / "rocksoul" / "app.css").read_text(encoding="utf-8")
 
     def variables(selector):
-        match = re.search(selector + r"\\{([^}]+)\\}", styles)
+        match = re.search(selector + r"\{([^}]+)\}", styles)
         assert match, selector
         return dict(re.findall(r"(--[a-z-]+):(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))", match.group(1)))
 
@@ -544,7 +544,7 @@ def test_rocksoul_theme_text_tokens_meet_wcag_aa_contrast():
 
     themes = (
         variables(r":root"),
-        variables(r":root\\[data-theme=light\\]"),
+        variables(r":root\[data-theme=light\]),
     )
     for theme in themes:
         assert contrast(theme["--ink"], theme["--bg"]) >= 4.5
