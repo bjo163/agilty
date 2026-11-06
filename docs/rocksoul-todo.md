@@ -643,3 +643,5 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - Added Markdown raster image, audio, and video rendering. Raster data URLs are limited to PNG/JPEG/GIF/WebP base64; external media links must pass HTTP(S)/same-origin URL validation. Raw HTML and SVG data URLs are not executed.
 - Fixed a stale `key.value` reference in the Private utility upload success handler that could throw after a successful upload.
 - Added browser and Flask regression coverage for export controls, media elements, regeneration, and Private utility script safety.
+
+- [x] Add browser-local conversation history search, rename, pin/unpin, delete, and clear-all controls; clearly distinguish local deletion from server-shared snapshot deletion.
