@@ -84,41 +84,18 @@ Table of contents
 - Optional ROCKSOUL execution-control, Mesh coordination, and Arena benchmarking modules.
 
 
-## ROCKSOUL control plane
+## ROCKSOUL UI
 
-This fork also carries ROCKSOUL, an optional control-plane layer built around the existing g4f runtime. ROCKSOUL adds provider discovery, evidence-backed routing, bounded execution and retries, request traces, provider quarantine/recovery, authenticated Mesh coordination, and deterministic Arena benchmarks. It does not replace or duplicate the upstream g4f provider implementations.
+**ROCKSOUL is the new web interface for the existing g4f Python runtime.** Its purpose is to replace the default g4f HTML experience with a modern, chat-first UI—not to create another LLM gateway, provider registry, model catalog, router, or execution engine.
 
-The ROCKSOUL modules are included in the `g4f` Python package. They can be invoked directly from a source checkout:
+The existing g4f Python runtime remains the source of truth for provider implementations, model discovery, routing, inference, streaming, tools, media, sessions, and the public API/Python SDK. ROCKSOUL owns presentation, interaction, navigation, accessibility, themes, and localization.
 
-```bash
-python -m g4f.rocksoul_db_cli status
-python -m g4f.rocksoul_db_cli discover
-python -m g4f.rocksoul_mesh_cli --help
-python -m g4f.rocksoul_arena_cli --help
-python -m g4f.rocksoul_arena_production_cli --help
-python -m g4f.rocksoul_work_cli --help
-python -m g4f.rocksoul_work_graph_cli --help
-```
+The repository also contains optional engineering/operator modules (Arena, Mesh, WorkItem, WorkGraph, verifier/evidence stores and diagnostics). These are not required for ordinary chat and do not define the ROCKSOUL product.
 
-The `rocksoul`, `rocksoul-db`, `rocksoul-mesh`, `rocksoul-arena`, `rocksoul-arena-production`, `rocksoul-work`, `rocksoul-work-graph`, and `rocksoul-legacy` console scripts are also registered by `setup.py` when the package is installed. Live provider probes and Mesh node mutations are explicit operator actions; unit tests and CI use local deterministic fixtures by default.
-
-The production-evidence registry has a separate operator CLI. Validation, registration, listing, readback, and the synthetic fixture campaign remain offline. Stage 4 adds a separately gated live command: it requires both `--confirm-live` and `ROCKSOUL_ALLOW_LIVE_ARENA=1`, a previously registered pack, an exact confirmed digest, repeat dataset hash verification, explicit provider/model/runtime revisions, network mode and region, and a hard request-count budget. It is not run by CI or automatically. Validate a manifest first, then register it only with the exact local dataset artifact whose SHA-256 is declared in that manifest:
-
-```bash
-python -m g4f.rocksoul_arena_production_cli validate-pack pack.json --dataset-file ./dataset.json
-python -m g4f.rocksoul_arena_production_cli register-pack pack.json --dataset-file ./dataset.json
-python -m g4f.rocksoul_arena_production_cli list-packs
-python -m g4f.rocksoul_arena_production_cli list-campaigns
-python -m g4f.rocksoul_arena_production_cli verify-campaign <campaign-id>
-python -m g4f.rocksoul_arena_production_cli campaign-report --pack-digest <pack-sha256>
-```
-
-The CLI does not invoke providers or make network calls. Its built-in `fixture-campaign` runs only synthetic offline cases. The registered pack is immutable by name/version; changing content requires a version bump. See [production CLI manifest and workflow](docs/rocksoul-arena-production-cli.md).
-
-The WorkItem contract, immutable verification-profile registry, SQLite lifecycle/event store, authenticated API endpoints, `rocksoul-work` operator CLI, and Console Work & Evidence cockpit are documented in [`docs/rocksoul-work-contracts.md`](docs/rocksoul-work-contracts.md). The deterministic WorkGraph DAG foundation is documented in [`docs/rocksoul-work-graph.md`](docs/rocksoul-work-graph.md); it now provides bounded DAG validation, an immutable SQLite registry, authenticated API/CLI access, and a read-only authoritative readiness resolver that requires accepted WorkItems with valid evidence chains; dispatch, atomic budget reservation, and autonomous execution orchestration are not yet implemented. The Console includes a WorkGraph registry/readiness cockpit for administrators and operators, alongside WorkItem creation/readback, guarded lifecycle transitions, signed administrator approval for high/critical WorkItems, immutable verifier profile registration, bounded (1 MiB) artifact upload with per-criterion verification, evidence diff, and metadata-only evidence bundle export. The built-in verifier executes all five allowlisted adapters: artifact SHA-256, bounded JSON Schema, pytest JUnit XML receipts, captured HTTPS response contracts, and content-addressed source binding. Caller-supplied captures are not cryptographically authenticated and remote source authenticity remains outside the current trust boundary. Acceptance requires persisted verifier PASS receipts and a valid event chain. Remote source authenticity and additional adapters remain future work. The product direction, narrative, strategic blueprint, future roadmap, security boundaries, release gates, and granular implementation backlog are documented in [`docs/rocksoul-product.md`](docs/rocksoul-product.md), [`docs/rocksoul-narrative.md`](docs/rocksoul-narrative.md), [`docs/rocksoul-blueprint.md`](docs/rocksoul-blueprint.md), [`docs/rocksoul-future-roadmap.md`](docs/rocksoul-future-roadmap.md), and [`docs/rocksoul-todo.md`](docs/rocksoul-todo.md). ROCKSOUL's strategic direction is evidence-driven execution and task-specific verification—not a claim of AGI or certified general intelligence.
+**UI replacement status:** the product boundary and blueprint have been reset, but the final ROCKSOUL chat UI has not yet been mounted as the default g4f GUI. Existing g4f HTML routes remain the compatibility fallback until route parity and streaming/session tests pass. See [Product](docs/rocksoul-product.md), [Narrative](docs/rocksoul-narrative.md), [Blueprint](docs/rocksoul-blueprint.md), and [Backlog](docs/rocksoul-todo.md).
 
 ---
-
+ 
 ## Quick links
 - Website & docs: https://g4f.dev | https://g4f.dev/docs  
 - PyPI: https://pypi.org/project/g4f  
