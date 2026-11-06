@@ -74,6 +74,7 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto("http://127.0.0.1:4173/");
+  await page.locator(".metric-card").first().waitFor();
   await page.locator("#model-select option[value='browser-test-model']").waitFor();
   assert.equal(await page.locator("#model-select").inputValue(), "auto");
 
@@ -115,6 +116,7 @@ try {
   ]) {
     await page.goto("http://127.0.0.1:4173" + route);
     await page.locator(selector).first().waitFor();
+    if (route === "/providers/DemoProvider") await page.locator('[data-route="/providers/"].active').waitFor();
   }
 
   const restrictedPage = await browser.newPage();
