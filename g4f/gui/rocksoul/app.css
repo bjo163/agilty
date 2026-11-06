@@ -63,3 +63,7 @@
 .tool-runner{display:grid;gap:10px}
 .tool-runner label{font:9px 'DM Mono';letter-spacing:1.2px;color:var(--muted)}
 .code-input{width:100%;min-height:130px;padding:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:11px/1.6 'DM Mono';resize:vertical}
+
+:focus-visible{outline:3px solid var(--acid);outline-offset:3px}
+button:disabled{cursor:not-allowed}
+@media(prefers-contrast:more){:root{--line:currentColor;--muted:var(--ink)}.notice,.workspace-card,.data-panel,.tool-card{border-width:2px}}
