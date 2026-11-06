@@ -164,6 +164,7 @@ class ExecutionTraceStore:
                 selected_provider = None if selected is None else selected[0]
         return {
             "request_id": request_id,
+            "work_id": run["work_id"],
             "model": run["model"],
             "status": run["status"],
             "selected_provider": selected_provider,

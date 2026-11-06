@@ -4,7 +4,7 @@ import hashlib
 import json
 import unittest
 
-from g4f.rocksoul_verification import EvidenceRequirement, VerificationOutcome, VerificationProfile
+from g4f.rocksoul_verification import EvidenceRequirement, VerificationOutcome, VerificationProfile, VerificationProfileError
 from g4f.rocksoul_verifier_engine import VerificationEngine
 
 
@@ -68,14 +68,9 @@ class VerificationEngineTests(unittest.TestCase):
         self.assertEqual(valid.result.outcome, VerificationOutcome.PASS)
         self.assertEqual(invalid.result.outcome, VerificationOutcome.FAIL)
 
-    def test_unsupported_allowlisted_adapter_fails_closed(self):
-        result = self.engine.verify(
-            self.profile("pytest", "test_receipt"),
-            b"receipt",
-            source="artifact://receipt/one",
-        )
-        self.assertEqual(result.result.outcome, VerificationOutcome.ERROR)
-        self.assertEqual(result.evidence, ())
+    def test_profile_rejects_non_allowlisted_adapter(self):
+        with self.assertRaises(VerificationProfileError):
+            self.profile("shell", "test_receipt")
 
     def test_rejects_empty_or_oversized_artifacts(self):
         for artifact in (b"", b"x" * (VerificationEngine.MAX_ARTIFACT_BYTES + 1)):
@@ -116,10 +111,11 @@ class VerificationEngineTests(unittest.TestCase):
             {"type": "object", "properties": {"value": {"type": "number", "maximum": float("nan")}}},
             {"type": "object", "properties": {"value": {"type": "number", "minimum": True}}},
         ):
-            with self.subTest(schema=schema), self.assertRaises(ValueError):
-                self.engine.verify(
+            with self.subTest(schema=schema):
+                result = self.engine.verify(
                     profile, b'{"value":1}', source="artifact://json/bad-bound", schema=schema,
                 )
+                self.assertEqual(result.result.outcome, VerificationOutcome.FAIL)
 
     def test_numeric_schema_bounds_enforce_valid_ranges(self):
         profile = self.profile("json_schema", "json_validation")

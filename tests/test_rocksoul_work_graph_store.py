@@ -88,6 +88,7 @@ class WorkGraphStoreTests(unittest.TestCase):
         self.assertEqual(result["reason"], "work_graph_not_found")
 
     def test_readiness_uses_authoritative_work_item_state(self):
+        self.store.create(self.graph)
         work_store = WorkItemStore(self.db)
         work_store.create(WorkItem(
             work_id="work-build",
@@ -113,6 +114,7 @@ class WorkGraphStoreTests(unittest.TestCase):
         self.assertEqual(states["test"]["waiting_for"], ["build"])
 
     def test_only_accepted_verified_dependency_unblocks_downstream(self):
+        self.store.create(self.graph)
         work_store = WorkItemStore(self.db)
         for work_id, criterion_id, method in (
             ("work-build", "artifact", "artifact_digest"),
@@ -157,12 +159,14 @@ class WorkGraphStoreTests(unittest.TestCase):
         self.assertEqual(result["ready_nodes"], ["test"])
 
     def test_readiness_blocks_missing_work_items(self):
+        self.store.create(self.graph)
         result = self.store.resolve_readiness("pipeline", WorkItemStore(self.db))
         self.assertEqual(result["blocked_nodes"], ["build", "test"])
         self.assertEqual(result["blocked_nodes"][0], "build")
         self.assertEqual(result["nodes"][0]["reason"], "work_item_not_found")
 
     def test_readiness_fails_closed_on_malformed_work_item_contract_json(self):
+        self.store.create(self.graph)
         work_store = WorkItemStore(self.db)
         work_store.create(WorkItem(
             work_id="work-build",
@@ -190,6 +194,7 @@ class WorkGraphStoreTests(unittest.TestCase):
         self.assertEqual(states["test"]["state"], "blocked")
 
     def test_readiness_fails_closed_on_invalid_work_item_chain(self):
+        self.store.create(self.graph)
         work_store = WorkItemStore(self.db)
         work_store.create(WorkItem(
             work_id="work-build",
