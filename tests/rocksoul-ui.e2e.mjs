@@ -108,7 +108,7 @@ try {
   await page.getByRole("button", { name: "Link copied" }).waitFor();
   const sharedUrl = await page.evaluate(() => window.__copiedShareUrl);
   assert.match(sharedUrl, /\/chat\/\?chat=[a-z0-9-]+$/);
-  const sharedSnapshot = await page.evaluate(async url => (await fetch(url.replace(location.origin, "")).then(response => response.json())), sharedUrl);
+  const sharedSnapshot = await page.evaluate(async url => { const id = new URL(url).searchParams.get("chat"); return fetch("/backend-api/v2/chat/" + id).then(response => response.json()); }, sharedUrl);
   assert.ok(sharedSnapshot.messages.some(message => message.content.includes("Say hello")));
 
 
