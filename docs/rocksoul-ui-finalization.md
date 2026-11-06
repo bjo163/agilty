@@ -34,7 +34,7 @@ The primary page routes now render the ROCKSOUL shell, but a route migration is 
 
 - Server persistence is opt-in through **Share chat** and the existing `/backend-api/v2/chat/<id>` API. Private chats remain browser-local by default. Anyone with a shared URL can read its contents; do not share secrets or credentials.
 - Image/audio/video attachments are submitted through the existing multipart `/backend-api/v2/conversation` endpoint. Rich rendering of returned image/audio/video and document extraction/upload parity still require completion.
-- Chat now renders safe Markdown and fenced code blocks with copy controls. Raw HTML from model output is rendered as text, not executed. Per-message copy, edit-last-user-turn, and delete controls are implemented. Regenerate, export, and richer conversation management remain outstanding.
+- Chat now renders safe Markdown and fenced code blocks with copy controls, validated raster images, and linked audio/video players. Raw HTML and SVG data URLs are not executed. Per-message copy, edit-last-user-turn, delete, and text-only regenerate controls are implemented. Markdown and JSON conversation export are available. Rename, pin, search, bulk delete, and attachment-aware regenerate remain outstanding.
 - Private chat snapshots are not sent to the server until the user explicitly shares them. Share IDs are generated from cryptographically strong random bytes even when randomUUID is unavailable. Regression tests assert that private conversations do not create server snapshots, weak legacy IDs are upgraded before sharing, and failed sharing does not copy a dead link.
 - Provider detail now exposes the existing OAuth/login, quota, and health endpoints when the provider advertises login support; device-flow polling and provider-specific credential UX still require verification.
 - The ROCKSOUL tool runner asks for a browser confirmation and records metadata-only outcomes through `/backend-api/v2/log`. This confirmation is a UI affordance, not server-side authorization: the existing `/backend-api/v2/webmcp/tools` endpoint accepts direct calls, and the MCP server does not enforce this browser confirmation. Do not expose tool execution to untrusted networks without upstream authentication/network restrictions. The log endpoint is also directly writable; these events are not a tamper-proof audit trail.
@@ -88,3 +88,12 @@ ROCKSOUL is the new UI for the primary live GUI surfaces. This does not mean eve
 - Delete removes the selected message from the local conversation and updates any explicitly shared snapshot through the existing g4f share endpoint.
 - Assistant and user Markdown is rendered with DOM text nodes; fenced code is displayed in a bounded code panel with a clipboard action. Model-provided HTML is not executed.
 - The previous ROCKSOUL CI run on `ac1010f4` passed all four UI route/asset test matrix jobs and the wheel/sdist + Compose + Docker image validation job. This is a verified checkpoint, not a claim that later commits have passed; current `main` requires a fresh run.
+
+
+## Chat parity update
+
+- Text-only regeneration replays the preceding user turn through the existing g4f OpenAI-compatible chat endpoint. It is intentionally disabled for turns that include file attachments until attachment replay semantics are verified.
+- Conversation export supports Markdown and JSON and runs entirely in the browser.
+- Markdown raster images (PNG/JPEG/GIF/WebP) are supported, including validated base64 image data URLs. Linked audio/video files render with native controls when their extension is recognized and URL passes the same-origin/HTTP(S) policy.
+- Fixed a stale variable reference in the Private utility upload handler that could throw after a successful upload.
+- Browser E2E now covers Markdown media, export download names, and regeneration request dispatch. Python route/UI tests assert the new controls and private upload regression guard.
