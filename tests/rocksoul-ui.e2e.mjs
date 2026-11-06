@@ -10,6 +10,7 @@ const mime = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript
 const remoteChats = new Map([["shared-test-123", { id: "shared-test-123", title: "Shared fixture", messages: [{ role: "user", content: "server-restored conversation" }], updated: 1 }]]);
 const toolAuditEvents = [];
 let chatWriteCount = 0;
+let chatCompletionCount = 0;
 let failChatWrites = false;
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://127.0.0.1");
@@ -49,6 +50,7 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === "/v1/chat/completions") {
+    chatCompletionCount += 1;
     let raw = "";
     for await (const chunk of req) raw += chunk;
     let prompt = "";
@@ -123,6 +125,9 @@ try {
   await page.locator(".markdown-audio").waitFor();
   assert.equal(await page.locator(".markdown-image").getAttribute("alt"), "pixel");
   assert.equal(await page.locator(".message-action-regenerate").count(), 1);
+  await page.locator(".message-action-regenerate").click();
+  await page.waitForFunction(() => document.querySelectorAll(".message.assistant .message-action-regenerate").length === 1);
+  assert.equal(chatCompletionCount, 2, "regenerate should issue a fresh request to the existing g4f chat API");
   const downloads = [];
   page.on("download", download => downloads.push(download.suggestedFilename()));
   await page.locator("#export-md").click();
