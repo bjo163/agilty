@@ -2,6 +2,8 @@ services:
   gpt4free:
     image: hlohaus789/g4f:latest
     pull_policy: build
+    init: true
+    restart: unless-stopped
     shm_size: 2gb
     build:
       context: .
@@ -17,6 +19,13 @@ services:
       - OLLAMA_HOST=host.docker.internal
       - ROCKSOUL_UI_ENABLED=${ROCKSOUL_UI_ENABLED:-1}
       - G4F_CONFIG_DIR=/data/g4f
+      - G4F_API_KEY=${G4F_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/backend-api/v2/status', timeout=5)"]
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 60s
 
 volumes:
   g4f-data:
