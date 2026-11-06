@@ -47,8 +47,8 @@ The initial ROCKSOUL UI is mounted by default, with the legacy UI retained as a 
 - [x] ROCKSOUL app shell served by existing g4f GUI server.
 - [x] Existing g4f model and chat API endpoints used.
 - [x] Legacy UI rollback switch exists.
-- [ ] Automated route and package tests pass.
-- [ ] Real-provider streaming and browser regression checks pass.
+- [ ] Automated route and package tests pass on the exact final `main` commit.
+- [ ] Real-provider streaming and browser regression checks pass on the exact final `main` commit.
 - [ ] UI parity and accessibility review passes.
 - [ ] Canonical Compose/Coolify deployment is verified.
 
@@ -81,6 +81,6 @@ The single-service `docker-compose.yml` now passes `ROCKSOUL_UI_ENABLED` into th
 
 ## Browser smoke automation
 
-A Playwright browser smoke test now exercises the packaged UI shell, static asset loading, `/v1/models` model discovery, a streamed `/v1/chat/completions` response, and new-chat interaction against a deterministic mocked g4f API. Workflow: `.github/workflows/rocksoul-ui-browser.yml`.
+A Playwright browser smoke test now exercises the packaged UI shell, static asset loading, `/v1/models` model discovery, normal streamed `/v1/chat/completions`, final SSE data without a trailing newline, non-2xx provider errors, Stop via browser abort, and browser-local history after reload against a deterministic mocked g4f API. Workflow: `.github/workflows/rocksoul-ui-browser.yml`.
 
 This proves browser wiring only. It does not certify a live provider, provider authentication, cancellation propagation to upstream providers, server-backed history, attachments, tools/media parity, accessibility, or Coolify deployment.
