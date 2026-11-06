@@ -53,7 +53,7 @@ const server = createServer(async (req, res) => {
   }
   const appRoutes = new Set(["/", "/index.html", "/home.html", "/chat/", "/providers/", "/providers", "/stats/", "/status/", "/logs/", "/agent/", "/browser/", "/playground/", "/apps/", "/private/"]);
   const isAppRoute = appRoutes.has(url.pathname) || ["/providers/", "/chat/", "/apps/", "/private/", "/playground/"].some(prefix => url.pathname.startsWith(prefix));
-  const relative = isAppRoute ? "index.html" : url.pathname.replace(/^\\/rocksoul-assets\\//, "");
+  const relative = isAppRoute ? "index.html" : url.pathname.replace(/^\/rocksoul-assets\//, "");
   if (relative.includes("..") || relative.startsWith("/")) {
     res.writeHead(404).end();
     return;
