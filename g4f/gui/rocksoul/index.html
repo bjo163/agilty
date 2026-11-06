@@ -9,8 +9,9 @@
   <link rel="stylesheet" href="/rocksoul-assets/app.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   <div class="app-shell">
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="ROCKSOUL workspace sidebar">
       <a class="brand" href="/" aria-label="ROCKSOUL home"><span class="brand-mark">R</span><span>ROCK<span>SOUL</span></span></a>
       <a class="new-chat" id="new-chat" href="/chat/">＋ <span>New conversation</span></a>
       <div class="side-label">WORKSPACE</div>
@@ -32,14 +33,14 @@
       <nav id="history" class="history" aria-label="Conversation history"></nav>
       <div class="sidebar-bottom"><span class="runtime-dot"></span><span id="runtime-indicator">g4f runtime</span><button id="theme-toggle" class="icon-button" aria-label="Toggle theme">◐</button></div>
     </aside>
-    <main class="main">
+    <main class="main" id="main-content" tabindex="-1">
       <header class="topbar">
         <button class="mobile-menu" id="mobile-menu" aria-label="Toggle sidebar">☰</button>
         <div><div class="eyebrow" id="page-eyebrow">YOUR AI WORKSPACE</div><div class="top-title" id="page-title">Think beyond the ordinary.</div></div>
         <div class="top-actions"><button id="export-md" class="action-button" type="button" hidden>Export .md</button><button id="export-json" class="action-button" type="button" hidden>Export .json</button><button id="share-chat" class="action-button" type="button">Share chat</button><a href="/status/" class="subtle-link">Runtime status ↗</a><span id="model-status" class="model-status">Connecting…</span></div>
       </header>
       <section class="page-content" id="page-content" aria-live="polite"></section>
-      <section class="conversation" id="conversation" aria-live="polite">
+      <section class="conversation" id="conversation" aria-label="Conversation" aria-live="polite" aria-relevant="additions text">
         <div class="welcome" id="welcome">
           <div class="welcome-kicker">ONE RUNTIME. MANY MINDS.</div>
           <h1>Make room<br>for <em>better thinking.</em></h1>
@@ -66,5 +67,6 @@
     </main>
   </div>
   <script src="/rocksoul-assets/app.js" defer></script>
+  <script src="/rocksoul-assets/locale.js" defer></script>
 </body>
 </html>
