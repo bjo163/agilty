@@ -28,6 +28,10 @@ const server = createServer(async (req, res) => {
       return;
     }
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+    if (prompt === "eof without newline") {
+      res.end('data: {"choices":[{"delta":{"content":"SSE EOF flush"}}]}');
+      return;
+    }
     if (prompt === "stop after partial") {
       res.write('data: {"choices":[{"delta":{"content":"partial before stop"}}]}\n\n');
       // Keep the stream open so the browser Stop control exercises AbortController.
@@ -67,6 +71,11 @@ try {
   await page.getByText("ROCKSOUL browser test").waitFor();
 
   await page.locator("#new-chat").click();
+  await page.locator("#prompt").fill("eof without newline");
+  await page.locator("#send").click();
+  await page.getByText("SSE EOF flush").waitFor();
+
+  await page.locator("#new-chat").click();
   await page.locator("#prompt").fill("trigger error");
   await page.locator("#send").click();
   await page.getByText(/mock provider unavailable/).waitFor();
@@ -81,7 +90,7 @@ try {
   await page.reload();
   await page.getByText("partial before stop").waitFor();
 
-  console.log("ROCKSOUL browser smoke passed: shell, model discovery, SSE, provider errors, stop, and persisted local history.");
+  console.log("ROCKSOUL browser smoke passed: shell, model discovery, SSE EOF flush, provider errors, stop, and persisted local history.");
 } finally {
   if (browser) await browser.close();
   await new Promise((resolveClose) => server.close(resolveClose));
