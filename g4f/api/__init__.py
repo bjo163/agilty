@@ -748,23 +748,41 @@ def create_app():
                     media_type=response.media_type,
                 )
             else:
-                # Tee the streaming iterator: forward chunks to client AND accumulate for log
-                sse_chunks: list[bytes] = []
+                # Keep only a bounded tail for diagnostics; never buffer an entire
+                # generated response or delay forwarding chunks to the client.
+                try:
+                    capture_limit = int(os.environ.get("G4F_SSE_LOG_MAX_BYTES", "65536"))
+                except ValueError:
+                    capture_limit = 65536
+                capture_limit = max(0, min(capture_limit, 1024 * 1024))
+                sse_capture = bytearray()
+                sse_truncated = False
                 orig_iterator = response.body_iterator
 
                 async def tee_iterator():
+                    nonlocal sse_truncated
                     async for chunk in orig_iterator:
-                        if isinstance(chunk, bytes):
-                            sse_chunks.append(chunk)
-                        else:
-                            sse_chunks.append(chunk.encode("utf-8", errors="replace"))
+                        encoded = chunk if isinstance(chunk, bytes) else chunk.encode("utf-8", errors="replace")
+                        if capture_limit:
+                            if len(encoded) >= capture_limit:
+                                sse_capture[:] = encoded[-capture_limit:]
+                                sse_truncated = True
+                            elif len(sse_capture) + len(encoded) > capture_limit:
+                                overflow = len(sse_capture) + len(encoded) - capture_limit
+                                del sse_capture[:overflow]
+                                sse_capture.extend(encoded)
+                                sse_truncated = True
+                            else:
+                                sse_capture.extend(encoded)
+                        elif encoded:
+                            sse_truncated = True
                         yield chunk
-                    # After iteration completes, parse and store the full SSE body
-                    raw = b"".join(sse_chunks)
-                    parsed = _try_parse_body(raw, "text/plain")
-                    log_entry["response_body"] = parsed
-                    # Streaming errors arrive as 200 responses with error
-                    # chunks inside the SSE body – save those HARs too.
+                    raw = bytes(sse_capture)
+                    log_entry["response_body"] = _try_parse_body(raw, "text/plain")
+                    if sse_truncated:
+                        log_entry["response_body_truncated"] = True
+                    # The retained tail still captures terminal SSE errors while
+                    # memory remains bounded independently of generation length.
                     has_stream_error = _sse_body_has_error(raw)
                     if has_stream_error:
                         log_entry["stream_error"] = True
