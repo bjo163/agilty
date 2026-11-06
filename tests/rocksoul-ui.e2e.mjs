@@ -108,6 +108,8 @@ try {
   assert.equal(await page.locator("#model-select option[value='browser-test-model']").count(), 1, "runtime model should be listed");
   assert.equal(await page.locator("#model-select").inputValue(), "auto");
 
+  await page.goto("http://127.0.0.1:4173/chat/");
+  await page.locator("#prompt").waitFor({ state: "visible" });
   await page.locator("#prompt").fill("Say hello");
   await page.locator("#send").click();
   await page.getByText("ROCKSOUL browser test").waitFor();
