@@ -260,7 +260,7 @@ try {
     await page.goto("http://127.0.0.1:4173" + route);
     await page.locator(selector).first().waitFor();
     if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); await page.getByRole("button", { name: "Check quota" }).click(); await page.getByText(/remaining/).waitFor(); await page.getByRole("button", { name: "Start login" }).click(); await page.getByText("Continue authentication").waitFor(); await page.getByText("GitHub OAuth successful").waitFor(); assert.equal(oauthPollCount, 2, "device OAuth should poll until the provider confirms authorization"); }
-    if (route === "/apps/") assert.ok(!(await page.locator(".workspace-card").first().getAttribute("href")).startsWith("javascript:"));
+    if (route === "/apps/") assert.equal(await page.locator(".workspace-card").first().evaluate(node => node.tagName.toLowerCase()), "article", "an extension with an unsafe URL must be informational, not clickable");
     if (route === "/private/") assert.equal(await page.locator(".upload-form input[type=password]").count(), 0);
   }
 
