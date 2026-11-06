@@ -50,3 +50,53 @@ def test_rocksoul_assets_are_served_from_bundled_directory(monkeypatch):
     assert response.status_code == 200
     assert b".app-shell" in response.get_data()
     assert response.headers.get("Cache-Control") == "public, max-age=31536000, immutable"
+
+
+def test_all_bundled_assets_are_present_and_served(monkeypatch):
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "1")
+    website = _website()
+
+    for filename, marker in (
+        ("index.html", b"ROCKSOUL"),
+        ("app.js", b"AbortController"),
+        ("app.css", b".app-shell"),
+    ):
+        with website.app.test_request_context(f"/rocksoul-assets/{filename}"):
+            response = website._rocksoul_asset(filename)
+        assert response.status_code == 200
+        assert marker in response.get_data()
+
+
+def test_asset_handler_rejects_parent_traversal():
+    website = _website()
+
+    with website.app.test_request_context("/rocksoul-assets/../server/website.py"):
+        response = website._rocksoul_asset("../server/website.py")
+
+    assert response.status_code == 404
+
+
+def test_legacy_root_handler_is_used_when_ui_is_disabled(monkeypatch):
+    import g4f.gui.server.website as website_module
+
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "0")
+    monkeypatch.setattr(website_module, "render", lambda filename: f"legacy:{filename}")
+    website = _website()
+
+    with website.app.test_request_context("/"):
+        response = website._index()
+
+    assert response == "legacy:home"
+
+
+def test_legacy_chat_handler_is_used_when_ui_is_disabled(monkeypatch):
+    import g4f.gui.server.website as website_module
+
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "0")
+    monkeypatch.setattr(website_module, "render", lambda filename: f"legacy:{filename}")
+    website = _website()
+
+    with website.app.test_request_context("/chat/"):
+        response = website._chat()
+
+    assert response == "legacy:chat/index"
