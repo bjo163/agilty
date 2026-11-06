@@ -20,7 +20,7 @@ ROCKSOUL is the unified replacement UI for the primary live g4f GUI pages. It is
 - Provider catalog and detail use `/backend-api/v2/providers` and `/backend-api/v2/models/<provider>`.
 - Status uses `/backend-api/v2/status`, `/backend-api/v2/version`, and `/v1/models`.
 - Usage analytics use `/backend-api/v2/stats`; recent logs use `/backend-api/v2/log`.
-- Agent/browser discovery uses the existing `/backend-api/v2/webmcp/tools` registry; only tools actually advertised by g4f are shown.
+- Agent/browser discovery and confirmed tool invocation use the existing `/backend-api/v2/webmcp/tools` registry; only tools actually advertised by g4f are shown, and every invocation requires a browser confirmation.
 - Apps use the existing `/pa/providers` registry.
 - Private utilities use the existing guarded `/backend-api/v2/upload_cookies` endpoint; ROCKSOUL does not read or display cookie contents.
 - Chat and playground use the existing `/v1/models` and `/v1/chat/completions` endpoints.
