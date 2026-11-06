@@ -550,3 +550,27 @@ def test_rocksoul_theme_text_tokens_meet_wcag_aa_contrast():
         assert contrast(theme["--ink"], theme["--bg"]) >= 4.5
         assert contrast(theme["--muted"], theme["--bg"]) >= 4.5
         assert contrast(theme["--muted"], theme["--panel"]) >= 4.5
+
+
+@pytest.mark.parametrize(
+    ("handler_name", "filename", "expected"),
+    [
+        ("_chat", "history.html", "legacy:chat/history.html"),
+        ("_private", "cookies/index.html", "legacy:private/cookies/index.html"),
+        ("_apps", "provider/detail.html", "legacy:apps/provider/detail.html"),
+    ],
+)
+def test_rocksoul_preserves_nested_legacy_html_routes(
+    monkeypatch, handler_name, filename, expected
+):
+    import g4f.gui.server.website as website_module
+
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "1")
+    monkeypatch.setattr(website_module, "render", lambda path: f"legacy:{path}")
+    website = _website()
+    handler = getattr(website, handler_name)
+
+    with website.app.test_request_context("/"):
+        response = handler(filename)
+
+    assert response == expected
