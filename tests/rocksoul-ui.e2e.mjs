@@ -98,9 +98,9 @@ let browser;
 try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
-  const pageErrors = [];
+  const startupErrors = [];
   const failedRequests = [];
-  page.on("pageerror", error => pageErrors.push(error.stack || error.message));
+  page.on("pageerror", error => startupErrors.push(error.stack || error.message));
   page.on("requestfailed", request => failedRequests.push(request.url() + ": " + (request.failure()?.errorText || "failed")));
   await page.goto("http://127.0.0.1:4173/");
   try { await page.locator(".metric-card").first().waitFor({ timeout: 12000 }); }
