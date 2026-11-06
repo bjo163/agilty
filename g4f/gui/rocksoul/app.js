@@ -35,18 +35,26 @@ function renderHistory(){const root=$("history");root.replaceChildren();for(cons
 function addMessage(role,content){const c=current();if(!c)return;c.messages.push({role,content});if(role==="user"&&c.messages.filter(m=>m.role==="user").length===1)c.title=String(content).slice(0,48);save();renderHistory();renderMessages()}
 function safeMediaSrc(value){const raw=String(value||"").trim();if(/^data:image\/(?:png|jpeg|gif|webp);base64,[a-z0-9+/]+=*$/i.test(raw))return raw;return safeHref(raw)==="#"?null:safeHref(raw)}
 function appendInlineMarkdown(parent,source){
- const tick=String.fromCharCode(96),pattern=new RegExp("(!\\[[^\\]]*\\]\\([^)]+\\)|"+tick+"[^"+tick+"]+"+tick+"|\\*\\*[^*]+\\*\\*|\\*[^*]+\\*|\\[[^\\]]+\\]\\([^)]+\\))","g");let cursor=0,match;
- while((match=pattern.exec(source))!==null){if(match.index>cursor)parent.append(document.createTextNode(source.slice(cursor,match.index)));const token=match[0];let node;
- if(token.startsWith("![")){const parts=/^!\\[([^\\]]*)\\]\\(([^)]+)\\)$/.exec(token),src=safeMediaSrc(parts?.[2]);if(src){node=el("img","markdown-image");node.src=src;node.alt=parts[1];node.loading="lazy";node.decoding="async";node.referrerPolicy="no-referrer"}else node=document.createTextNode(parts?.[1]||"Blocked image URL")}
- else if(token.startsWith(tick)){node=el("code","inline-code",token.slice(1,-1))}
- else if(token.startsWith("**")){node=el("strong","",token.slice(2,-2))}
- else if(token.startsWith("*")){node=el("em","",token.slice(1,-1))}
- else{const parts=/^\\[([^\\]]+)\\]\\(([^)]+)\\)$/.exec(token),href=safeHref(parts[2]),path=href.split(/[?#]/)[0].toLowerCase();if(href!=="#"&&/\\.(mp4|webm|mov|m4v)$/.test(path)){node=el("video","markdown-video");node.src=href;node.controls=true;node.preload="metadata";node.playsInline=true}else if(href!=="#" /****/){} }
- if(token.startsWith("![")){parent.append(node);cursor=pattern.lastIndex;continue}
- if(token.startsWith(tick)||token.startsWith("**")||token.startsWith("*")){}
- else{const parts=/^\\[([^\\]]+)\\]\\(([^)]+)\\)$/.exec(token),href=safeHref(parts[2]),path=href.split(/[?#]/)[0].toLowerCase();if(/\\.(mp4|webm|mov|m4v)$/.test(path)&&href!=="#"){node=el("video","markdown-video");node.src=href;node.controls=true;node.preload="metadata";node.playsInline=true}else if(/\\.(mp3|wav|ogg|m4a|aac|flac)$/.test(path)&&href!=="#"){node=el("audio","markdown-audio");node.src=href;node.controls=true;node.preload="none"}else{node=el("a","markdown-link",parts[1]);if(href!=="#"){node.href=href;node.target="_blank";node.rel="noopener noreferrer"}else node.removeAttribute("href")}}
- parent.append(node);cursor=pattern.lastIndex}
- if(cursor<source.length)parent.append(document.createTextNode(source.slice(cursor)))
+ const pattern=/(!\[[^\]]*\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;let cursor=0,match;
+ while((match=pattern.exec(source))!==null){
+  if(match.index>cursor)parent.append(document.createTextNode(source.slice(cursor,match.index)));
+  const token=match[0];let node;
+  if(token.startsWith("![")){
+   const parts=/^!\[([^\]]*)\]\(([^)]+)\)$/.exec(token),src=safeMediaSrc(parts?.[2]);
+   if(src){node=el("img","markdown-image");node.src=src;node.alt=parts[1];node.loading="lazy";node.decoding="async";node.referrerPolicy="no-referrer"}
+   else node=document.createTextNode(parts?.[1]||"Blocked image URL");
+  }else if(token.startsWith("`"))node=el("code","inline-code",token.slice(1,-1));
+  else if(token.startsWith("**"))node=el("strong","",token.slice(2,-2));
+  else if(token.startsWith("*"))node=el("em","",token.slice(1,-1));
+  else{
+   const parts=/^\[([^\]]+)\]\(([^)]+)\)$/.exec(token),href=safeHref(parts[2]),path=href.split(/[?#]/)[0].toLowerCase();
+   if(href!=="#"&&/\.(mp4|webm|mov|m4v)$/.test(path)){node=el("video","markdown-video");node.src=href;node.controls=true;node.preload="metadata";node.playsInline=true}
+   else if(href!=="#"&&/\.(mp3|wav|ogg|m4a|aac|flac)$/.test(path)){node=el("audio","markdown-audio");node.src=href;node.controls=true;node.preload="none"}
+   else{node=el("a","markdown-link",parts[1]);if(href!=="#"){node.href=href;node.target="_blank";node.rel="noopener noreferrer"}}
+  }
+  parent.append(node);cursor=pattern.lastIndex;
+ }
+ if(cursor<source.length)parent.append(document.createTextNode(source.slice(cursor)));
 }
 function renderMarkdown(source){
  const tick=String.fromCharCode(96),root=el("div","markdown-body"),lines=String(source??"").replace(/\r\n?/g,"\n").split("\n");let paragraph=[],list=null,codeLines=null,codeLanguage="";
@@ -79,7 +87,7 @@ while(!done){const part=await reader.read();done=part.done;buffer+=decoder.decod
 }catch(e){output.className="message-body";if(e?.name==="AbortError"){if(answer){c.messages.push({role:"assistant",content:answer});save();renderMessages()}else output.textContent="Generation stopped."}else{output.textContent="Request failed: "+(e instanceof Error?e.message:String(e));row.classList.add("error")}}
 finally{activeController=null;busy=false;$("stop").hidden=true;$("send").disabled=false;renderHistory();$("prompt").focus()}}
 function downloadText(filename,content,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),anchor=el("a");anchor.href=url;anchor.download=filename;anchor.hidden=true;document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function exportConversation(format){const conversation=current();if(!conversation)return;const title=String(conversation.title||"conversation").replace(/[^a-z0-9_-]+/gi,"-").replace(/^-|-$/g,"").slice(0,48)||"conversation";if(format==="json"){downloadText(title+".json",JSON.stringify({id:conversation.id,title:conversation.title||"New conversation",exported_at:new Date().toISOString(),messages:conversation.messages||[]},null,2),"application/json");return}const markdown=["# "+(conversation.title||"Conversation"),"",...(conversation.messages||[]).flatMap(message=>["## "+(message.role==="user"?"You":"ROCKSOUL"),"",String(message.content||""),""]),].join("\\n");downloadText(title+".md",markdown,"text/markdown;charset=utf-8")}
+function exportConversation(format){const conversation=current();if(!conversation)return;const title=String(conversation.title||"conversation").replace(/[^a-z0-9_-]+/gi,"-").replace(/^-|-$/g,"").slice(0,48)||"conversation";if(format==="json"){downloadText(title+".json",JSON.stringify({id:conversation.id,title:conversation.title||"New conversation",exported_at:new Date().toISOString(),messages:conversation.messages||[]},null,2),"application/json");return}const markdown=["# "+(conversation.title||"Conversation"),"",...(conversation.messages||[]).flatMap(message=>["## "+(message.role==="user"?"You":"ROCKSOUL"),"",String(message.content||""),""]),].join("\n");downloadText(title+".md",markdown,"text/markdown;charset=utf-8")}
 function showChat(){currentPath="/chat/";history.pushState({},"","/chat/");renderRoute()}
 function setupChat(){if(!conversations.length)newConversation();else{activeId=conversations[0].id;renderHistory();renderMessages()}}
 function showPageFrame(path,title,description){const root=$("page-content");root.replaceChildren(section(title,description));return root}
