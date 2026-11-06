@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#11120f">
+  <meta name="description" content="ROCKSOUL — unified interface for the g4f runtime">
   <title>ROCKSOUL — AI Workspace</title>
   <link rel="stylesheet" href="/rocksoul-assets/app.css">
 </head>
@@ -11,17 +12,32 @@
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <a class="brand" href="/" aria-label="ROCKSOUL home"><span class="brand-mark">R</span><span>ROCK<span>SOUL</span></span></a>
-      <button class="new-chat" id="new-chat">＋ <span>New conversation</span></button>
-      <div class="side-label">RECENT</div>
+      <a class="new-chat" href="/chat/">＋ <span>New conversation</span></a>
+      <div class="side-label">WORKSPACE</div>
+      <nav class="primary-nav" aria-label="Main navigation">
+        <a href="/" data-route="/">⌂ <span>Overview</span></a>
+        <a href="/chat/" data-route="/chat/">✳ <span>Chat</span></a>
+        <a href="/providers/" data-route="/providers/">◈ <span>Providers</span></a>
+        <a href="/status/" data-route="/status/">◉ <span>Runtime status</span></a>
+        <a href="/stats/" data-route="/stats/">▥ <span>Usage & stats</span></a>
+        <a href="/logs/" data-route="/logs/">≋ <span>Backend logs</span></a>
+        <a href="/agent/" data-route="/agent/">⌘ <span>Agent tools</span></a>
+        <a href="/browser/" data-route="/browser/">◎ <span>AI browser</span></a>
+        <a href="/playground/" data-route="/playground/">⚡ <span>Playground</span></a>
+        <a href="/apps/" data-route="/apps/">▦ <span>Apps & modules</span></a>
+        <a href="/private/" data-route="/private/">◇ <span>Private utilities</span></a>
+      </nav>
+      <div class="side-label recent-label">RECENT CHATS</div>
       <nav id="history" class="history" aria-label="Conversation history"></nav>
-      <div class="sidebar-bottom"><span class="runtime-dot"></span><span>g4f runtime connected</span><a href="/providers/">Providers ↗</a></div>
+      <div class="sidebar-bottom"><span class="runtime-dot"></span><span id="runtime-indicator">g4f runtime</span><button id="theme-toggle" class="icon-button" aria-label="Toggle theme">◐</button></div>
     </aside>
     <main class="main">
       <header class="topbar">
         <button class="mobile-menu" id="mobile-menu" aria-label="Toggle sidebar">☰</button>
-        <div><div class="eyebrow">YOUR AI WORKSPACE</div><div class="top-title">Think beyond the ordinary.</div></div>
-        <div class="top-actions"><a href="/status/" class="subtle-link">Runtime status ↗</a><button id="theme-toggle" class="icon-button" aria-label="Toggle theme">◐</button></div>
+        <div><div class="eyebrow" id="page-eyebrow">YOUR AI WORKSPACE</div><div class="top-title" id="page-title">Think beyond the ordinary.</div></div>
+        <div class="top-actions"><a href="/status/" class="subtle-link">Runtime status ↗</a><span id="model-status" class="model-status">Connecting…</span></div>
       </header>
+      <section class="page-content" id="page-content" aria-live="polite"></section>
       <section class="conversation" id="conversation" aria-live="polite">
         <div class="welcome" id="welcome">
           <div class="welcome-kicker">ONE RUNTIME. MANY MINDS.</div>
@@ -34,17 +50,17 @@
           </div>
         </div>
       </section>
-      <div class="composer-wrap">
+      <div class="composer-wrap" id="composer-wrap">
         <div class="composer-tools">
           <label class="model-label" for="model-select">MODEL</label>
           <select id="model-select" aria-label="Model"><option value="auto">Auto · runtime default</option></select>
-          <span id="model-status" class="model-status">Loading models…</span>
+          <span id="composer-model-status" class="model-status">Loading models…</span>
         </div>
         <form id="composer" class="composer">
           <textarea id="prompt" rows="1" placeholder="Ask anything. Build something. Explore an idea…" aria-label="Message" required></textarea>
           <div class="composer-bottom"><span class="composer-hint">Enter to send · Shift + Enter for a new line</span><div class="composer-actions"><button id="stop" class="stop-button" type="button" aria-label="Stop generation" hidden>■</button><button id="send" type="submit" aria-label="Send message">↑</button></div></div>
         </form>
-        <div class="disclaimer">ROCKSOUL is the interface. Inference, providers and model execution stay in the g4f Python runtime.</div>
+        <div class="disclaimer">ROCKSOUL is the interface. Inference, providers, tools and model execution stay in the g4f Python runtime.</div>
       </div>
     </main>
   </div>
