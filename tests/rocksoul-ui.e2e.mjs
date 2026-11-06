@@ -106,13 +106,17 @@ try {
   await page.locator("#prompt").fill("Say hello");
   await page.locator("#send").click();
   await page.getByText("ROCKSOUL browser test").waitFor();
+  await page.addInitScript(() => { Object.defineProperty(window.crypto, "randomUUID", { configurable: true, value: undefined }); });
+  await page.evaluate(() => { const key = "rocksoul-chat-history-v1"; const items = JSON.parse(localStorage.getItem(key) || "[]"); items[0].id = "1712345678901"; localStorage.setItem(key, JSON.stringify(items)); });
+  await page.reload();
+  await page.getByText("ROCKSOUL browser test").waitFor();
   assert.equal(chatWriteCount, 0, "private chat must not be written to the server");
   await page.evaluate(() => { window.__copiedShareUrl = ""; Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { window.__copiedShareUrl = value; } } }); });
   page.once("dialog", dialog => dialog.accept());
   await page.locator("#share-chat").click();
   await page.getByRole("button", { name: "Link copied" }).waitFor();
   const sharedUrl = await page.evaluate(() => window.__copiedShareUrl);
-  assert.match(sharedUrl, /\/chat\/\?chat=[a-z0-9-]+$/);
+  assert.match(sharedUrl, /\/chat\/\?chat=[a-f0-9]{32}$/i);
   const sharedSnapshot = await page.evaluate(async url => { const id = new URL(url).searchParams.get("chat"); return fetch("/backend-api/v2/chat/" + id).then(response => response.json()); }, sharedUrl);
   assert.ok(sharedSnapshot.messages.some(message => message.content.includes("Say hello")));
   assert.equal(chatWriteCount, 1, "explicit sharing should create one server snapshot");
