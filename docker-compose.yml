@@ -20,9 +20,7 @@ services:
       - ROCKSOUL_UI_ENABLED=${ROCKSOUL_UI_ENABLED:-1}
       - G4F_CONFIG_DIR=/data/g4f
       - G4F_API_KEY=${G4F_API_KEY:-}
-      - G4F_GUI_TRUSTED_IPS=${G4F_GUI_TRUSTED_IPS:-172.30.0.1/32}
-    networks:
-      - rocksoul
+      - G4F_GUI_TRUSTED_IPS=${G4F_GUI_TRUSTED_IPS:-172.16.0.0/12}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/backend-api/v2/status', timeout=5)"]
       interval: 30s
@@ -32,11 +30,3 @@ services:
 
 volumes:
   g4f-data:
-
-networks:
-  rocksoul:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.30.0.0/24
-          gateway: 172.30.0.1
