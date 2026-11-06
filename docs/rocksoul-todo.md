@@ -528,6 +528,14 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 
 ### Browser smoke coverage — 2026-11-06
 
-- [x] Add Playwright smoke for ROCKSOUL shell/assets, model discovery, mocked SSE chat completion, and new-chat interaction.
-- [ ] Run the new browser workflow successfully on exact final main.
-- [ ] Add live-provider streaming, upstream cancellation behavior, attachment/tool/media, accessibility and Coolify smoke certification.
+- [x] Add Playwright smoke for ROCKSOUL shell/assets, model discovery, normal mocked SSE chat completion, EOF without trailing newline, non-2xx provider errors, Stop/AbortController, and browser-local history reload.
+- [ ] Run the browser workflow successfully on the exact final `main` commit; no successful run has been confirmed yet.
+- [ ] Add live-provider streaming and upstream cancellation verification.
+- [ ] Complete remaining legacy route parity, server-backed session behavior, attachments/tool/media, accessibility/localization, and Coolify runtime certification.
+
+### UI cutover clarification
+
+- `/` and `/chat/` are provisionally served by ROCKSOUL and can be rolled back with `ROCKSOUL_UI_ENABLED=0`.
+- Other legacy GUI routes remain on their existing handlers/pages. This is not full replacement of every built-in g4f HTML screen.
+- The mocked Playwright test validates browser wiring only; it does not prove real provider availability or production deployment.
+- The visible Vercel status is a build-rate-limit failure, not a ROCKSOUL test result. GitHub Actions status for the latest commit is not yet confirmed.
