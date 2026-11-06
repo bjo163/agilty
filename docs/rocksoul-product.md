@@ -32,7 +32,7 @@ ROCKSOUL is the replacement for the default g4f web client. Its primary product 
 - Multi-conversation chat with streaming responses.
 - Model and provider selection sourced from the live g4f runtime.
 - Existing g4f capabilities exposed progressively: attachments, vision, tools, media and other supported modalities.
-- Conversation history and session continuity using existing g4f behavior.
+- Initial UI history is browser-local; server-backed g4f conversation/session parity remains a migration task.
 - Provider/model information and diagnostics presented without duplicating backend state.
 - Responsive desktop and mobile layouts.
 - Dark and light themes, keyboard navigation, accessible controls and clear loading/error states.
