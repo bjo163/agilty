@@ -629,6 +629,8 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Add browser smoke coverage for Markdown emphasis, fenced code, and the copy-code action.
 - [x] Scope ROCKSOUL CI to the UI route/asset contract tests rather than unrelated optional operator-module test suites; remove optional CLI smoke gates from the UI release workflow.
 - [x] Fix Flask direct-passthrough test response handling for `send_file` responses.
-- [ ] Await exact-main CI and browser smoke results; live provider and Coolify checks remain external release gates.
+- [x] Verified checkpoint `ac1010f4`: all four ROCKSOUL UI route/asset test matrix jobs passed, and the wheel/sdist, Compose validation, Docker build, bundled asset, and persistent-volume smoke job passed.
+- [x] Fix the missing `new-chat` DOM ID and add a regression assertion so startup navigation handlers cannot silently break the shell.
+- [ ] Await fresh browser smoke and full CI on the latest `main`; live provider and Coolify checks remain external release gates.
 
 - [x] Add browser smoke coverage for assistant-message copy in addition to code-block copy.
