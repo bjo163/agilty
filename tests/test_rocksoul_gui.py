@@ -432,3 +432,26 @@ def test_privileged_gui_guard_accepts_explicit_trusted_network(monkeypatch):
     app = Flask(__name__)
     with app.test_request_context("/", environ_base={"REMOTE_ADDR": "192.168.65.1"}):
         assert _privileged_request_allowed()
+
+
+
+def test_privileged_backend_route_families_invoke_the_shared_guard():
+    from pathlib import Path
+
+    source = (Path(__file__).parents[1] / "g4f" / "gui" / "server" / "backend_api.py").read_text(encoding="utf-8")
+    for marker in (
+        "async def handle_webmcp_tools():",
+        "def handle_log():",
+        "def add_usage():",
+        "def get_usage(date: str):",
+        "def get_stats():",
+        "def stream_files(bucket_id: str, event_stream=True):",
+        "def manage_files(bucket_id: str, event_stream=False):",
+        "def upload_files(bucket_id: str):",
+        "def upload_cookies():",
+        "def upload_chat(share_id: str) -> dict:",
+    ):
+        start = source.find(marker)
+        assert start >= 0, marker
+        guard = source.find("if not _privileged_request_allowed():", start, start + 700)
+        assert guard >= 0, marker
