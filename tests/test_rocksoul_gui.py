@@ -66,6 +66,7 @@ def test_all_bundled_assets_are_present_and_served(monkeypatch):
         ("index.html", b"ROCKSOUL"),
         ("app.js", b"AbortController"),
         ("app.css", b".app-shell"),
+        ("locale.js", b"rocksoul-locale"),
     ):
         with website.app.test_request_context(f"/rocksoul-assets/{filename}"):
             response = website._rocksoul_asset(filename)
@@ -330,3 +331,66 @@ def test_privileged_gui_guard_requires_matching_remote_api_key(monkeypatch):
         headers={"Authorization": "Bearer test-secret"},
     ):
         assert _privileged_request_allowed()
+
+
+
+def test_rocksoul_accessibility_landmarks_and_keyboard_styles():
+    from pathlib import Path
+
+    asset_dir = Path(__file__).parents[1] / "g4f" / "gui" / "rocksoul"
+    markup = (asset_dir / "index.html").read_text(encoding="utf-8")
+    styles = (asset_dir / "app.css").read_text(encoding="utf-8")
+    script = (asset_dir / "app.js").read_text(encoding="utf-8")
+
+    assert 'class="skip-link" href="#main-content"' in markup
+    assert 'id="main-content" tabindex="-1"' in markup
+    assert 'aria-label="ROCKSOUL workspace sidebar"' in markup
+    assert 'aria-label="Conversation" aria-live="polite"' in markup
+    assert ":focus-visible" in styles
+    assert "prefers-reduced-motion:reduce" in styles
+    assert 'setAttribute("aria-current","page")' in script
+
+
+def test_rocksoul_locale_catalog_supports_indonesian_and_english():
+    from pathlib import Path
+
+    asset_dir = Path(__file__).parents[1] / "g4f" / "gui" / "rocksoul"
+    markup = (asset_dir / "index.html").read_text(encoding="utf-8")
+    locale = (asset_dir / "locale.js").read_text(encoding="utf-8")
+
+    assert 'src="/rocksoul-assets/locale.js" defer' in markup
+    assert 'id="locale-select"' in locale
+    assert '"id"' in locale and '"en"' in locale
+    assert "Ringkasan" in locale
+    assert "safeWrite(locale)" in locale
+    assert "rocksoul-locale" in locale
+
+
+def test_rocksoul_document_upload_uses_existing_g4f_file_api():
+    from pathlib import Path
+
+    asset_dir = Path(__file__).parents[1] / "g4f" / "gui" / "rocksoul"
+    script = (asset_dir / "app.js").read_text(encoding="utf-8")
+    markup = (asset_dir / "index.html").read_text(encoding="utf-8")
+
+    assert "extractDocumentText" in script
+    assert "/backend-api/v2/files/" in script
+    assert "Document context:" in script
+    assert "documentExtensions" in script
+    assert ".pdf" in markup and ".docx" in markup and ".xlsx" in markup
+    assert 'method:"DELETE"' in script
+
+
+def test_opt_in_provider_smoke_harness_is_credential_safe():
+    from pathlib import Path
+
+    script = (Path(__file__).parents[1] / "tests" / "rocksoul-provider-smoke.mjs").read_text(encoding="utf-8")
+
+    assert 'process.env.ROCKSOUL_SMOKE !== "1"' in script
+    assert "ROCKSOUL_SMOKE_MODEL" in script
+    assert "model_discovery" in script
+    assert "non_streaming" in script
+    assert "streaming" in script
+    assert "process.env.G4F_API_KEY" in script
+    assert "process.stdout.write(JSON.stringify(report" in script
+    assert "console.log(apiKey)" not in script
