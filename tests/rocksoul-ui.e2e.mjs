@@ -42,7 +42,7 @@ const server = createServer(async (req, res) => {
     }
     return json({ tools: [{ name: "search_web", description: "Search the web" }, { name: "read_page", description: "Read a page" }] });
   }
-  if (url.pathname === "/pa/providers") return json([{ name: "DemoExtension", description: "Mock extension" }]);
+  if (url.pathname === "/pa/providers") return json([{ name: "DemoExtension", description: "Mock extension", url: "javascript:alert(1)" }]);
   if (url.pathname === "/v1/models") {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ data: [{ id: "browser-test-model" }] }));
@@ -182,6 +182,8 @@ try {
     await page.goto("http://127.0.0.1:4173" + route);
     await page.locator(selector).first().waitFor();
     if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); await page.getByRole("button", { name: "Check quota" }).click(); await page.getByText(/remaining/).waitFor(); await page.getByRole("button", { name: "Start login" }).click(); await page.getByText("Continue authentication").waitFor(); }
+    if (route === "/apps/") assert.ok(!(await page.locator(".workspace-card").first().getAttribute("href")).startsWith("javascript:"));
+    if (route === "/private/") assert.equal(await page.locator(".upload-form input[type=password]").count(), 0);
   }
 
   const restrictedPage = await browser.newPage();
