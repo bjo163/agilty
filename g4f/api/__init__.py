@@ -245,7 +245,7 @@ def _record_outgoing_request(entry: dict) -> None:
     ):
         _save_har_entry(
             log_entry,
-            url,
+            safe_url or "",
             request_body=None,
             response_body=None,
         )
@@ -460,9 +460,11 @@ def _save_har_entry(
 
 def _save_request_har(request: Request, entry: dict) -> Optional[str]:
     """Save an incoming API request/response pair as a HAR file."""
+    parsed_url = urlsplit(str(request.url))
+    safe_url = parsed_url._replace(query=_sanitize_query(parsed_url.query)).geturl()
     return _save_har_entry(
         entry,
-        str(request.url),
+        safe_url,
         entry.get("request_body"),
         entry.get("response_body"),
     )
@@ -954,7 +956,7 @@ def create_app_debug():
 def create_app_with_gui_and_debug():
     g4f.debug.logging = True
     AppConfig.gui = True
-    os.environ["G4F_ENABLE_AUDIT_LOG"] = os.environ.get("G4F_ENABLE_AUDIT_LOG", "1")
+    # Body capture remains disabled unless G4F_CAPTURE_BODIES is explicitly enabled.
     return create_app()
 
 
