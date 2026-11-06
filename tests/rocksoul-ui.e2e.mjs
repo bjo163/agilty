@@ -101,6 +101,15 @@ try {
   await page.locator("#prompt").fill("Say hello");
   await page.locator("#send").click();
   await page.getByText("ROCKSOUL browser test").waitFor();
+  await page.evaluate(() => { window.__copiedShareUrl = ""; Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { window.__copiedShareUrl = value; } } }); });
+  page.once("dialog", dialog => dialog.accept());
+  await page.locator("#share-chat").click();
+  await page.getByRole("button", { name: "Link copied" }).waitFor();
+  const sharedUrl = await page.evaluate(() => window.__copiedShareUrl);
+  assert.match(sharedUrl, /\/chat\/\?chat=[a-z0-9-]+$/);
+  const sharedSnapshot = await page.evaluate(async url => (await fetch(url.replace(location.origin, "")).then(response => response.json())), sharedUrl);
+  assert.ok(sharedSnapshot.messages.some(message => message.content.includes("Say hello")));
+
 
   await page.locator("#new-chat").click();
   await page.locator("#prompt").fill("eof without newline");
