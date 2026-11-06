@@ -153,6 +153,27 @@ def test_rocksoul_page_migration_preserves_nested_static_assets(monkeypatch):
     with website.app.test_request_context("/private/private.js"):
         assert website._private("private.js") == "legacy-asset:private/private.js"
 
+
+def test_migrated_diagnostic_pages_keep_legacy_rollback(monkeypatch):
+    import g4f.gui.server.website as website_module
+
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "0")
+    monkeypatch.setattr(website_module, "render", lambda filename: f"legacy:{filename}")
+    website = _website()
+    handlers = (
+        (website._agent, "/agent/", "legacy:agent"),
+        (website._browser, "/browser/", "legacy:browser"),
+        (website._logs, "/logs/", "legacy:logs"),
+        (website._status, "/status/", "legacy:status"),
+        (website._stats, "/stats/", "legacy:stats"),
+        (website._private, "/private/", "legacy:private/index"),
+        (website._apps, "/apps/", "legacy:apps/index.html"),
+        (website._chat, "/chat/", "legacy:chat/index"),
+    )
+    for handler, path, expected in handlers:
+        with website.app.test_request_context(path):
+            assert handler() == expected, path
+
 def test_ui_assets_include_stream_cancellation_and_sse_flush():
     from pathlib import Path
 
