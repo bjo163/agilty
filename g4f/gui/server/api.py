@@ -7,6 +7,7 @@ import os
 import time
 import asyncio
 import threading
+import tempfile
 from pathlib import Path
 from typing import Iterator
 from flask import send_from_directory, request
@@ -226,18 +227,34 @@ class Api:
 
     @staticmethod
     def _write_providers_cache(result: list) -> bool:
-        """Persist the provider list to a JSON file inside the g4f package."""
+        """Persist provider metadata atomically to avoid partial cache files."""
         global _providers_cache_writable
         if not _providers_cache_writable:
             return False
+        temporary_path = None
         try:
-            with open(Api._providers_cache_file(), "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+            cache_path = Api._providers_cache_file()
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=cache_path.parent,
+                prefix=f".{cache_path.name}.", suffix=".tmp", delete=False,
+            ) as handle:
+                temporary_path = Path(handle.name)
+                json.dump(result, handle, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, cache_path)
             return True
         except OSError as e:
-            logger.warning(f"Failed to write providers cache: {e}")
+            logger.warning("Failed to write providers cache: %s", e)
             _providers_cache_writable = False
             return False
+        finally:
+            if temporary_path is not None and temporary_path.exists():
+                try:
+                    temporary_path.unlink()
+                except OSError:
+                    logger.debug("Failed to remove temporary provider cache file", exc_info=True)
 
     @staticmethod
     def _read_providers_cache() -> list | None:
