@@ -138,6 +138,21 @@ def test_rocksoul_route_inventory_keeps_non_ui_assets_and_apis(monkeypatch):
     assert "/meta" in website.routes
     assert "/sitemap.xml" in website.routes
 
+
+def test_rocksoul_page_migration_preserves_nested_static_assets(monkeypatch):
+    import g4f.gui.server.website as website_module
+
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "1")
+    monkeypatch.setattr(website_module, "render", lambda filename: f"legacy-asset:{filename}")
+    website = _website()
+
+    with website.app.test_request_context("/chat/app.js"):
+        assert website._chat("app.js") == "legacy-asset:chat/app.js"
+    with website.app.test_request_context("/apps/bundle.css"):
+        assert website._apps("bundle.css") == "legacy-asset:apps/bundle.css"
+    with website.app.test_request_context("/private/private.js"):
+        assert website._private("private.js") == "legacy-asset:private/private.js"
+
 def test_ui_assets_include_stream_cancellation_and_sse_flush():
     from pathlib import Path
 
