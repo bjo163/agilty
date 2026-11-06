@@ -528,7 +528,8 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 
 ### Browser smoke coverage — 2026-11-06
 
-- [x] Add Playwright smoke for ROCKSOUL shell/assets, model discovery, normal mocked SSE chat completion, EOF without trailing newline, non-2xx provider errors, Stop/AbortController, and browser-local history reload.
+- [x] Add Playwright smoke for ROCKSOUL shell/assets, model discovery, normal mocked SSE chat completion, EOF without trailing newline, non-2xx provider errors, Stop/AbortController, browser-local history reload, and blocked-localStorage resilience.
+- [x] Make browser-local history/theme storage failures non-fatal so restricted browser contexts can still use the chat UI.
 - [ ] Run the browser workflow successfully on the exact final `main` commit; no successful run has been confirmed yet.
 - [ ] Add live-provider streaming and upstream cancellation verification.
 - [ ] Complete remaining legacy route parity, server-backed session behavior, attachments/tool/media, accessibility/localization, and Coolify runtime certification.
