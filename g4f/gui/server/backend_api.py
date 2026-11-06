@@ -493,6 +493,8 @@ class Backend_Api(Api):
 
         @app.route("/backend-api/v2/usage", methods=["POST"])
         def add_usage():
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             cache_dir = Path(get_cookies_dir()) / ".usage"
             cache_file = cache_dir / f"{datetime.date.today()}.jsonl"
             cache_dir.mkdir(parents=True, exist_ok=True)
@@ -503,6 +505,8 @@ class Backend_Api(Api):
 
         @app.route("/backend-api/v2/usage/<date>", methods=["GET"])
         def get_usage(date: str):
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             if not _DATE_RE.match(date):
                 return (jsonify({"error": {"message": "Invalid date format"}}), 400)
             try:
@@ -535,6 +539,8 @@ class Backend_Api(Api):
             Returns JSON with per-day totals, per-model, per-provider, and
             overall summary statistics.
             """
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             days = request.args.get("days", "30")
             try:
                 days = int(days)
@@ -979,10 +985,14 @@ class Backend_Api(Api):
 
         @app.route("/backend-api/v2/files/<bucket_id>/stream", methods=["GET"])
         def stream_files(bucket_id: str, event_stream=True):
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             return manage_files(bucket_id, event_stream)
 
         @app.route("/backend-api/v2/files/<bucket_id>", methods=["GET", "DELETE"])
         def manage_files(bucket_id: str, event_stream=False):
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             bucket_id = secure_filename(bucket_id)
             bucket_dir = get_bucket_dir(bucket_id)
 
@@ -1025,6 +1035,8 @@ class Backend_Api(Api):
 
         @self.app.route("/backend-api/v2/files/<bucket_id>", methods=["POST"])
         def upload_files(bucket_id: str):
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             bucket_id = secure_filename(bucket_id)
             bucket_dir = get_bucket_dir(bucket_id)
             media_dir = os.path.join(bucket_dir, "media")
