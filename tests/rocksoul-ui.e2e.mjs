@@ -9,12 +9,15 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "g4f", "gui"
 const mime = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" };
 const remoteChats = new Map([["shared-test-123", { id: "shared-test-123", title: "Shared fixture", messages: [{ role: "user", content: "server-restored conversation" }], updated: 1 }]]);
 const toolAuditEvents = [];
+let chatWriteCount = 0;
+let failChatWrites = false;
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://127.0.0.1");
   const json = (data) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(data)); };
+  if (url.pathname === "/__test/fail-share") { failChatWrites = true; return json({ ok: true }); }
   if (url.pathname.startsWith("/backend-api/v2/chat/")) {
     const id = url.pathname.split("/").at(-1);
-    if (req.method === "POST") { let raw = ""; for await (const chunk of req) raw += chunk; remoteChats.set(id, JSON.parse(raw)); return json({ share_id: id }); }
+    if (req.method === "POST") { chatWriteCount += 1; let raw = ""; for await (const chunk of req) raw += chunk; if (failChatWrites) { res.writeHead(503).end("mock share unavailable"); return; } remoteChats.set(id, JSON.parse(raw)); return json({ share_id: id }); }
     if (remoteChats.has(id)) return json(remoteChats.get(id));
     res.writeHead(404).end(); return;
   }
@@ -103,6 +106,7 @@ try {
   await page.locator("#prompt").fill("Say hello");
   await page.locator("#send").click();
   await page.getByText("ROCKSOUL browser test").waitFor();
+  assert.equal(chatWriteCount, 0, "private chat must not be written to the server");
   await page.evaluate(() => { window.__copiedShareUrl = ""; Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { window.__copiedShareUrl = value; } } }); });
   page.once("dialog", dialog => dialog.accept());
   await page.locator("#share-chat").click();
@@ -111,7 +115,19 @@ try {
   assert.match(sharedUrl, /\/chat\/\?chat=[a-z0-9-]+$/);
   const sharedSnapshot = await page.evaluate(async url => { const id = new URL(url).searchParams.get("chat"); return fetch("/backend-api/v2/chat/" + id).then(response => response.json()); }, sharedUrl);
   assert.ok(sharedSnapshot.messages.some(message => message.content.includes("Say hello")));
+  assert.equal(chatWriteCount, 1, "explicit sharing should create one server snapshot");
 
+  await page.locator("#new-chat").click();
+  await page.locator("#prompt").fill("Private followup");
+  await page.locator("#send").click();
+  await page.getByText("ROCKSOUL browser test").last().waitFor();
+  assert.equal(chatWriteCount, 1, "a second private chat must remain local");
+
+  await page.evaluate(() => fetch("/__test/fail-share"));
+  await page.once("dialog", dialog => dialog.accept());
+  await page.locator("#share-chat").click();
+  await page.getByRole("button", { name: "Share failed" }).waitFor();
+  assert.equal(await page.evaluate(() => window.__copiedShareUrl), "", "failed share must not copy a dead link");
 
   await page.locator("#new-chat").click();
   await page.locator("#prompt").fill("eof without newline");
