@@ -18,13 +18,14 @@ const server = createServer(async (req, res) => {
     res.writeHead(404).end(); return;
   }
   if (url.pathname === "/backend-api/v2/health/DemoProvider" || url.pathname === "/backend-api/v2/quota/DemoProvider") return json({ status: "healthy", remaining: 42 });
+  if (url.pathname === "/backend-api/v2/oauth/DemoProvider") return json({ verification_uri: "https://auth.example.test/device", user_code: "ROCK-SOUL" });
   if (url.pathname === "/backend-api/v2/conversation") {
     for await (const chunk of req) { /* consume multipart attachment request */ }
     res.writeHead(200, { "content-type": "text/event-stream" });
     res.end('event: content\ndata: {"type":"content","content":"attachment endpoint response"}\n\n');
     return;
   }
-  if (url.pathname === "/backend-api/v2/providers") return json([{ name: "DemoProvider", label: "Demo Provider", auth: false, live: true }]);
+  if (url.pathname === "/backend-api/v2/providers") return json([{ name: "DemoProvider", label: "Demo Provider", auth: true, live: true, login: true }]);
   if (url.pathname === "/backend-api/v2/models/DemoProvider") return json([{ id: "demo-model", label: "Demo Model" }]);
   if (url.pathname === "/backend-api/v2/status") return json({ status: "ok", version: "test", latest_version: "test", total_providers: 1, working_providers: 1, total_models: 1 });
   if (url.pathname === "/backend-api/v2/version") return json({ version: "test", latest_version: "test" });
@@ -161,7 +162,7 @@ try {
   ]) {
     await page.goto("http://127.0.0.1:4173" + route);
     await page.locator(selector).first().waitFor();
-    if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); }
+    if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); await page.getByRole("button", { name: "Start login" }).click(); await page.getByText("Continue authentication").waitFor(); }
   }
 
   const restrictedPage = await browser.newPage();
