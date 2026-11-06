@@ -524,3 +524,10 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - CI now runs function-style ROCKSOUL tests with pytest (the previous unittest discovery command did not execute plain pytest test functions).
 - CI triggers now include bundled g4f GUI assets and validate that all three ROCKSOUL files are present in the built wheel.
 - Exact-main CI, real-provider streaming, full browser QA, and Docker/Coolify runtime smoke tests remain release gates.
+
+
+### Browser smoke coverage — 2026-11-06
+
+- [x] Add Playwright smoke for ROCKSOUL shell/assets, model discovery, mocked SSE chat completion, and new-chat interaction.
+- [ ] Run the new browser workflow successfully on exact final main.
+- [ ] Add live-provider streaming, upstream cancellation behavior, attachment/tool/media, accessibility and Coolify smoke certification.
