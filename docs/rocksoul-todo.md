@@ -554,7 +554,8 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Migrate Playground to the existing model/chat API.
 - [x] Migrate Apps to the existing PA provider registry.
 - [x] Migrate Private utilities to the existing guarded JSON/HAR cookie upload endpoint; cookie contents are never exposed in the UI.
-- [x] Preserve API, media/file, dist asset, metadata, and historical versioned routes.
+- [x] Preserve API, media/file, dist asset, metadata, historical versioned routes, and nested non-HTML assets under legacy GUI paths.
+- [x] Add route regression coverage proving nested chat/apps/private static assets continue through their original handlers.
 - [x] Add Flask route coverage for all primary GUI page handlers.
 - [x] Extend Playwright mocks and browser checks to every migrated workspace page.
 - [ ] Verify all route/browser workflows green on exact final `main`.
