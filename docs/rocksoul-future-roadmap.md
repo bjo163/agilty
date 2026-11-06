@@ -1,108 +1,55 @@
-# ROCKSOUL Future Roadmap — Research to Verified Delivery
+# ROCKSOUL Roadmap — Native g4f UI Replacement
 
-This roadmap converts the strategic blueprint into staged, small work packages. It is intentionally not a claim that these capabilities exist today. Implementation must be decomposed into small issues with independent acceptance tests.
+This roadmap is intentionally UI-first. g4f remains the runtime and API authority. No second gateway, provider registry, model catalog, routing engine or inference service is in scope.
 
-## Priority model
+## P0 — Scope and compatibility
 
-- **P0 — Trust & truth:** prevent false success, improve evidence integrity, make product claims precise.
-- **P1 — Outcome intelligence:** verify completed work and learn from verified outcomes.
-- **P2 — Agentic control:** govern multi-step workflows, tools, checkpoints, and repair.
-- **P3 — Frontier readiness:** multimodal, persistent, distributed, increasingly autonomous systems.
+- [x] Establish ROCKSOUL as the g4f UI replacement, not a control plane or gateway.
+- [x] Define runtime/UI responsibility boundaries.
+- [x] Classify Arena, Mesh, WorkItem, WorkGraph and evidence modules as optional engineering/operator utilities.
+- [ ] Inventory all current GUI routes, HTML assets, API endpoints, cookies, sessions and provider-login flows.
+- [ ] Add a documented UI bundle mount point and a legacy fallback switch.
+- [ ] Define a route parity matrix with owners and automated checks.
 
-## P0 — Trust & truth
+## P1 — ROCKSOUL shell and chat
 
-- [x] Define canonical WorkItem contract schema: intent, acceptance criteria, risk, bounded budgets, deadline, exact permissions, and human-approval requirement. Implemented in `g4f/rocksoul_contracts.py`; persisted by `g4f/rocksoul_work_store.py`.
-- [x] Define WorkItem lifecycle and terminal outcomes: accepted, unverified, rejected, uncertain, blocked, cancelled, expired. `ACCEPTED` requires the `VERIFYING` state.
-- [x] Define and persist a versioned verification-profile schema with allowlisted adapter identifiers, evidence requirements, immutable versions, and independence metadata. Executable verifier adapters remain a separate TODO; identifiers do not execute code.
-- [ ] Add explicit provenance references to route, attempt, trace, and Arena evidence. WorkItem lifecycle events now carry structured verification attestations and hash-chained event provenance; cross-plane provenance remains open.
-- [x] Persist WorkItem contracts and append-only lifecycle events with idempotent creation, optimistic expected-status checks, SQLite atomic transitions, and event-chain verification.
-- [x] Expose authenticated WorkItem and verification-profile API read/write surfaces plus an operator CLI.
-- [ ] Correlate WorkItem IDs with ExecutionEngine traces and separate transport success from task outcome.
-- [ ] Implement executable verifier adapters and artifact-bound receipts. Current API acceptance validates a trusted-caller attestation structure; it does not independently execute verifiers or authenticate artifact bytes.
-- [ ] Define capability passport schema with declared/observed/verified trust states and expiry.
-- [ ] Add candidate-recall metrics before route ranking.
-- [ ] Add route counterfactual explanation contract.
-- [ ] Add structured uncertainty and abstention reasons.
-- [ ] Document correlation risks in multi-model judging.
-- [ ] Add evaluator version and evaluator identity to benchmark metadata.
-- [ ] Add anti-slop acceptance criteria to product/API/console contracts.
-- [ ] Add privacy, retention, redaction, and deletion policy for evidence data.
+- [ ] Build the chat-first ROCKSOUL shell with desktop/mobile layouts.
+- [ ] Mount the frontend through the existing g4f GUI serving layer.
+- [ ] Preserve the existing g4f API and Python SDK contracts.
+- [ ] Implement incremental streaming using existing g4f stream responses.
+- [ ] Preserve browser disconnect/cancellation behavior where supported by the backend.
+- [ ] Implement conversation creation, switching and history using existing g4f session behavior.
+- [ ] Populate model/provider selectors from live runtime metadata.
+- [ ] Implement composer, generation controls, errors, retry affordances and loading states.
+- [ ] Support existing attachments and modalities progressively, based on actual backend support.
 
-## P1 — Outcome intelligence
+## P2 — Existing GUI parity
 
-- [ ] Build a normalized outcome evidence record linked to request and trace IDs.
-- [ ] Define task families and outcome labels with provenance.
-- [x] Implement a bounded deterministic JSON Schema verification adapter; unsupported schema keywords fail closed.
-- [ ] Implement code verification adapter: tests, lint, type checks, build receipts.
-- [ ] Implement factual research verifier: source-to-claim mapping and freshness metadata.
-- [x] Implement artifact SHA-256 verification against exact supplied bytes with provenance-bearing evidence.
-- [x] Persist verifier executions and evidence receipts; link canonical receipt digests into the append-only WorkItem event chain and block acceptance on tampering.
-- [x] Correlate optional WorkItem IDs with execution request IDs at the API boundary without changing legacy execution request behavior.
-- [ ] Add native `execution_runs.work_id` linkage and operator Console outcome workflow.
-- [ ] Add executable pytest, HTTP-contract, and source-provenance verifier adapters plus authenticated external source receipts.
-- [ ] Add verifier findings and severity to trace readback.
-- [x] Add accepted/unverified/rejected WorkItem lifecycle states and guarded transitions to API; execution transport success remains separate.
-- [ ] Add outcome-focused metrics to Console.
-- [ ] Add historical outcome query interface for routing.
-- [ ] Prototype contextual retrieval router in shadow mode.
-- [ ] Add cost/latency/quality cascade experiments.
-- [ ] Add held-out evaluation and policy rollback gates.
+- [ ] Port settings and locale controls without changing runtime configuration semantics.
+- [ ] Port provider discovery/details and provider login entry points.
+- [ ] Port status, logs and usage diagnostics as secondary screens.
+- [ ] Preserve playground, apps, media and other supported routes or provide explicit links.
+- [ ] Test deep links, browser refresh, cookies, cache headers and static assets.
+- [ ] Provide dark/light themes, keyboard shortcuts, accessibility and reduced-motion support.
 
-## P2 — Agentic workflow control
+## P3 — Deployment and cutover
 
-- [ ] Define WorkGraph nodes, dependencies, and state transitions.
-- [ ] Define step-level capability requirements and routing.
-- [ ] Define scoped tool capability tokens and expiry.
-- [ ] Add idempotency keys and postcondition checks for side-effecting tools.
-- [ ] Add checkpoint format and safe-resume rules.
-- [ ] Add cancellation propagation and deadline enforcement.
-- [ ] Add bounded repair loops with changed-hypothesis requirement.
-- [ ] Add isolated execution workspace contract.
-- [ ] Add approval gates for irreversible/high-impact actions.
-- [ ] Add artifact diff and evidence bundle generation.
-- [ ] Add multi-agent role separation and independent review protocol.
+- [ ] Bundle the ROCKSOUL UI with the existing g4f Python application.
+- [ ] Keep Docker Compose/Coolify deployment to one primary g4f runtime service for chat.
+- [ ] Verify clean install, persistent data, provider login and restart behavior.
+- [ ] Switch / and /chat/ to ROCKSOUL only after parity tests pass.
+- [ ] Keep an explicit legacy UI rollback path for at least one release.
+- [ ] Remove old HTML assets only after parity and compatibility certification.
 
-## P3 — Frontier readiness
+## P4 — Quality gates
 
-- [ ] Add provenance-aware memory schema with confidence, scope, expiry, and correction.
-- [ ] Add memory retrieval evaluation and stale-memory invalidation.
-- [ ] Add multimodal capability passports and task-specific evaluators.
-- [ ] Add simulation/counterfactual planning interface.
-- [ ] Add Mesh worker attestation and workload isolation research prototype.
-- [ ] Add resource-aware scheduling across local and remote compute.
-- [ ] Add long-running goal lifecycle with expiry, revocation, and human oversight.
-- [ ] Add controlled experiment proposals from execution evidence.
-- [ ] Add multi-agent collaboration evaluation with correlated-failure analysis.
-- [ ] Publish an autonomy readiness report before enabling broader autonomy.
+- [ ] Existing g4f Python/API/SDK tests pass unchanged.
+- [ ] UI tests cover streaming, cancellation, history, model selection and error states.
+- [ ] Playwright smoke tests cover desktop and mobile layouts.
+- [ ] Security checks confirm no provider secrets reach browser bundles or logs.
+- [ ] Docker build and Coolify-compatible Compose validation pass.
+- [ ] Exact final main commit has green required CI before declaring cutover complete.
 
-## Research hypotheses (not commitments)
+## Optional modules (not core product scope)
 
-1. **Verifier portfolio routing:** select not only the executor but also a verifier whose failure modes are sufficiently independent.
-2. **Evidence debt:** track unsupported assumptions and missing proof as a measurable debt that blocks high-confidence completion.
-3. **Capability half-life:** capability evidence decays with time, model revision, provider drift, and environment changes.
-4. **Counterfactual route replay:** replay the same work contract against alternative policies to estimate regret without changing production behavior.
-5. **Uncertainty budget:** allocate additional calls only when expected information gain justifies cost and risk.
-6. **Cognitive diversity score:** measure whether candidate models/evaluators fail in correlated ways rather than counting model votes.
-7. **Proof-carrying artifacts:** deliver outputs with machine-checkable receipts, provenance, test results, and known limitations.
-8. **Self-healing with a brake:** permit bounded repair proposals, but require independent postcondition checks and explicit stop conditions.
-9. **Memory with expiration:** memories have scope, provenance, confidence, and a reason to expire; retrieval is not equivalent to truth.
-10. **Outcome economy:** compare systems by verified useful outcomes per unit of cost/time/risk, not token price alone.
-
-## Release gates
-
-A roadmap item cannot be marked complete because code exists. It needs:
-- contract and threat-model notes;
-- deterministic tests and negative tests;
-- observability and audit evidence;
-- budget/permission boundaries;
-- documentation and operator instructions;
-- regression and packaging checks;
-- explicit known limitations;
-- a final-main CI record.
-
-## Current constraints
-
-- Existing g4f provider implementations remain the runtime substrate.
-- Existing F1–F7 foundations must remain backward compatible unless a migration is explicitly planned.
-- Arena production quality certification remains `NOT_CERTIFIED` until dataset provenance, licensing, contamination, evaluator, variance, and environment gates are met.
-- Adaptive routing, WorkGraph autonomy, provenance-aware memory, per-person SSO and separation-of-duties approval, independent remote artifact acquisition, signed external evidence/verifier identity, and native outcome analytics remain future work. The current verifier engine executes five bounded deterministic adapters; the Console supports immutable profile registration, bounded artifact upload/verification, signed configured-admin approval, evidence diff, and metadata-only bundle export. External source authenticity is not established.
+Arena, Mesh, WorkItem, WorkGraph, verifier/evidence stores and the operator console may remain as independent developer/operator modules. They are not dependencies of chat, are not required for startup, and must not be presented as the ROCKSOUL product's defining architecture.
