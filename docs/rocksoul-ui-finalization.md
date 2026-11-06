@@ -4,83 +4,63 @@ Date: 2026-11-06
 
 ## Product contract
 
-ROCKSOUL is the replacement web UI for the existing g4f Python runtime. It is not a gateway, router, provider registry, model registry, inference engine, or required control plane.
+ROCKSOUL is the unified replacement UI for the primary live g4f GUI pages. It is not a gateway, router, provider registry, model registry, inference engine, or required control plane.
 
-- g4f Python remains the source of truth for provider/model discovery, execution, streaming, tools, media, sessions, and public APIs.
-- ROCKSOUL owns presentation, interaction, navigation, accessibility, localization, and visual identity.
-- The optional Next.js operator console and Arena/Mesh/WorkItem/WorkGraph/evidence modules are not required for ordinary chat.
+- g4f Python remains the source of truth for provider/model discovery, execution, streaming, tools, OAuth, media, sessions, files, and public APIs.
+- ROCKSOUL owns presentation, navigation, interaction, accessibility, localization, and visual identity.
+- No second inference service or duplicate provider/model runtime is introduced.
+- Version-pinned historical snapshots and non-page media/static/API routes remain available.
 
 ## Implemented in the repository
 
-- Bundled UI assets: `g4f/gui/rocksoul/index.html`, `app.css`, `app.js`.
-- Existing GUI server serves the app shell on `/` and `/chat/` by default.
-- `/rocksoul-assets/<path>` serves packaged assets.
-- Model list is read from the existing `GET /v1/models` endpoint.
-- Chat uses the existing `POST /v1/chat/completions` streaming endpoint.
-- Browser-local conversation history and dark/light theme preference, with graceful handling when browser storage is blocked or unavailable.
-- Legacy UI rollback is supported with `ROCKSOUL_UI_ENABLED=0`.
-- Assets are declared in Python package data in `setup.py`.
-- Canonical deployment remains the single g4f Python service in `docker-compose.yml`; `docker-compose.rocksoul.yml` is optional operator tooling.
+- Unified responsive shell and navigation: `g4f/gui/rocksoul/index.html`.
+- Route-aware workspace and existing-API data adapters: `g4f/gui/rocksoul/app.js`.
+- Workspace design system and page components: `g4f/gui/rocksoul/app.css`.
+- Existing g4f GUI server serves ROCKSOUL on overview, chat, provider catalog/detail, status, stats, logs, agent tools, browser workspace, playground, apps/modules, and private utilities.
+- Provider catalog and detail use `/backend-api/v2/providers` and `/backend-api/v2/models/<provider>`.
+- Status uses `/backend-api/v2/status`, `/backend-api/v2/version`, and `/v1/models`.
+- Usage analytics use `/backend-api/v2/stats`; recent logs use `/backend-api/v2/log`.
+- Agent/browser discovery uses the existing `/backend-api/v2/webmcp/tools` registry; only tools actually advertised by g4f are shown.
+- Apps use the existing `/pa/providers` registry.
+- Private utilities use the existing guarded `/backend-api/v2/upload_cookies` endpoint; ROCKSOUL does not read or display cookie contents.
+- Chat and playground use the existing `/v1/models` and `/v1/chat/completions` endpoints.
+- Legacy handlers remain available when `ROCKSOUL_UI_ENABLED=0`.
+- File/media delivery, `/dist/*`, API routes, and historical `/v<version>/*` snapshots are not rewritten.
+- Bundled assets remain part of Python package data and canonical deployment remains the existing single g4f Python service.
 
-## Not certified / still open
+## Remaining feature parity / certification
 
-- Server-backed g4f conversation/session persistence.
-- Attachments and upload parity.
-- Provider login/cookie-management UX parity.
-- Rich tool-call and media response rendering.
-- Settings, logs, diagnostics and provider page visual parity.
-- Indonesian/English UI translations.
-- Full keyboard, screen-reader, contrast and responsive QA.
-- Automated route tests for UI enabled/disabled, asset traversal and installed package.
-- Browser tests for streaming edge cases, cancellation/disconnect and reload.
-- Real-provider end-to-end streaming test on exact candidate commit.
-- Wheel and Docker image package-asset verification.
-- Coolify deployment smoke test.
+The primary page routes now render the ROCKSOUL shell, but a route migration is not proof of complete feature parity. These capabilities still require implementation or verification where applicable:
 
-## Cutover policy
+- Server-backed conversation/session persistence; current chat history is browser-local.
+- Full attachment/upload workflow in chat and rich image/audio/video/media rendering.
+- Full provider login/OAuth UX and provider-specific quota/health controls.
+- Executable agent tool invocation UX with explicit permissions/confirmation; current Agent/Browser pages are registry/discovery views.
+- Full browser research/navigation workflow; the Browser page only displays capabilities advertised by WebMCP.
+- Complete legacy Apps/private sub-page interaction parity beyond the migrated primary surfaces.
+- Indonesian/English translations and full keyboard, screen-reader, contrast, reduced-motion, and responsive QA.
+- Real-provider end-to-end streaming and upstream disconnect behavior.
+- Successful GitHub Actions runs on the exact final `main` commit.
+- Built wheel and Docker image asset verification plus canonical Compose/Coolify runtime smoke test.
 
-The initial ROCKSOUL UI is mounted by default, with the legacy UI retained as a rollback path. Do not delete legacy assets or claim full UI parity until every open release gate above is tested on the exact final main commit. A successful operator-console build does not count as ROCKSOUL UI certification.
+## Route inventory
+
+See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the primary route map, preserved non-page routes, data sources, and rollback contract.
 
 ## Acceptance checks
 
 - [x] One existing g4f Python runtime; no second inference service.
-- [x] ROCKSOUL app shell served by existing g4f GUI server.
-- [x] Existing g4f model and chat API endpoints used.
-- [x] Legacy UI rollback switch exists.
-- [ ] Automated route and package tests pass on the exact final `main` commit.
-- [ ] Real-provider streaming and browser regression checks pass on the exact final `main` commit.
-- [ ] UI parity and accessibility review passes.
+- [x] Unified ROCKSOUL shell mounted through the existing g4f GUI server.
+- [x] Primary live GUI page routes are served by ROCKSOUL by default.
+- [x] Existing g4f APIs are used for models, chat, providers, status, stats, logs, tools, apps, and guarded private upload.
+- [x] Legacy page handlers can be restored with `ROCKSOUL_UI_ENABLED=0`.
+- [x] Flask route tests added for the migrated page handler families.
+- [x] Playwright mocked-browser tests added for all migrated workspace sections.
+- [ ] Automated route and browser workflows pass on the exact final `main` commit.
+- [ ] Real-provider streaming and provider authentication are verified.
+- [ ] Full interaction parity, localization, and accessibility review pass.
 - [ ] Canonical Compose/Coolify deployment is verified.
 
+## Important boundary
 
-## Latest UI interaction change
-
-- Added a visible Stop generation control to the composer.
-- The browser aborts the in-flight fetch using AbortController. If text has already streamed, the partial assistant response is retained in browser-local history; otherwise the UI reports that generation was stopped.
-- This is client-side cancellation. It does not claim provider-side cancellation beyond the disconnect behavior supported by the existing g4f API.
-- Automated browser verification for this interaction remains open.
-
-
-## UI hardening completed in code
-
-- Stable asset URLs now use revalidation (`max-age=0, must-revalidate`) rather than a one-year immutable cache. This avoids stale CSS/JS remaining pinned after a deployment.
-- The SSE reader consumes a final buffered event even if the provider closes without a trailing newline.
-- The Stop control aborts the browser request; already received text is retained in the local conversation. Provider-side cancellation is not guaranteed by this UI behavior.
-- Flask route/asset tests now cover default root cutover, chat cutover, legacy fallback for both routes, bundled asset delivery, traversal rejection, and cache headers.
-- ROCKSOUL CI now uses pytest for function-style tests, watches `g4f/gui/**` changes on pushes and pull requests, and checks that the built wheel contains all three UI assets.
-
-## Verification state
-
-These checks have been added to automation, but they are **not marked passed** until GitHub Actions reports success on the exact latest `main` commit. The workflow does not currently perform a real provider call or a full browser automation run. Those remain explicit release gates.
-
-
-## Canonical Compose rollback
-
-The single-service `docker-compose.yml` now passes `ROCKSOUL_UI_ENABLED` into the existing g4f container and defaults it to `1`. To restore the legacy root/chat HTML, set `ROCKSOUL_UI_ENABLED=0` in the Coolify service environment and redeploy. No additional service or gateway is required.
-
-
-## Browser smoke automation
-
-A Playwright browser smoke test now exercises the packaged UI shell, static asset loading, `/v1/models` model discovery, normal streamed `/v1/chat/completions`, final SSE data without a trailing newline, non-2xx provider errors, Stop via browser abort, and browser-local history after reload against a deterministic mocked g4f API. Workflow: `.github/workflows/rocksoul-ui-browser.yml`.
-
-This proves browser wiring only. It does not certify a live provider, provider authentication, cancellation propagation to upstream providers, server-backed history, attachments, tools/media parity, accessibility, or Coolify deployment.
+ROCKSOUL is the new UI for the primary live GUI surfaces. This does not mean every historical HTML file or arbitrary content URL has been deleted. Legacy templates remain as rollback and compatibility material until the live deployment and parity gates are certified. Do not remove them early or describe mock-browser tests as live-provider certification.
