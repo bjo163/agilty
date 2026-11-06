@@ -2,7 +2,7 @@
 
 This document is the product-level summary. The canonical granular execution ledger is [`rocksoul-todo.md`](rocksoul-todo.md).
 
-GitHub Issues are disabled for this repository, so the repository-owned backlog remains versioned with the code and must stay traceable to deterministic tests and release evidence.
+GitHub Issues are enabled and are used for independently executable milestone tracking. Keep the repository-owned backlog versioned with the code and trace every issue to deterministic tests and release evidence.
 
 ## Product identity
 
