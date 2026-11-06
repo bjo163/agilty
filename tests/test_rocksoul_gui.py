@@ -194,7 +194,11 @@ def test_ui_assets_include_stream_cancellation_and_sse_flush():
     assert "const writeStorage=" in script
     assert "Local history storage unavailable" in script
     assert 'id="stop"' in markup
+    assert 'id="new-chat"' in markup
     assert ".stop-button" in styles
+    assert "message-action-copy" in script
+    assert "message-action-edit" in script
+    assert "message-action-delete" in script
 
 
 def _registered_website():
