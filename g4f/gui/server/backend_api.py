@@ -264,6 +264,8 @@ class Backend_Api(Api):
         @app.route("/backend-api/v2/webmcp/tools", methods=["GET", "POST"])
         async def handle_webmcp_tools():
             """WebMCP API endpoint for listing and executing backend tools."""
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             try:
                 from g4f.mcp.server import MCPRequest
 
@@ -763,10 +765,10 @@ class Backend_Api(Api):
 
         @app.route("/backend-api/v2/log", methods=["GET", "POST"])
         def handle_log():
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
             cache_dir = Path(get_cookies_dir()) / ".logging"
             if request.method == "POST":
-                if not _privileged_request_allowed():
-                    return _privileged_forbidden()
                 cache_file = cache_dir / f"{datetime.date.today()}.jsonl"
                 cache_dir.mkdir(parents=True, exist_ok=True)
                 data = {"origin": request.headers.get("origin"), **(request.json or {})}
@@ -1218,7 +1220,9 @@ class Backend_Api(Api):
 
         @self.app.route("/backend-api/v2/chat/<share_id>", methods=["POST"])
         def upload_chat(share_id: str) -> dict:
-            chat_data = {**request.json}
+            if not _privileged_request_allowed():
+                return _privileged_forbidden()
+            chat_data = {**(request.json or {})}
             updated = chat_data.get("updated", 0)
             share_id = secure_filename(share_id)
             cache_value = self.chat_cache.get(share_id, 0)
