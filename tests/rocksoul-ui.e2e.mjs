@@ -104,7 +104,7 @@ try {
   page.on("requestfailed", request => failedRequests.push(request.url() + ": " + (request.failure()?.errorText || "failed")));
   await page.goto("http://127.0.0.1:4173/");
   try { await page.locator(".metric-card").first().waitFor({ timeout: 12000 }); }
-  catch { throw new Error("Overview metrics did not render. pageErrors=" + JSON.stringify(pageErrors) + " failedRequests=" + JSON.stringify(failedRequests)); }
+  catch { throw new Error("Overview metrics did not render. startupErrors=" + JSON.stringify(startupErrors) + " failedRequests=" + JSON.stringify(failedRequests)); }
   await page.locator("#model-select option[value='browser-test-model']").waitFor();
   assert.equal(await page.locator("#model-select").inputValue(), "auto");
 
