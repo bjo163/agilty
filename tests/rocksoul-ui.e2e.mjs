@@ -203,7 +203,8 @@ try {
   await page.locator("#send").click();
   await page.getByText("attachment endpoint response").waitFor();
   await page.locator(".markdown-image").last().waitFor();
-  await page.locator(".markdown-video").last().waitFor();
+  await page.locator(".markdown-video[src=\"/media/generated.mp4\"]").waitFor();
+  await page.locator(".markdown-audio[src=\"/media/generated.mp3\"]").waitFor();
   await page.locator(".markdown-audio").last().waitFor();
   assert.ok((await page.locator(".markdown-audio").last().getAttribute("src")).startsWith("data:audio/mpeg;base64,"));
 
