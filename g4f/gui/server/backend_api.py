@@ -123,8 +123,14 @@ def _privileged_request_allowed() -> bool:
     """
     peer = request.remote or ""
     try:
-        if ipaddress.ip_address(peer).is_loopback:
+        peer_address = ipaddress.ip_address(peer)
+        if peer_address.is_loopback:
             return True
+        trusted_networks = os.environ.get("G4F_GUI_TRUSTED_IPS", "")
+        for network in trusted_networks.split(","):
+            network = network.strip()
+            if network and peer_address in ipaddress.ip_network(network, strict=False):
+                return True
     except ValueError:
         pass
 
