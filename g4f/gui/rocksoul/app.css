@@ -76,3 +76,5 @@ button:disabled{cursor:not-allowed}
 .message-action{padding:4px 8px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:10px}
 .message-action:hover{border-color:var(--acid);color:var(--ink);opacity:1}
 .message-action-delete:hover{border-color:var(--orange);color:var(--orange)}
+
+.message-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;opacity:.72}.message-action{padding:4px 8px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:10px}.message-action:hover{border-color:var(--acid);color:var(--ink);opacity:1}.message-action-delete:hover{border-color:var(--orange);color:var(--orange)}
