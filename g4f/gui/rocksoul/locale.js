@@ -9,7 +9,7 @@ const safeWrite=value=>{try{localStorage.setItem(storageKey,value)}catch{}};
 const browserLocale=(navigator.language||"en").toLowerCase().startsWith("id")?"id":"en";
 let locale=safeRead()||browserLocale;
 if(locale!=="id"&&locale!=="en")locale="en";
-const excluded=".message,.history-item,.markdown-body,.code-block,.code-panel,.tag,.metric-card strong,.detail-row span,.log-entry pre,.tool-card h3,.tool-card p,input,textarea,select,script,style";
+const excluded=".message,.history-item .history-open,.markdown-body,.code-block,.code-panel,.tag,.metric-card strong,.detail-row span,.log-entry pre,.tool-card h3,.tool-card p,input,textarea,#model-select,script,style";
 function translateText(node){if(!node||node.nodeType!==Node.TEXT_NODE)return;const parent=node.parentElement;if(!parent||parent.closest(excluded))return;const raw=node.nodeValue||"",trimmed=raw.trim();if(!trimmed)return;const translated=locale==="id"?translations[trimmed]:reverse[trimmed];if(translated)node.nodeValue=raw.replace(trimmed,translated)}
 function translateAttribute(node,name){if(!node?.getAttribute)return;const raw=node.getAttribute(name);if(!raw)return;const trimmed=raw.trim(),translated=locale==="id"?translations[trimmed]:reverse[trimmed];if(translated)node.setAttribute(name,raw.replace(trimmed,translated))}
 function apply(root=document.body){document.documentElement.lang=locale;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;while((node=walker.nextNode()))translateText(node);root.querySelectorAll?.("[aria-label],[placeholder],[title]").forEach(node=>{for(const name of ["aria-label","placeholder","title"])translateAttribute(node,name)});const selector=document.getElementById("locale-select");if(selector)selector.value=locale}
