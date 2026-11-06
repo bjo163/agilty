@@ -295,7 +295,7 @@ try {
   await page.goto("http://127.0.0.1:4173/");
   await page.locator("#locale-select").selectOption("id");
   await page.getByRole("link", { name: /Ringkasan/ }).waitFor();
-  await page.getByRole("button", { name: "Percakapan baru" }).waitFor();
+  await page.getByRole("link", { name: /Percakapan baru/ }).waitFor();
   await page.getByRole("button", { name: "Bersihkan" }).waitFor();
 
   const restrictedPage = await browser.newPage();
