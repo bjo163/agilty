@@ -140,7 +140,7 @@ try {
   assert.equal(await page.locator(".history-item").count(), 1);
   page.once("dialog", dialog => dialog.accept("Browser smoke renamed"));
   await page.locator(".history-mini-action").filter({ hasText: "Rename" }).first().click();
-  await page.getByRole("button", { name: /Browser smoke renamed/ }).waitFor();
+  await page.locator(".history-open.active").getByText("Browser smoke renamed", { exact: true }).waitFor();
   await page.locator(".history-mini-action").filter({ hasText: "Pin" }).click();
   await page.locator(".history-mini-action").filter({ hasText: "Unpin" }).waitFor();
   await page.locator(".message.assistant .message-action-copy").click();
