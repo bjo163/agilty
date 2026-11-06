@@ -6,6 +6,9 @@ on:
     paths:
       - 'g4f/gui/rocksoul/**'
       - 'tests/rocksoul-ui.e2e.mjs'
+      - 'tests/test_rocksoul_gui.py'
+      - 'docker-compose.yml'
+      - 'docker/Dockerfile'
       - '.github/workflows/rocksoul-ui-browser.yml'
   pull_request:
     paths:
