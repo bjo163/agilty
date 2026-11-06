@@ -189,3 +189,56 @@ def test_ui_assets_include_stream_cancellation_and_sse_flush():
     assert "Local history storage unavailable" in script
     assert 'id="stop"' in markup
     assert ".stop-button" in styles
+
+
+def _registered_website():
+    website = _website()
+    for index, (route, config) in enumerate(website.routes.items()):
+        website.app.add_url_rule(
+            route,
+            endpoint=f"rocksoul_test_{index}",
+            view_func=config["function"],
+            methods=config["methods"],
+        )
+    return website.app.test_client()
+
+
+def test_registered_flask_routes_serve_rocksoul_for_primary_pages(monkeypatch):
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "1")
+    client = _registered_website()
+    paths = (
+        "/", "/home.html", "/index.html", "/chat/", "/chat/index.html",
+        "/providers", "/providers/", "/providers.html", "/providers/ExampleProvider",
+        "/status", "/status/", "/stats", "/stats/", "/logs", "/logs/",
+        "/agent", "/agent/", "/browser", "/browser/", "/playground/",
+        "/playground/anything", "/apps/", "/apps/nested/page",
+        "/private/", "/private/nested/page",
+    )
+    for path in paths:
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert response.headers.get("X-ROCKSOUL-UI") == "1", path
+
+
+def test_registered_flask_routes_preserve_legacy_fallback(monkeypatch):
+    import g4f.gui.server.website as website_module
+
+    monkeypatch.setenv("ROCKSOUL_UI_ENABLED", "0")
+    monkeypatch.setattr(website_module, "render", lambda filename: f"legacy:{filename}")
+    client = _registered_website()
+    cases = {
+        "/": "legacy:home",
+        "/chat/": "legacy:chat/index",
+        "/providers/": "legacy:providers",
+        "/status/": "legacy:status",
+        "/stats/": "legacy:stats",
+        "/logs/": "legacy:logs",
+        "/agent/": "legacy:agent",
+        "/browser/": "legacy:browser",
+        "/apps/": "legacy:apps/index.html",
+        "/private/": "legacy:private/index",
+    }
+    for path, expected in cases.items():
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert response.get_data(as_text=True) == expected, path
