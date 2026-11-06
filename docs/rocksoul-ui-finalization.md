@@ -30,6 +30,7 @@ ROCKSOUL is the unified replacement UI for the primary live g4f GUI pages. It is
 - Accessibility baseline includes skip navigation, named workspace/conversation landmarks, active-route `aria-current`, visible keyboard focus, and reduced-motion styling. Full assistive-technology and contrast certification remains a manual QA gate.
 - Apps with missing or unsafe launch URLs are rendered as informational cards instead of dead or executable links.
 - Canonical Compose includes init/restart policy, g4f status healthcheck, optional `G4F_API_KEY` environment configuration, and documented named-volume backup/restore.
+- ROCKSOUL CI now builds the canonical image, verifies `locale.js` in the Docker image and wheel, starts the canonical Compose service without rebuilding, waits for its healthcheck, and always tears the Compose stack/volume down.
 - Bundled assets remain part of Python package data and canonical deployment remains the existing single g4f Python service.
 
 ## Remaining feature parity / certification
