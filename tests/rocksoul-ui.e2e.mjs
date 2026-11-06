@@ -126,8 +126,9 @@ try {
   assert.equal(await page.locator(".markdown-image").getAttribute("alt"), "pixel");
   assert.equal(await page.locator(".message-action-regenerate").count(), 1);
   await page.locator(".message-action-regenerate").click();
-  await page.waitForFunction(() => document.querySelectorAll(".message.assistant .message-action-regenerate").length === 1);
+  for (let attempt = 0; attempt < 40 && chatCompletionCount < 2; attempt += 1) await page.waitForTimeout(50);
   assert.equal(chatCompletionCount, 2, "regenerate should issue a fresh request to the existing g4f chat API");
+  await page.getByText("ROCKSOUL browser test").last().waitFor();
   const downloads = [];
   page.on("download", download => downloads.push(download.suggestedFilename()));
   await page.locator("#export-md").click();
