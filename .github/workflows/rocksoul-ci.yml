@@ -80,6 +80,10 @@ jobs:
         run: python -m twine check dist/*
       - name: Validate canonical Compose configuration
         run: docker compose config --quiet
+      - name: Build canonical Docker image and verify bundled ROCKSOUL assets
+        run: |
+          docker build --build-arg G4F_VERSION=0.0.0-dev --tag rocksoul-ui-smoke --file docker/Dockerfile .
+          docker run --rm --entrypoint python rocksoul-ui-smoke -c "from importlib.resources import files; assets = files(\"g4f\").joinpath(\"gui\", \"rocksoul\"); assert all(assets.joinpath(name).is_file() for name in (\"index.html\", \"app.css\", \"app.js\"))"
 
       - name: Install minimal runtime dependencies for entrypoint smoke tests
         run: python -m pip install -r requirements-min.txt
