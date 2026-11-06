@@ -20,6 +20,7 @@ on:
       - 'docs/rocksoul-*.md'
       - 'setup.py'
       - 'docker-compose.yml'
+      - 'docker/Dockerfile'
       - '.github/workflows/rocksoul-ci.yml'
   workflow_dispatch:
 
