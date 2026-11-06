@@ -84,6 +84,13 @@ jobs:
           LOCALAPPDATA: ${{ runner.temp }}
         run: |
           python -m pip install --no-deps dist/*.whl
+          python - <<'PY'
+          from importlib.resources import files
+          assets = files("g4f").joinpath("gui/rocksoul")
+          required = ("index.html", "app.css", "app.js")
+          missing = [name for name in required if not assets.joinpath(name).is_file()]
+          assert not missing, f"Missing ROCKSOUL wheel assets: {missing}"
+          PY
           cd "$RUNNER_TEMP"
           rocksoul status
           rocksoul-db status
