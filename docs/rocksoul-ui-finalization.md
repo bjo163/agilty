@@ -72,3 +72,8 @@ The initial ROCKSOUL UI is mounted by default, with the legacy UI retained as a 
 ## Verification state
 
 These checks have been added to automation, but they are **not marked passed** until GitHub Actions reports success on the exact latest `main` commit. The workflow does not currently perform a real provider call or a full browser automation run. Those remain explicit release gates.
+
+
+## Canonical Compose rollback
+
+The single-service `docker-compose.yml` now passes `ROCKSOUL_UI_ENABLED` into the existing g4f container and defaults it to `1`. To restore the legacy root/chat HTML, set `ROCKSOUL_UI_ENABLED=0` in the Coolify service environment and redeploy. No additional service or gateway is required.
