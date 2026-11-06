@@ -7,6 +7,7 @@ const base = (process.env.ROCKSOUL_BASE_URL || "http://127.0.0.1:8080").replace(
 const model = process.env.ROCKSOUL_SMOKE_MODEL || "";
 const timeoutMs = Math.max(10_000, Math.min(120_000, Number(process.env.ROCKSOUL_SMOKE_TIMEOUT_MS || 45_000)));
 const apiKey = process.env.G4F_API_KEY || "";
+const displayBase = (() => { try { const url = new URL(base); return url.origin + url.pathname.replace(/\\/$/, ""); } catch { return "[configured endpoint]"; } })();
 const headers = { "content-type": "application/json", accept: "application/json" };
 if (apiKey) headers.authorization = "Bearer " + apiKey;
 
@@ -21,7 +22,7 @@ if (!model) {
 
 const controller = new AbortController();
 const timeout = setTimeout(() => controller.abort(new Error("Smoke request timed out")), timeoutMs);
-const report = { status: "passed", base_url: base, model, checks: {} };
+const report = { status: "passed", base_url: displayBase, model, checks: {} };
 const safeError = error => error?.name === "AbortError" ? "request aborted or timed out" : String(error?.message || error).slice(0, 240);
 
 try {
