@@ -136,6 +136,13 @@ try {
   await page.waitForTimeout(100);
   assert.ok(downloads.includes("Say-hello.md"));
   assert.ok(downloads.includes("Say-hello.json"));
+  await page.locator("#history-search").fill("Say hello");
+  assert.equal(await page.locator(".history-item").count(), 1);
+  page.once("dialog", dialog => dialog.accept("Browser smoke renamed"));
+  await page.locator(".history-mini-action").filter({ hasText: "Rename" }).first().click();
+  await page.getByRole("button", { name: /Browser smoke renamed/ }).waitFor();
+  await page.locator(".history-mini-action").filter({ hasText: "Pin" }).click();
+  await page.locator(".history-mini-action").filter({ hasText: "Unpin" }).waitFor();
   await page.locator(".message.assistant .message-action-copy").click();
   assert.ok((await page.evaluate(() => window.__copiedCode)).includes("const answer = 42;"));
   await page.addInitScript(() => { Object.defineProperty(window.crypto, "randomUUID", { configurable: true, value: undefined }); });
