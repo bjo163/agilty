@@ -35,6 +35,9 @@ COPY docker/background.png /usr/share/images/fluxbox/ubuntu-light.png
 # Add user, fix permissions
 RUN chown "${SEL_UID}:${SEL_GID}" $HOME/.local
 
+# Persistent g4f configuration, cookies, share buckets, and runtime cache.
+RUN mkdir -p /data/g4f && chown -R "${SEL_UID}:${SEL_GID}" /data
+
 # Switch user
 USER $SEL_UID
 
