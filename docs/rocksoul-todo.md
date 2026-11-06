@@ -606,14 +606,26 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Remove the Google Fonts network dependency; the bundled UI uses system font stacks for offline/self-hosted deployments.
 - [x] Add Flask test-client coverage for actual registered route mappings and legacy rollback, not only direct handler calls.
 - [x] Fix literal escaped newline in finalization checklist.
-- [ ] Exact-main GitHub Actions remain queued; do not mark test, CodeQL, package, or Docker jobs green until they complete.
+- [x] Split ROCKSOUL UI CI from historical optional operator-module suites; run the focused Flask GUI contract suite cross-platform and keep package/Docker gates dependent on it.
+- [ ] Re-run exact-main GitHub Actions after CI scope and UI test fixes; do not mark package or Docker jobs green until they complete.
 - [ ] Harden or externally protect WebMCP tool invocation: browser confirmation is not server authorization, and the existing endpoint accepts direct calls.
 - [ ] Harden or externally protect the existing cookie/HAR upload endpoint: it only checks whether G4F_API_KEY is configured for non-loopback access and does not validate a per-request key in this handler.
 - [x] Configure G4F_CONFIG_DIR=/data/g4f and a named g4f-data Docker volume; prepare directory ownership in the image and add a Docker CI write smoke test. Compose uses pull_policy: build to avoid accidentally running a pre-existing upstream image instead of this checkout.
 - [x] Bind the Selenium/VNC host port to 127.0.0.1 so the default VNC password is not exposed on every network interface.
 - [ ] Verify the named volume and local-source build behavior in a real Coolify deployment.
 - [ ] Verify production Coolify port exposure, reverse-proxy authentication, persistence, and real deployment behavior.
-- [ ] Complete Markdown/code-block rendering, message actions (copy/edit/regenerate/delete/export), and richer conversation management.
+- [x] Render safe Markdown blocks and fenced code blocks with copy controls; raw HTML is never injected from model output.
+- [ ] Complete message actions (copy/edit/regenerate/delete/export) and richer conversation management.
 - [ ] Complete real-provider, OAuth device-flow, returned-media rendering, localization, screen-reader, and responsive certification.
 
 **Security review:** the browser confirmation and metadata log are UX conveniences, not authorization or compliance-grade audit controls. The existing chat share endpoint is an unauthenticated bearer-link API: anyone with the ID can read or replace the snapshot. Do not put secrets or credentials into a shared chat.
+
+
+### UI parity continuation — 2026-11-06
+
+- [x] Add a dependency-free DOM-based Markdown renderer for chat messages, including headings, paragraphs, lists, blockquotes, inline emphasis/code, safe links, and fenced code blocks with copy controls.
+- [x] Keep model output as text nodes; raw HTML is never interpreted. Unsafe link schemes are rejected by the existing URL allowlist.
+- [x] Add browser smoke coverage for Markdown emphasis, fenced code, and the copy-code action.
+- [x] Scope ROCKSOUL CI to the UI route/asset contract tests rather than unrelated optional operator-module test suites; remove optional CLI smoke gates from the UI release workflow.
+- [x] Fix Flask direct-passthrough test response handling for `send_file` responses.
+- [ ] Await exact-main CI and browser smoke results; live provider and Coolify checks remain external release gates.
