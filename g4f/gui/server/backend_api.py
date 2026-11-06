@@ -150,6 +150,15 @@ def _privileged_forbidden():
     return jsonify({"error": {"message": "Privileged operation requires a trusted client or valid API key"}}), 403
 
 
+def _bounded_int_env(name: str, default: int, minimum: int, maximum: int) -> int:
+    """Read an integer environment setting and clamp it to a safe range."""
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(value, maximum))
+
+
 def _parse_bool_query(value: str | None, default: bool) -> bool:
     """Parse a query-string boolean without treating non-empty 'false' as true."""
     if value is None:
@@ -199,16 +208,11 @@ class Backend_Api(Api):
         self.client = Client()
 
         # Bound multipart uploads at the WSGI layer before parsing file parts.
-        try:
-            max_upload_bytes = int(os.environ.get("G4F_MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
-        except ValueError:
-            max_upload_bytes = 25 * 1024 * 1024
-        self.app.config["MAX_CONTENT_LENGTH"] = max(1024 * 1024, min(max_upload_bytes, 256 * 1024 * 1024))
-        try:
-            self.max_upload_files = int(os.environ.get("G4F_MAX_UPLOAD_FILES", "10"))
-        except ValueError:
-            self.max_upload_files = 10
-        self.max_upload_files = max(1, min(self.max_upload_files, 50))
+        self.app.config["MAX_CONTENT_LENGTH"] = _bounded_int_env(
+            "G4F_MAX_UPLOAD_BYTES", 25 * 1024 * 1024,
+            1024 * 1024, 256 * 1024 * 1024,
+        )
+        self.max_upload_files = _bounded_int_env("G4F_MAX_UPLOAD_FILES", 10, 1, 50)
 
         @self.app.errorhandler(413)
         def request_entity_too_large(error):
