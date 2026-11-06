@@ -108,7 +108,7 @@ async function extractDocumentText(file){
   if(!response.ok)throw new Error("Document extraction failed (HTTP "+response.status+")");
   const content=(await response.text()).trim();
   if(!content)throw new Error("No readable text was extracted from this document");
-  return content.length>80000?content.slice(0,80000)+"\\n\\n[Document text truncated at 80,000 characters.]":content;
+  return content.length>80000?content.slice(0,80000)+"\n\n[Document text truncated at 80,000 characters.]":content;
  }finally{
   try{await fetch("/backend-api/v2/files/"+encodeURIComponent(bucket),{method:"DELETE"})}catch{}
  }
@@ -123,13 +123,13 @@ async function send(text){
  let documentContext="";
  if(documentFiles.length){
   const status=$("attachment-status");if(status)status.textContent="Extracting "+documentFiles.length+" document(s)…";
-  try{for(const file of documentFiles){const extracted=await extractDocumentText(file);documentContext+="\\n\\n[Extracted document: "+file.name+"]\\n"+extracted}}
+  try{for(const file of documentFiles){const extracted=await extractDocumentText(file);documentContext+="\n\n[Extracted document: "+file.name+"]\n"+extracted}}
   catch(error){pendingFiles.unshift(...attachments);if(status)status.textContent="Document extraction failed: "+error.message;return}
  }
- const promptText=(text||"")+(documentContext?"\\n\\nDocument context:\\n"+documentContext:"");
+ const promptText=(text||"")+(documentContext?"\n\nDocument context:\n"+documentContext:"");
  if(!promptText.trim()&&!mediaFiles.length)return;
  if(!current())newConversation();
- const displayText=promptText+(mediaFiles.length?"\\n[Attached media: "+mediaFiles.map(file=>file.name).join(", ")+"]":"");
+ const displayText=promptText+(mediaFiles.length?"\n[Attached media: "+mediaFiles.map(file=>file.name).join(", ")+"]":"");
  addMessage("user",displayText);
  const c=current(),history=c.messages.filter(m=>m.role==="user"||m.role==="assistant").map(m=>({role:m.role,content:m.content}));
  const attachmentStatus=$("attachment-status");if(attachmentStatus)attachmentStatus.textContent="";
@@ -143,8 +143,8 @@ async function send(text){
   if(!response.ok){const detail=await response.text();throw Error("g4f returned "+response.status+": "+detail.slice(0,500))}
   if(!response.body)throw Error("Streaming response body unavailable");
   const reader=response.body.getReader(),decoder=new TextDecoder();let buffer="",done=false;output.className="message-body";output.textContent="";
-  const consumeLine=line=>{if(!line.startsWith("data:"))return false;const payload=line.slice(5).trim();if(payload==="[DONE]")return true;try{const event=JSON.parse(payload);let delta=event.choices?.[0]?.delta?.content??event.content??event.response;if(Array.isArray(delta))delta=delta.map(part=>typeof part==="string"?part:part?.text||"").join("");const audioSrc=typeof event.data==="string"?safeAudioSrc(event.data):null;const media=mediaMarkdown(event);if(audioSrc){const transcript=String(delta||"").replace(/<audio\\b[^>]*><\\/audio>/gi,"").trim();answer+=(answer?"\\n\\n":"")+(transcript?transcript+"\\n\\n":"")+"[Audio output]("+event.data+")"}else if(typeof delta==="string"&&delta){let value=delta;if(media)value=value.replace(/<a\\b[^>]*>[\\s\\S]*?<\\/a>/gi,"").replace(/<video\\b[^>]*><\\/video>/gi,"").trim();answer+=(answer?"\\n\\n":"")+value;if(media&&!((Array.isArray(event.urls)?event.urls:[]).some(url=>value.includes(String(url)))))answer+="\\n\\n"+media}output.textContent=answer;if(event.type==="error"||event.type==="auth"||event.error){const detail=event.error?.message||event.message||event.auth||"Runtime generation failed";if(!answer)output.textContent=String(detail)}}catch{}$("conversation").scrollTop=$("conversation").scrollHeight;return false};
-  while(!done){const part=await reader.read();done=part.done;buffer+=decoder.decode(part.value||new Uint8Array(),{stream:!done});const lines=buffer.split(/\\r?\\n/);buffer=lines.pop()||"";for(const line of lines){if(consumeLine(line)){done=true;break}}}
+  const consumeLine=line=>{if(!line.startsWith("data:"))return false;const payload=line.slice(5).trim();if(payload==="[DONE]")return true;try{const event=JSON.parse(payload);let delta=event.choices?.[0]?.delta?.content??event.content??event.response;if(Array.isArray(delta))delta=delta.map(part=>typeof part==="string"?part:part?.text||"").join("");const audioSrc=typeof event.data==="string"?safeAudioSrc(event.data):null;const media=mediaMarkdown(event);if(audioSrc){const transcript=String(delta||"").replace(/<audio\b[^>]*><\/audio>/gi,"").trim();answer+=(answer?"\n\n":"")+(transcript?transcript+"\n\n":"")+"[Audio output]("+event.data+")"}else if(typeof delta==="string"&&delta){let value=delta;if(media)value=value.replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi,"").replace(/<video\b[^>]*><\/video>/gi,"").trim();answer+=(answer?"\n\n":"")+value;if(media&&!((Array.isArray(event.urls)?event.urls:[]).some(url=>value.includes(String(url)))))answer+="\n\n"+media}output.textContent=answer;if(event.type==="error"||event.type==="auth"||event.error){const detail=event.error?.message||event.message||event.auth||"Runtime generation failed";if(!answer)output.textContent=String(detail)}}catch{}$("conversation").scrollTop=$("conversation").scrollHeight;return false};
+  while(!done){const part=await reader.read();done=part.done;buffer+=decoder.decode(part.value||new Uint8Array(),{stream:!done});const lines=buffer.split(/\r?\n/);buffer=lines.pop()||"";for(const line of lines){if(consumeLine(line)){done=true;break}}}
   if(buffer.trim())consumeLine(buffer.trim());if(!answer)answer=output.textContent||"(The provider returned no text content.)";c.messages.push({role:"assistant",content:answer});save();renderMessages();
  }catch(error){output.className="message-body";if(error?.name==="AbortError"){if(answer){c.messages.push({role:"assistant",content:answer});save();renderMessages()}else output.textContent="Generation stopped."}else{output.textContent="Request failed: "+(error instanceof Error?error.message:String(error));row.classList.add("error")}}
  finally{activeController=null;busy=false;$("stop").hidden=true;$("send").disabled=false;renderHistory();$("prompt").focus()}
