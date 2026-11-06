@@ -1,12 +1,14 @@
 services:
   gpt4free:
     image: hlohaus789/g4f:latest
+    pull_policy: build
     shm_size: 2gb
     build:
       context: .
       dockerfile: docker/Dockerfile
     volumes:
       - .:/app
+      - g4f-data:/data/g4f
     ports:
       - '8080:8080'
       - '1337:8080'
@@ -14,3 +16,7 @@ services:
     environment:
       - OLLAMA_HOST=host.docker.internal
       - ROCKSOUL_UI_ENABLED=${ROCKSOUL_UI_ENABLED:-1}
+      - G4F_CONFIG_DIR=/data/g4f
+
+volumes:
+  g4f-data:
