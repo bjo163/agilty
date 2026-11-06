@@ -495,7 +495,7 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - [x] Reset product identity, narrative, blueprint, roadmap and README to UI-first.
 - [x] Reclassify the existing Next.js operator console as optional/experimental tooling, not the primary ROCKSOUL user interface.
 - [x] Clarify that Arena, Mesh, WorkItem, WorkGraph, verifier/evidence and operator APIs are optional modules and must not be required for ordinary chat.
-- [ ] Audit all g4f GUI routes in g4f/gui/server/website.py and map route → HTML asset → backend API/session behavior.
+- [x] Inventory the GUI route registry in g4f/gui/server/website.py and document route → handler → runtime/API behavior in docs/rocksoul-ui-route-inventory.md. Per-page interaction/session parity remains open.
 - [x] Create the initial bundled ROCKSOUL chat-first frontend shell (HTML/CSS/JS) with desktop/mobile layout.
 - [x] Mount the frontend through the existing g4f GUI serving boundary; / and /chat/ use it by default and ROCKSOUL_UI_ENABLED=0 restores legacy home/chat HTML.
 - [x] Implement initial incremental SSE text streaming through the existing /v1/chat/completions API; real-provider/disconnect regression tests remain open.
@@ -514,3 +514,13 @@ The existing frontend/rocksoul-console is an operator cockpit and is **not** the
 ### Completion rule
 
 ROCKSOUL UI replacement is not complete until the actual frontend is mounted in g4f/gui, / and /chat/ use it, ordinary chat/streaming/history/model selection work through the existing Python runtime, and the exact final main commit passes the required CI and compatibility tests. Do not mark the unchecked tasks complete based on documentation or mockups.
+
+
+### UI hardening follow-up — 2026-11-06
+
+- Fixed stable asset URL caching: ROCKSOUL CSS/JS now revalidate instead of being cached immutable for one year, preventing stale UI assets after deployment.
+- Fixed SSE EOF handling: a final event without a trailing newline is now consumed.
+- Added Stop generation via AbortController; partial streamed text is retained in browser-local history. This represents client disconnect, not a guarantee of provider-side cancellation.
+- CI now runs function-style ROCKSOUL tests with pytest (the previous unittest discovery command did not execute plain pytest test functions).
+- CI triggers now include bundled g4f GUI assets and validate that all three ROCKSOUL files are present in the built wheel.
+- Exact-main CI, real-provider streaming, full browser QA, and Docker/Coolify runtime smoke tests remain release gates.
