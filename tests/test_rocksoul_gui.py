@@ -394,3 +394,26 @@ def test_opt_in_provider_smoke_harness_is_credential_safe():
     assert "process.env.G4F_API_KEY" in script
     assert "process.stdout.write(JSON.stringify(report" in script
     assert "console.log(apiKey)" not in script
+
+
+
+def test_rocksoul_apps_page_does_not_advertise_unsafe_or_missing_launch_urls():
+    from pathlib import Path
+
+    script = (Path(__file__).parents[1] / "g4f" / "gui" / "rocksoul" / "app.js").read_text(encoding="utf-8")
+    assert 'const destination=safeHref(app.url||app.homepage||"")' in script
+    assert 'if(destination!=="#")target.append(card' in script
+    assert "NO LAUNCH URL" in script
+    assert "This extension is registered, but the runtime did not provide a safe launch URL." in script
+
+
+def test_canonical_compose_has_healthcheck_restart_and_api_key_configuration():
+    from pathlib import Path
+
+    compose = (Path(__file__).parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "restart: unless-stopped" in compose
+    assert "init: true" in compose
+    assert "healthcheck:" in compose
+    assert "/backend-api/v2/status" in compose
+    assert "G4F_API_KEY=${G4F_API_KEY:-}" in compose
+    assert "g4f-data:/data/g4f" in compose
