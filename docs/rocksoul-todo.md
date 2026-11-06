@@ -599,7 +599,8 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Re-read the current main route integration, frontend, backend API contracts, packaging, Docker, Compose, tests, and CI workflow definitions.
 - [x] Fix privacy regression: successful private chats no longer write snapshots to the server; only already-shared conversations are synchronized.
 - [x] Fix failed-share UX: do not copy a share URL unless the server accepted the snapshot; restore the conversation to private state on failure.
-- [x] Add Playwright regression assertions that private chats cause zero server writes, explicit sharing creates the snapshot, and failed sharing does not copy a dead URL.
+- [x] Require cryptographically strong share IDs, using getRandomValues when randomUUID is unavailable; upgrade weak legacy/local IDs before server persistence.
+- [x] Add Playwright regression assertions that private chats cause zero server writes, explicit sharing creates the snapshot, weak local IDs are upgraded, and failed sharing does not copy a dead URL.
 - [x] Restrict extension-card/link URL schemes to same-origin paths or HTTP(S); reject javascript: and other active schemes.
 - [x] Remove the ineffective per-request API-key field from Private utilities. The existing upload handler does not validate that request key; the UI now warns operators to protect remote access at the network/reverse-proxy layer.
 - [x] Remove the Google Fonts network dependency; the bundled UI uses system font stacks for offline/self-hosted deployments.
