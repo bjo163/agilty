@@ -111,5 +111,8 @@ def test_ui_assets_include_stream_cancellation_and_sse_flush():
 
     assert "new AbortController()" in script
     assert 'if(buffer.trim())consumeLine(buffer.trim())' in script
+    assert "const readStorage=" in script
+    assert "const writeStorage=" in script
+    assert "Local history storage unavailable" in script
     assert 'id="stop"' in markup
     assert ".stop-button" in styles
