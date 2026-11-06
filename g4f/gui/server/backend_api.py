@@ -275,8 +275,6 @@ class Backend_Api(Api):
             if not _privileged_request_allowed():
                 return _privileged_forbidden()
             try:
-                from g4f.mcp.server import MCPRequest
-
                 mcp_server = _get_webmcp_server()
                 if request.method == "GET":
                     tool_list = mcp_server.get_tool_list()
@@ -285,6 +283,8 @@ class Backend_Api(Api):
                         "status": "ok",
                         "tools": tool_list
                     })
+
+                from g4f.mcp.server import MCPRequest
 
                 body = request.get_json() or {}
                 method = body.get("method", "tools/call")
