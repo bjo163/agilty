@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11120f">
+  <title>ROCKSOUL — AI Workspace</title>
+  <link rel="stylesheet" href="/rocksoul-assets/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/" aria-label="ROCKSOUL home"><span class="brand-mark">R</span><span>ROCK<span>SOUL</span></span></a>
+      <button class="new-chat" id="new-chat">＋ <span>New conversation</span></button>
+      <div class="side-label">RECENT</div>
+      <nav id="history" class="history" aria-label="Conversation history"></nav>
+      <div class="sidebar-bottom"><span class="runtime-dot"></span><span>g4f runtime connected</span><a href="/providers/">Providers ↗</a></div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobile-menu" aria-label="Toggle sidebar">☰</button>
+        <div><div class="eyebrow">YOUR AI WORKSPACE</div><div class="top-title">Think beyond the ordinary.</div></div>
+        <div class="top-actions"><a href="/status/" class="subtle-link">Runtime status ↗</a><button id="theme-toggle" class="icon-button" aria-label="Toggle theme">◐</button></div>
+      </header>
+      <section class="conversation" id="conversation" aria-live="polite">
+        <div class="welcome" id="welcome">
+          <div class="welcome-kicker">ONE RUNTIME. MANY MINDS.</div>
+          <h1>Make room<br>for <em>better thinking.</em></h1>
+          <p>Meet your ideas where they are. Choose a model, start a conversation, and let the existing g4f runtime do the heavy lifting.</p>
+          <div class="suggestions">
+            <button data-prompt="Help me understand a complex topic from first principles.">✳ Explain something complex</button>
+            <button data-prompt="Help me brainstorm unconventional ideas for a project.">↗ Explore new ideas</button>
+            <button data-prompt="Review this code and suggest a cleaner solution.">⌘ Review some code</button>
+          </div>
+        </div>
+      </section>
+      <div class="composer-wrap">
+        <div class="composer-tools">
+          <label class="model-label" for="model-select">MODEL</label>
+          <select id="model-select" aria-label="Model"><option value="auto">Auto · runtime default</option></select>
+          <span id="model-status" class="model-status">Loading models…</span>
+        </div>
+        <form id="composer" class="composer">
+          <textarea id="prompt" rows="1" placeholder="Ask anything. Build something. Explore an idea…" aria-label="Message" required></textarea>
+          <div class="composer-bottom"><span class="composer-hint">Enter to send · Shift + Enter for a new line</span><button id="send" type="submit" aria-label="Send message">↑</button></div>
+        </form>
+        <div class="disclaimer">ROCKSOUL is the interface. Inference, providers and model execution stay in the g4f Python runtime.</div>
+      </div>
+    </main>
+  </div>
+  <script src="/rocksoul-assets/app.js" defer></script>
+</body>
+</html>
