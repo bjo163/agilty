@@ -350,6 +350,8 @@ def test_rocksoul_accessibility_landmarks_and_keyboard_styles():
     assert 'aria-label="Conversation" aria-live="polite"' in markup
     assert ":focus-visible" in styles
     assert "prefers-reduced-motion:reduce" in styles
+    assert "transition-duration:0s!important" in styles
+    assert "animation-duration:0s!important" in styles
     assert 'setAttribute("aria-current","page")' in script
 
 
@@ -366,6 +368,9 @@ def test_rocksoul_locale_catalog_supports_indonesian_and_english():
     assert "Ringkasan" in locale
     assert "safeWrite(locale)" in locale
     assert "rocksoul-locale" in locale
+    assert "Remove from local history" in locale
+    assert "Measure requests and tokens across the runtime." in locale
+    assert ".history-item .history-open" in locale
 
 
 def test_rocksoul_document_upload_uses_existing_g4f_file_api():
