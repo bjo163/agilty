@@ -267,6 +267,37 @@ try {
     if (route === "/private/") assert.equal(await page.locator(".upload-form input[type=password]").count(), 0);
   }
 
+  // Responsive and accessibility baseline across the primary workspace routes.
+  for (const viewport of [{ width: 375, height: 812 }, { width: 768, height: 1024 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    for (const route of ["/", "/chat/", "/providers/", "/status/", "/stats/", "/logs/", "/agent/", "/browser/", "/apps/", "/private/", "/playground/"]) {
+      await page.goto("http://127.0.0.1:4173" + route);
+      await page.waitForTimeout(80);
+      const layout = await page.evaluate(() => ({
+        viewport: document.documentElement.clientWidth,
+        document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+      }));
+      assert.ok(layout.document <= layout.viewport + 1, `horizontal document overflow at ${viewport.width}px on ${route}: ${JSON.stringify(layout)}`);
+      assert.ok(layout.body <= layout.viewport + 1, `horizontal body overflow at ${viewport.width}px on ${route}: ${JSON.stringify(layout)}`);
+      const unnamed = await page.locator("button:visible").evaluateAll(nodes => nodes
+        .filter(node => !(node.getAttribute("aria-label") || node.getAttribute("title") || node.innerText || "").trim())
+        .map(node => node.outerHTML.slice(0, 180)));
+      assert.deepEqual(unnamed, [], `visible buttons must have accessible names on ${route}`);
+    }
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const reducedMotionDuration = await page.locator(".workspace-card").first().evaluate(node => getComputedStyle(node).transitionDuration).catch(() => "0s");
+  assert.ok(reducedMotionDuration.split(",").every(value => parseFloat(value) === 0), "reduced-motion preference should disable card transitions");
+
+  // Check representative translated controls, not only the locale selector.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("http://127.0.0.1:4173/");
+  await page.locator("#locale-select").selectOption("id");
+  await page.getByRole("link", { name: /Ringkasan/ }).waitFor();
+  await page.getByRole("button", { name: "Percakapan baru" }).waitFor();
+  await page.getByRole("button", { name: "Bersihkan" }).waitFor();
+
   const restrictedPage = await browser.newPage();
   const pageErrors = [];
   restrictedPage.on("pageerror", error => pageErrors.push(error.message));
