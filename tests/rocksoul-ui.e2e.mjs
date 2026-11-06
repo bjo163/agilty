@@ -105,7 +105,7 @@ try {
   await page.goto("http://127.0.0.1:4173/");
   try { await page.locator(".metric-card").first().waitFor({ timeout: 12000 }); }
   catch { throw new Error("Overview metrics did not render. startupErrors=" + JSON.stringify(startupErrors) + " failedRequests=" + JSON.stringify(failedRequests)); }
-  await page.locator("#model-select option[value='browser-test-model']").waitFor();
+  assert.equal(await page.locator("#model-select option[value='browser-test-model']").count(), 1, "runtime model should be listed");
   assert.equal(await page.locator("#model-select").inputValue(), "auto");
 
   await page.locator("#prompt").fill("Say hello");
