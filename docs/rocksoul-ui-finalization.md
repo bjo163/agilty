@@ -65,7 +65,7 @@ See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the pri
 - [x] One existing g4f Python runtime; no second inference service.
 - [x] Unified ROCKSOUL shell mounted through the existing g4f GUI server.
 - [x] Primary live GUI page routes are served by ROCKSOUL by default.
-- [x] Existing g4f APIs are used for models, chat, providers, status, stats, logs, tools, apps, and guarded private upload.
+- [x] Existing g4f APIs are used for models, chat, providers, status, stats, logs, tools, apps, and private upload.
 - [x] Legacy page handlers can be restored with `ROCKSOUL_UI_ENABLED=0`.
 - [x] Flask route tests added for the migrated page handler families.
 - [x] Playwright mocked-browser tests added for all migrated workspace sections, including private-chat persistence and failed-share regression assertions.
