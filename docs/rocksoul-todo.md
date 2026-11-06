@@ -610,6 +610,7 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [ ] Harden or externally protect WebMCP tool invocation: browser confirmation is not server authorization, and the existing endpoint accepts direct calls.
 - [ ] Harden or externally protect the existing cookie/HAR upload endpoint: it only checks whether G4F_API_KEY is configured for non-loopback access and does not validate a per-request key in this handler.
 - [x] Configure G4F_CONFIG_DIR=/data/g4f and a named g4f-data Docker volume; prepare directory ownership in the image and add a Docker CI write smoke test. Compose uses pull_policy: build to avoid accidentally running a pre-existing upstream image instead of this checkout.
+- [x] Bind the Selenium/VNC host port to 127.0.0.1 so the default VNC password is not exposed on every network interface.
 - [ ] Verify the named volume and local-source build behavior in a real Coolify deployment.
 - [ ] Verify production Coolify port exposure, reverse-proxy authentication, persistence, and real deployment behavior.
 - [ ] Complete real-provider, OAuth device-flow, returned-media rendering, localization, screen-reader, and responsive certification.
