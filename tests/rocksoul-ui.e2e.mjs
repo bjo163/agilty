@@ -11,6 +11,7 @@ const remoteChats = new Map([["shared-test-123", { id: "shared-test-123", title:
 const toolAuditEvents = [];
 let chatWriteCount = 0;
 let chatCompletionCount = 0;
+let oauthPollCount = 0;
 let failChatWrites = false;
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://127.0.0.1");
@@ -23,7 +24,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(404).end(); return;
   }
   if (url.pathname === "/backend-api/v2/health/DemoProvider" || url.pathname === "/backend-api/v2/quota/DemoProvider") return json({ status: "healthy", remaining: 42 });
-  if (url.pathname === "/backend-api/v2/oauth/DemoProvider") return json({ verification_uri: "https://auth.example.test/device", user_code: "ROCK-SOUL" });
+  if (url.pathname === "/backend-api/v2/oauth/DemoProvider") { let raw = ""; for await (const chunk of req) raw += chunk; const payload = raw ? JSON.parse(raw) : {}; if (payload.action === "poll") { oauthPollCount += 1; return json(oauthPollCount === 1 ? { status: "pending", message: "Authorization pending" } : { status: "success", message: "GitHub OAuth successful" }); } return json({ status: "pending", verification_uri: "https://auth.example.test/device", user_code: "ROCK-SOUL", device_code: "mock-device-code", interval: 1, expires_in: 60 }); }
   if (url.pathname === "/backend-api/v2/conversation") {
     for await (const chunk of req) { /* consume multipart attachment request */ }
     res.writeHead(200, { "content-type": "text/event-stream" });
@@ -229,7 +230,7 @@ try {
   ]) {
     await page.goto("http://127.0.0.1:4173" + route);
     await page.locator(selector).first().waitFor();
-    if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); await page.getByRole("button", { name: "Check quota" }).click(); await page.getByText(/remaining/).waitFor(); await page.getByRole("button", { name: "Start login" }).click(); await page.getByText("Continue authentication").waitFor(); }
+    if (route === "/providers/DemoProvider") { await page.locator('[data-route="/providers/"].active').waitFor(); await page.getByRole("button", { name: "Check health" }).click(); await page.getByText(/healthy/).waitFor(); await page.getByRole("button", { name: "Check quota" }).click(); await page.getByText(/remaining/).waitFor(); await page.getByRole("button", { name: "Start login" }).click(); await page.getByText("Continue authentication").waitFor(); await page.getByText("GitHub OAuth successful").waitFor(); assert.equal(oauthPollCount, 2, "device OAuth should poll until the provider confirms authorization"); }
     if (route === "/apps/") assert.ok(!(await page.locator(".workspace-card").first().getAttribute("href")).startsWith("javascript:"));
     if (route === "/private/") assert.equal(await page.locator(".upload-form input[type=password]").count(), 0);
   }
