@@ -59,7 +59,8 @@ See [rocksoul-ui-route-inventory.md](rocksoul-ui-route-inventory.md) for the pri
 - [ ] Automated route and browser workflows pass on the exact final `main` commit; GitHub Actions is currently queued and cannot yet be certified.
 - [ ] Real-provider streaming and provider authentication are verified.
 - [ ] Full interaction parity, localization, and accessibility review pass.
-- [x] CI validates Compose configuration and builds the canonical Docker image with bundled ROCKSOUL assets.\n- [ ] A live Coolify deployment/runtime smoke test is verified.
+- [x] CI validates Compose configuration and builds the canonical Docker image with bundled ROCKSOUL assets.
+- [ ] A live Coolify deployment/runtime smoke test is verified.
 
 ## Important boundary
 
