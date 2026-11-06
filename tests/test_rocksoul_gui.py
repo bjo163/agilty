@@ -309,6 +309,7 @@ def test_privileged_gui_guard_rejects_remote_without_api_key(monkeypatch):
 
     monkeypatch.setattr(AppConfig, "g4f_api_key", None)
     monkeypatch.delenv("G4F_API_KEY", raising=False)
+    monkeypatch.delenv("G4F_GUI_TRUSTED_IPS", raising=False)
     app = Flask(__name__)
     with app.test_request_context("/", environ_base={"REMOTE_ADDR": "203.0.113.10"}):
         assert not _privileged_request_allowed()
@@ -416,4 +417,18 @@ def test_canonical_compose_has_healthcheck_restart_and_api_key_configuration():
     assert "healthcheck:" in compose
     assert "/backend-api/v2/status" in compose
     assert "G4F_API_KEY=${G4F_API_KEY:-}" in compose
+    assert "G4F_GUI_TRUSTED_IPS=" in compose
     assert "g4f-data:/data/g4f" in compose
+
+
+
+def test_privileged_gui_guard_accepts_explicit_trusted_network(monkeypatch):
+    from g4f.config import AppConfig
+    from g4f.gui.server.backend_api import _privileged_request_allowed
+
+    monkeypatch.setattr(AppConfig, "g4f_api_key", None)
+    monkeypatch.delenv("G4F_API_KEY", raising=False)
+    monkeypatch.setenv("G4F_GUI_TRUSTED_IPS", "172.16.0.0/12,192.168.65.1/32")
+    app = Flask(__name__)
+    with app.test_request_context("/", environ_base={"REMOTE_ADDR": "192.168.65.1"}):
+        assert _privileged_request_allowed()
