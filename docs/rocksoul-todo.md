@@ -550,7 +550,7 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Migrate status and model catalog using existing runtime status/version/model APIs.
 - [x] Migrate usage statistics using the existing usage ledger API.
 - [x] Migrate backend logs using the existing diagnostics endpoint.
-- [x] Migrate Agent and Browser pages to live WebMCP tool discovery; no tools are fabricated and no second agent runtime is started.
+- [x] Migrate Agent and Browser pages to live WebMCP tool discovery and explicit per-invocation confirmed execution through the existing endpoint; no tools are fabricated and no second agent runtime is started.
 - [x] Migrate Playground to the existing model/chat API.
 - [x] Migrate Apps to the existing PA provider registry.
 - [x] Migrate Private utilities to the existing guarded JSON/HAR cookie upload endpoint; cookie contents are never exposed in the UI.
