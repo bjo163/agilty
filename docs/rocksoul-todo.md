@@ -645,3 +645,14 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - Added browser and Flask regression coverage for export controls, media elements, regeneration, and Private utility script safety.
 
 - [x] Add browser-local conversation history search, rename, pin/unpin, delete, and clear-all controls; clearly distinguish local deletion from server-shared snapshot deletion.
+
+
+### Returned media rendering continuation — 2026-11-06
+
+- [x] Consume `urls` and `alt` metadata from the existing g4f conversation SSE events without adding a new backend or media service.
+- [x] Render returned image URLs as safe Markdown images and returned video/audio URLs as native browser media controls when their file extensions are recognized.
+- [x] Preserve the same-origin/HTTP(S) URL allowlist; reject unsafe schemes and keep raw HTML/SVG execution disabled.
+- [x] Extend Playwright attachment-flow coverage to assert returned image, video, and audio elements render from the existing conversation endpoint.
+- [ ] Verify document extraction/upload parity and real-provider media behavior with configured providers.
+- [ ] Verify exact-main GitHub Actions completion after this change.
+- [ ] Coolify deployment testing is explicitly not required by project owner; do not spend time or block on it.
