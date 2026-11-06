@@ -97,3 +97,11 @@ ROCKSOUL is the new UI for the primary live GUI surfaces. This does not mean eve
 - Markdown raster images (PNG/JPEG/GIF/WebP) are supported, including validated base64 image data URLs. Linked audio/video files render with native controls when their extension is recognized and URL passes the same-origin/HTTP(S) policy.
 - Fixed a stale variable reference in the Private utility upload handler that could throw after a successful upload.
 - Browser E2E now covers Markdown media, export download names, and regeneration request dispatch. Python route/UI tests assert the new controls and private upload regression guard.
+
+
+## Conversation history management
+
+- Added local history search across conversation titles and message text.
+- Added pin/unpin, rename, and delete-from-local-history actions, plus clear-all local history.
+- Deleting/clearing browser history does not claim to delete a server-shared snapshot; the UI warns about that boundary.
+- History management remains browser-local and does not add a new backend/session store.
