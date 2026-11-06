@@ -19,11 +19,11 @@ The following work has been implemented on `main`, but none of the seven issues 
 | Milestone | Current state | Tracking |
 |---|---|---|
 | RS-UI-M01 | Trust guard and regression coverage implemented; exact-main and remote-proxy verification pending | [#25](https://github.com/bjo163/agilty/issues/25) |
-| RS-UI-M02 | Accessibility baseline implemented; automated viewport, visible-control-name, reduced-motion, and WCAG AA theme-token checks added; assistive-technology certification pending | [#26](https://github.com/bjo163/agilty/issues/26) |
-| RS-UI-M03 | EN/ID selector and initial catalog implemented; translation completeness QA pending | [#27](https://github.com/bjo163/agilty/issues/27) |
+| RS-UI-M02 | Automated viewport and accessible-name browser checks; WCAG AA theme-token test; reduced-motion CSS and regression assertions added. Screen-reader/keyboard/zoom certification pending | [#26](https://github.com/bjo163/agilty/issues/26) |
+| RS-UI-M03 | EN/ID selector, expanded page/workflow/error catalog, and translation of history controls/select options implemented. Full route/state coverage QA pending | [#27](https://github.com/bjo163/agilty/issues/27) |
 | RS-UI-M04 | Opt-in live-provider harness implemented; actual provider run pending | [#28](https://github.com/bjo163/agilty/issues/28) |
 | RS-UI-M05 | Existing file API document flow implemented and mocked; real-format fixture validation pending | [#29](https://github.com/bjo163/agilty/issues/29) |
-| RS-UI-M06 | Unsafe/missing app actions are non-clickable; deeper legacy parity audit pending | [#30](https://github.com/bjo163/agilty/issues/30) |
+| RS-UI-M06 | Unsafe/missing app actions remain informational; nested legacy chat/apps/private HTML routes are explicitly preserved with regression tests. Remaining asset/action parity audit pending | [#30](https://github.com/bjo163/agilty/issues/30) |
 | RS-UI-M07 | Compose health/restart/backup guidance implemented; real Docker host smoke pending | [#31](https://github.com/bjo163/agilty/issues/31) |
 
 Evidence and remaining gates are tracked in `docs/rocksoul-todo.md`, `docs/rocksoul-ui-finalization.md`, and the linked issues. "Implemented" is not equivalent to "certified".
