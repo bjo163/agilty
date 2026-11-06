@@ -500,7 +500,7 @@ Stage 2 recovery commit `5b818f839c33150a48818b8f352161fc3ecf7c94` passed its cu
 - [x] Mount the frontend through the existing g4f GUI serving boundary; / and /chat/ use it by default and ROCKSOUL_UI_ENABLED=0 restores legacy home/chat HTML.
 - [x] Implement initial incremental SSE text streaming through the existing /v1/chat/completions API; real-provider/disconnect regression tests remain open.
 - [x] Populate the model selector from the existing /v1/models endpoint; no duplicate registry.
-- [x] Implement initial browser-local conversation list/history. Server-backed session continuity, cookies, provider login, attachments, tools, media and settings parity remain open.
+- [x] Implement browser-local conversation history plus explicit opt-in server sharing/restoration through the existing /backend-api/v2/chat/<id> endpoint. Shared links are readable by anyone possessing the link; ordinary conversations remain local by default.
 - [ ] Add desktop/mobile, dark/light, keyboard/accessibility and Indonesian/English UI verification.
 - [ ] Make / and /chat/ serve ROCKSOUL by default only after parity tests pass.
 - [ ] Keep a documented legacy UI rollback path until at least one certified release.
@@ -532,7 +532,7 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Make browser-local history/theme storage failures non-fatal so restricted browser contexts can still use the chat UI.
 - [ ] Run the browser workflow successfully on the exact final `main` commit; no successful run has been confirmed yet.
 - [ ] Add live-provider streaming and upstream cancellation verification.
-- [ ] Complete remaining legacy route parity, server-backed session behavior, attachments/tool/media, accessibility/localization, and Coolify runtime certification.
+- [ ] Complete rich returned-media rendering, provider-specific auth polling, legacy sub-page parity, full accessibility/localization QA, and Coolify runtime certification.
 
 ### UI cutover clarification
 
@@ -558,9 +558,36 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [x] Add route regression coverage proving nested chat/apps/private static assets continue through their original handlers.
 - [x] Add Flask route coverage for all primary GUI page handlers and verify legacy rollback behavior when `ROCKSOUL_UI_ENABLED=0`.
 - [x] Extend Playwright mocks and browser checks to every migrated workspace page, including confirmed WebMCP tool invocation.
-- [ ] Verify all route/browser workflows green on exact final `main`.
-- [ ] Verify live-provider chat, OAuth/login behavior, and upstream cancellation semantics.
-- [ ] Complete full legacy interaction parity for attachments, media rendering, tool execution permissions, browser research, and provider-specific controls.
-- [ ] Complete accessibility, responsive, Indonesian/English localization, wheel/Docker, and Coolify release gates.
+- [ ] Verify all route/browser workflows green on exact final main; the current GitHub Actions runs are queued, not certified.
+- [ ] Verify live-provider chat, OAuth/device-flow behavior, and upstream cancellation semantics.
+- [x] Add native image/audio/video attachment submission through existing /backend-api/v2/conversation; [ ] complete rich returned-media rendering and document extraction parity.
+- [x] Expose provider login, health, and quota controls through existing g4f endpoints; [ ] verify live OAuth/device-flow behavior.
+- [x] Add explicit WebMCP confirmation and metadata-only invocation outcome logging; [ ] add fine-grained permission policy and searchable audit UX if required.
+- [x] Add keyboard focus-visible, reduced-motion and high-contrast affordances.
+- [x] Validate wheel assets, Compose configuration, and Docker image asset inclusion in CI.
+- [ ] Complete screen-reader/contrast/responsive QA, Indonesian/English localization, and live Coolify runtime smoke test.
 
 **Migration boundary:** the primary live GUI pages now use ROCKSOUL. Historical snapshots, static assets, media delivery, APIs, and arbitrary legacy content URLs are deliberately preserved. The remaining items above are real parity and release gates; do not mark them done based only on route-shell mounting or mocked browser tests.
+
+
+
+### Final hardening continuation — 2026-11-06
+
+- [x] Audit exact main source for existing g4f capabilities before adding any UI-owned backend.
+- [x] Persist and restore conversations only after explicit Share chat consent, using the existing /backend-api/v2/chat/<id> endpoint. Normal conversations stay browser-local. The UI warns that anyone with the link can read shared content.
+- [x] Add browser test coverage for shared-link restore and the opt-in share flow.
+- [x] Add media attachment picker and submit image/audio/video files as multipart uploads to existing /backend-api/v2/conversation; no upload microservice or second gateway was introduced.
+- [x] Add provider login, health, and quota controls using existing /backend-api/v2/oauth/<provider>, /backend-api/v2/health/<provider>, and /backend-api/v2/quota/<provider> endpoints.
+- [x] Record metadata-only WebMCP invocation outcomes via existing /backend-api/v2/log; do not persist raw tool arguments or secrets in the audit event.
+- [x] Add keyboard focus-visible and prefers-contrast affordances; preserve reduced-motion support.
+- [x] Expand Playwright mocks for shared conversation restoration, media attachment submission, provider health/login controls, and confirmed tool execution.
+- [x] Add canonical Docker image build and bundled ROCKSOUL asset smoke check to ROCKSOUL CI, alongside existing wheel and Compose checks.
+- [x] Parse-check the current app.js and browser E2E module source.
+- [ ] Await GitHub Actions execution on the final exact main HEAD. Runs observed for this continuation are queued; do not infer success from queued status.
+- [ ] Verify actual provider streaming, OAuth/device-code polling, returned image/audio/video rendering, and upstream disconnect behavior with configured provider credentials.
+- [ ] Perform real Coolify deployment and HTTP smoke test. This cannot be certified from repository-only access.
+- [ ] Complete legacy Apps/private nested page interaction parity, full screen-reader QA, and Indonesian/English localization.
+
+**Privacy boundary:** Share chat is opt-in because the existing g4f share endpoint stores a JSON snapshot in the server bucket and exposes it to anyone with the generated ID. Unshared conversations are not sent to that endpoint. Attachment files are uploaded only when the user sends a message containing selected media.
+
+**Verification boundary:** source syntax checks are not a substitute for executing Playwright/Pytest. Mocked browser coverage is not live-provider validation. Docker CI configuration is not a successful Docker build until its job completes; a repository commit is not a live Coolify deployment.
