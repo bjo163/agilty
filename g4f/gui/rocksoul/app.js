@@ -47,7 +47,7 @@ function renderHistory(){
 }
 function addMessage(role,content){const c=current();if(!c)return;c.messages.push({role,content});if(role==="user"&&c.messages.filter(m=>m.role==="user").length===1)c.title=String(content).slice(0,48);save();renderHistory();renderMessages()}
 function safeMediaSrc(value){const raw=String(value||"").trim();if(/^data:image\/(?:png|jpeg|gif|webp);base64,[a-z0-9+/]+=*$/i.test(raw))return raw;return safeHref(raw)==="#"?null:safeHref(raw)}
-function safeAudioSrc(value){const raw=String(value||"").trim();if(/^data:audio\/(?:mpeg|mp3|wav|x-wav|ogg|mp4|aac|webm|flac);base64,[a-z0-9+/]+=*$/i.test(raw))return raw;const href=safeHref(raw);return href==="#"?null:href}
+function safeAudioSrc(value){const raw=String(value||"").trim();if(/^data:audio\/(?:mpeg|mp3|wav|x-wav|ogg|mp4|aac|webm|flac);base64,[a-z0-9+/]+=*$/i.test(raw))return raw;const href=safeHref(raw);if(href==="#")return null;const path=href.split(/[?#]/)[0].toLowerCase();return /\.(mp3|wav|ogg|m4a|aac|flac)$/.test(path)?href:null}
 function mediaMarkdown(event){const urls=Array.isArray(event?.urls)?event.urls:[];const alt=String(event?.alt||"Generated media").replace(/[\[\]\r\n]/g," ").slice(0,120);return urls.map(value=>{const href=safeHref(value);if(href==="#")return "";const path=href.split(/[?#]/)[0].toLowerCase();if(/\.(png|jpe?g|gif|webp|avif)$/.test(path))return `![${alt}](${href})`;if(/\.(mp4|webm|mov|m4v)$/.test(path))return `[Video: ${alt}](${href})`;if(/\.(mp3|wav|ogg|m4a|aac|flac)$/.test(path))return `[Audio: ${alt}](${href})`;return `[Open media: ${alt}](${href})`}).filter(Boolean).join("\n\n")}
 function appendInlineMarkdown(parent,source){
  const pattern=/(!\[[^\]]*\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;let cursor=0,match;
