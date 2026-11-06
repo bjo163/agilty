@@ -634,3 +634,12 @@ ROCKSOUL UI replacement is not complete until the actual frontend is mounted in 
 - [ ] Await fresh browser smoke and full CI on the latest `main`; live provider and Coolify checks remain external release gates.
 
 - [x] Add browser smoke coverage for assistant-message copy in addition to code-block copy.
+
+
+### Latest chat parity pass
+
+- Added text-only assistant regeneration by replaying the preceding user turn through the existing `/v1/chat/completions` endpoint; regeneration for file attachment turns is visibly disabled until g4f attachment replay semantics are confirmed.
+- Added explicit Markdown (`.md`) and JSON (`.json`) conversation exports. Exports are generated client-side from the current local conversation.
+- Added Markdown raster image, audio, and video rendering. Raster data URLs are limited to PNG/JPEG/GIF/WebP base64; external media links must pass HTTP(S)/same-origin URL validation. Raw HTML and SVG data URLs are not executed.
+- Fixed a stale `key.value` reference in the Private utility upload success handler that could throw after a successful upload.
+- Added browser and Flask regression coverage for export controls, media elements, regeneration, and Private utility script safety.
