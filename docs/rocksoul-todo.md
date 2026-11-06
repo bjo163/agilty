@@ -687,3 +687,51 @@ Still not certified and must not be described as 100%:
 - Legacy nested Apps/Private interaction parity where not covered by primary-page smoke tests.
 
 Coolify deployment certification is explicitly out of scope per project-owner direction. Local Docker Compose is the supported repository smoke path.
+
+
+
+### Independent UI milestones — implementation continuation 2026-11-06
+
+The work packages in [docs/rocksoul-next-milestones.md](rocksoul-next-milestones.md) are independent. The following implementation is now present in the repository; open acceptance gates remain open until the exact final-main CI and applicable runtime checks pass.
+
+#### RS-UI-M01 — backend trust boundary
+- [x] Add a shared server-side trust guard for WebMCP, diagnostic logs, usage reads/writes, file-bucket upload/read/delete, cookie/HAR upload, and shared-chat writes.
+- [x] Accept loopback and explicitly configured trusted source CIDRs; require a constant-time matching `G4F_API_KEY` for other remote callers.
+- [x] Pass a Docker bridge trusted-CIDR default through canonical Compose while keeping published ports bound to loopback.
+- [x] Add tests for loopback, untrusted remote, trusted CIDR, matching API key, and route-family guard wiring.
+- [ ] Run the new route tests on exact final main and verify the actual remote proxy-header contract in a deployed environment.
+- [ ] Review all remaining legacy routes before any public exposure; this guard is not global authentication or per-user authorization.
+
+#### RS-UI-M02 — accessibility and responsive baseline
+- [x] Add skip navigation, named sidebar/main/conversation landmarks, active-route `aria-current`, visible keyboard focus, and reduced-motion behavior.
+- [x] Add deterministic assertions for the baseline.
+- [ ] Complete manual keyboard, screen-reader, contrast, zoom, and desktop/tablet/mobile QA.
+
+#### RS-UI-M03 — Indonesian and English localization
+- [x] Add a persisted EN/ID locale selector, browser-language default, UI string catalog, and English fallback.
+- [x] Add browser checks for locale selection and persistence.
+- [ ] Complete translation coverage for every primary-page state, dynamic validation/error copy, and all responsive layouts.
+
+#### RS-UI-M04 — real-provider compatibility harness
+- [x] Add `tests/rocksoul-provider-smoke.mjs` for opt-in model discovery, non-streaming, streaming, and optional client-abort probing through the existing g4f runtime.
+- [x] Keep the harness opt-in and credential-free in CI; redact endpoint credentials from output.
+- [ ] Run against a configured real provider/model and record provider-specific streaming/cancellation results. No live provider result is claimed yet.
+
+#### RS-UI-M05 — attachment and document parity
+- [x] Keep image/audio/video uploads on the existing `/backend-api/v2/conversation` endpoint.
+- [x] Add supported document upload/extraction through existing `/backend-api/v2/files/<bucket_id>` and `/stream` APIs; pass extracted text as context and delete temporary buckets.
+- [x] Add mocked browser coverage for extraction, prompt context, and cleanup.
+- [ ] Validate PDF/DOCX/ODT/EPUB/XLSX and plain-text extraction against locally installed optional dependencies and real fixtures.
+
+#### RS-UI-M06 — Apps and Private parity
+- [x] Keep Apps sourced from the existing PA provider registry.
+- [x] Render missing/unsafe launch URLs as informational cards, not clickable actions.
+- [x] Keep Private utility limited to existing JSON/HAR import; update its security guidance to reflect the server guard.
+- [ ] Audit and verify any additional legacy nested Apps/Private actions before claiming full legacy parity.
+
+#### RS-UI-M07 — local Compose operator experience
+- [x] Add init/restart policy, status healthcheck, optional `G4F_API_KEY` pass-through, and trusted Docker bridge CIDR configuration.
+- [x] Document readiness, logs, named-volume backup, and restore commands in README.
+- [ ] Run `docker compose config`, clean build/start/health, volume persistence, and backup/restore on a real Docker host. Coolify remains explicitly out of scope.
+
+**Completion rule:** a checked implementation item above does not close its milestone if a separate acceptance gate remains unchecked. Keep the issue open until its complete acceptance criteria and exact-main evidence are satisfied.
