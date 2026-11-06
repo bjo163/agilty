@@ -15,13 +15,30 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === "/v1/chat/completions") {
+    let raw = "";
+    for await (const chunk of req) raw += chunk;
+    let prompt = "";
+    try {
+      const payload = JSON.parse(raw);
+      prompt = payload.messages?.at(-1)?.content || "";
+    } catch {}
+    if (prompt === "trigger error") {
+      res.writeHead(503, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: { message: "mock provider unavailable" } }));
+      return;
+    }
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+    if (prompt === "stop after partial") {
+      res.write('data: {"choices":[{"delta":{"content":"partial before stop"}}]}\n\n');
+      // Keep the stream open so the browser Stop control exercises AbortController.
+      return;
+    }
     res.write('data: {"choices":[{"delta":{"content":"ROCKSOUL browser test"}}]}\n\n');
     res.write("data: [DONE]\n\n");
     res.end();
     return;
   }
-  const relative = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/rocksoul-assets\//, "");
+  const relative = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\\/rocksoul-assets\\//, "");
   if (relative.includes("..") || relative.startsWith("/")) {
     res.writeHead(404).end();
     return;
@@ -43,13 +60,28 @@ try {
   const page = await browser.newPage();
   await page.goto("http://127.0.0.1:4173/");
   await page.locator("#model-select option[value='browser-test-model']").waitFor();
+  assert.equal(await page.locator("#model-select").inputValue(), "auto");
+
   await page.locator("#prompt").fill("Say hello");
   await page.locator("#send").click();
   await page.getByText("ROCKSOUL browser test").waitFor();
-  assert.equal(await page.locator("#model-select").inputValue(), "auto");
+
   await page.locator("#new-chat").click();
-  assert.equal(await page.locator("#prompt").inputValue(), "");
-  console.log("ROCKSOUL browser smoke passed: shell, assets, model discovery, streaming, new chat.");
+  await page.locator("#prompt").fill("trigger error");
+  await page.locator("#send").click();
+  await page.getByText(/mock provider unavailable/).waitFor();
+
+  await page.locator("#new-chat").click();
+  await page.locator("#prompt").fill("stop after partial");
+  await page.locator("#send").click();
+  await page.getByText("partial before stop").waitFor();
+  await page.locator("#stop").waitFor({ state: "visible" });
+  await page.locator("#stop").click();
+  await page.locator("#stop").waitFor({ state: "hidden" });
+  await page.reload();
+  await page.getByText("partial before stop").waitFor();
+
+  console.log("ROCKSOUL browser smoke passed: shell, model discovery, SSE, provider errors, stop, and persisted local history.");
 } finally {
   if (browser) await browser.close();
   await new Promise((resolveClose) => server.close(resolveClose));
