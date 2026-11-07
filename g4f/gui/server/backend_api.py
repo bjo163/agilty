@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
+import threading
 import hmac
 import ipaddress
 import flask
@@ -157,6 +159,65 @@ def _bounded_int_env(name: str, default: int, minimum: int, maximum: int) -> int
     except (TypeError, ValueError):
         value = default
     return max(minimum, min(value, maximum))
+
+
+_EXTRACTION_SLOTS = threading.BoundedSemaphore(
+    max(1, min(int(os.environ.get("G4F_EXTRACTION_MAX_WORKERS", "2")), 4))
+)
+
+
+def _extract_document_isolated(
+    file_path: str, extension: str, mimetype: str, recognition_language: str | None
+) -> str | None:
+    """Run an untrusted document parser in a bounded child process."""
+    from .document_worker import run_markitdown_extraction
+
+    timeout = _bounded_int_env("G4F_EXTRACTION_TIMEOUT_SECONDS", 30, 3, 120)
+    output_chars = _bounded_int_env("G4F_EXTRACTION_MAX_OUTPUT_CHARS", 1_000_000, 1000, 5_000_000)
+    memory_bytes = _bounded_int_env("G4F_EXTRACTION_MAX_MEMORY_MB", 1536, 256, 4096) * 1024 * 1024
+    cpu_seconds = _bounded_int_env("G4F_EXTRACTION_CPU_SECONDS", 25, 2, 120)
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    process = context.Process(
+        target=run_markitdown_extraction,
+        args=(send, file_path, extension, mimetype, recognition_language,
+              output_chars, memory_bytes, cpu_seconds),
+        name="g4f-document-extractor",
+    )
+    try:
+        process.start()
+        send.close()
+        if not receive.poll(timeout):
+            process.terminate()
+            process.join(timeout=2)
+            logger.warning("Document extraction exceeded its %s second deadline", timeout)
+            return None
+        try:
+            result = receive.recv()
+        except (EOFError, OSError):
+            result = None
+        process.join(timeout=1)
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=2)
+        if not isinstance(result, dict) or not result.get("ok"):
+            logger.warning("Document extraction worker failed or exited without a result")
+            return None
+        if result.get("truncated"):
+            logger.warning("Document extraction output was truncated at %s characters", output_chars)
+        return str(result.get("text") or "")
+    except (OSError, RuntimeError, ValueError):
+        logger.exception("Unable to start isolated document extraction worker")
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=2)
+        return None
+    finally:
+        receive.close()
+        try:
+            send.close()
+        except OSError:
+            pass
 
 
 def _parse_bool_query(value: str | None, default: bool) -> bool:
