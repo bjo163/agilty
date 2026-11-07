@@ -21,6 +21,8 @@ services:
       - G4F_CONFIG_DIR=/data/g4f
       - G4F_API_KEY=${G4F_API_KEY:-}
       - G4F_AUTH_MODE=${G4F_AUTH_MODE:-optional}
+      - G4F_RATE_LIMIT_PER_MINUTE=${G4F_RATE_LIMIT_PER_MINUTE:-120}
+      - G4F_MAX_INFLIGHT_PER_PRINCIPAL=${G4F_MAX_INFLIGHT_PER_PRINCIPAL:-4}
       - G4F_GUI_TRUSTED_IPS=${G4F_GUI_TRUSTED_IPS:-172.16.0.0/12,192.168.65.1/32}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=5)"]
