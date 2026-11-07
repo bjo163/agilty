@@ -162,7 +162,7 @@ def _bounded_int_env(name: str, default: int, minimum: int, maximum: int) -> int
 
 
 _EXTRACTION_SLOTS = threading.BoundedSemaphore(
-    max(1, min(int(os.environ.get("G4F_EXTRACTION_MAX_WORKERS", "2")), 4))
+    _bounded_int_env("G4F_EXTRACTION_MAX_WORKERS", 2, 1, 4)
 )
 
 
@@ -1158,6 +1158,7 @@ class Backend_Api(Api):
             os.makedirs(bucket_dir, exist_ok=True)
             filenames = []
             media = []
+            extraction_errors = []
             for file in uploaded_files:
                 filename = secure_filename(file.filename)
                 mimetype = file.mimetype.split(";")[0]
@@ -1167,19 +1168,23 @@ class Backend_Api(Api):
                 copyfile = get_tempfile(file, suffix)
                 result = None
                 if has_markitdown and not filename.endswith((".md", ".json", ".zip")):
-                    try:
-                        language = request.headers.get("x-recognition-language")
-                        md = MarkItDown()
-                        result = md.convert(
-                            copyfile,
-                            stream_info=StreamInfo(
-                                extension=suffix,
-                                mimetype=file.mimetype,
-                            ),
-                            recognition_language=language,
-                        ).text_content
-                    except Exception as e:
-                        logger.exception(e)
+                    acquired = _EXTRACTION_SLOTS.acquire(timeout=2)
+                    if not acquired:
+                        extraction_errors.append({
+                            "name": filename, "code": "extraction_capacity_exceeded"
+                        })
+                    else:
+                        try:
+                            result = _extract_document_isolated(
+                                copyfile, suffix, file.mimetype,
+                                request.headers.get("x-recognition-language"),
+                            )
+                            if result is None:
+                                extraction_errors.append({
+                                    "name": filename, "code": "extraction_failed_or_timed_out"
+                                })
+                        finally:
+                            _EXTRACTION_SLOTS.release()
                 is_media = is_allowed_extension(filename)
                 is_supported = result or supports_filename(filename)
                 if not is_media and not is_supported:
@@ -1234,7 +1239,10 @@ class Backend_Api(Api):
             ) as f:
                 for filename in filenames:
                     f.write(f"{filename}\n")
-            return jsonify({"bucket_id": bucket_id, "files": filenames, "media": media})
+            return jsonify({
+                "bucket_id": bucket_id, "files": filenames, "media": media,
+                "extraction_errors": extraction_errors,
+            })
 
         @app.route("/files/<bucket_id>/<file_type>/<filename>", methods=["GET"])
         def get_media(bucket_id, file_type: str, filename, dirname: str = None):
