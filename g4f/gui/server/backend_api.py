@@ -1135,7 +1135,7 @@ class Backend_Api(Api):
                     request.args.get("refine_chunks_with_spacy"), default=False
                 )
             except ValueError as error:
-                return jsonify({"error": {"message": str(error)}}), 400
+                return jsonify({"error": {"message": "Invalid query parameter"}}), 400
             event_stream = event_stream or "text/event-stream" in request.headers.get(
                 "Accept", ""
             )
