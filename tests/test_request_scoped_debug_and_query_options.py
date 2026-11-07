@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from g4f import debug
+from g4f.api import _api_auth_mode, _principal_id
 from g4f.gui.server.backend_api import _bounded_int_env, _parse_bool_query
 
 
@@ -58,6 +59,28 @@ class RequestDebugContextTests(unittest.TestCase):
             debug.logging = previous_logging
             debug.log_handler = previous_handler
         self.assertEqual(captured, [("inside",)])
+
+
+
+class ApiAuthPolicyTests(unittest.TestCase):
+    def test_auth_mode_defaults_to_optional_and_can_require_authentication(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(_api_auth_mode(), "optional")
+        with patch.dict(os.environ, {"G4F_AUTH_MODE": "required"}, clear=True):
+            self.assertEqual(_api_auth_mode(), "required")
+
+    def test_auth_mode_rejects_unknown_values(self):
+        with patch.dict(os.environ, {"G4F_AUTH_MODE": "sometimes"}, clear=True):
+            with self.assertRaises(ValueError):
+                _api_auth_mode()
+
+    def test_principal_id_is_stable_opaque_and_namespaced(self):
+        first = _principal_id("key", "example-secret")
+        second = _principal_id("key", "example-secret")
+        self.assertEqual(first, second)
+        self.assertTrue(first.startswith("key_"))
+        self.assertNotIn("example-secret", first)
+        self.assertNotEqual(first, _principal_id("user", "example-secret"))
 
 
 class UploadLimitConfigurationTests(unittest.TestCase):
