@@ -234,9 +234,23 @@ class WorkGraphLifecycleStore:
                         (graph_id,),
                     ).fetchall()
                 }
+                graph_nodes = {item.node_id: item for item in graph.nodes}
                 for dependency in node.depends_on:
                     if states.get(dependency) != "accepted":
                         raise WorkGraphLifecycleError(f"dependency {dependency} is not accepted")
+                    dependency_work_id = graph_nodes[dependency].work_id
+                    dependency_integrity = self.work_items.verify_event_chain(
+                        dependency_work_id, connection=conn
+                    )
+                    if not dependency_integrity.get("ok"):
+                        raise WorkGraphLifecycleError(
+                            f"dependency WorkItem integrity check failed: {dependency_work_id}"
+                        )
+                    dependency_item = self.work_items.get(dependency_work_id, connection=conn)
+                    if dependency_item is None or dependency_item["status"] != "accepted":
+                        raise WorkGraphLifecycleError(
+                            f"dependency WorkItem is no longer accepted: {dependency_work_id}"
+                        )
             # Child state is authoritative: graph lifecycle never substitutes
             # graph-level assertions for WorkItem approval or verifier acceptance.
             child_integrity = self.work_items.verify_event_chain(node.work_id, connection=conn)
