@@ -68,6 +68,10 @@ class ApiAuthPolicyTests(unittest.TestCase):
             self.assertEqual(_api_auth_mode(), "optional")
         with patch.dict(os.environ, {"G4F_AUTH_MODE": "required"}, clear=True):
             self.assertEqual(_api_auth_mode(), "required")
+        with patch.dict(os.environ, {"G4F_API_HOST": "0.0.0.0"}, clear=True):
+            self.assertEqual(_api_auth_mode(), "required")
+        with patch.dict(os.environ, {"G4F_API_HOST": "::1"}, clear=True):
+            self.assertEqual(_api_auth_mode(), "optional")
 
     def test_auth_mode_rejects_unknown_values(self):
         with patch.dict(os.environ, {"G4F_AUTH_MODE": "sometimes"}, clear=True):
