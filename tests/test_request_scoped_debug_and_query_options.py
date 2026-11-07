@@ -95,6 +95,10 @@ class UploadLimitConfigurationTests(unittest.TestCase):
             self.assertEqual(_bounded_int_env("G4F_MAX_UPLOAD_FILES", 10, 1, 50), 50)
         with patch.dict(os.environ, {"G4F_MAX_UPLOAD_FILES": "invalid"}, clear=True):
             self.assertEqual(_bounded_int_env("G4F_MAX_UPLOAD_FILES", 10, 1, 50), 10)
+        with patch.dict(os.environ, {"G4F_EXTRACTION_TIMEOUT_SECONDS": "999"}, clear=True):
+            self.assertEqual(_bounded_int_env("G4F_EXTRACTION_TIMEOUT_SECONDS", 30, 3, 120), 120)
+        with patch.dict(os.environ, {"G4F_EXTRACTION_MAX_OUTPUT_CHARS": "bad"}, clear=True):
+            self.assertEqual(_bounded_int_env("G4F_EXTRACTION_MAX_OUTPUT_CHARS", 1_000_000, 1000, 5_000_000), 1_000_000)
 
 
 class BooleanQueryParsingTests(unittest.TestCase):
