@@ -203,3 +203,15 @@ The following source changes are staged in [PR #60](https://github.com/bjo163/ag
 - Provider-independent /health/live and /health/ready endpoints are added; Compose now checks readiness rather than the provider-discovery status route.
 
 PR #60 also contains the test coverage and documentation for these changes. Do not close backend issues #34, #35, #37, #38, #43, or #45 until exact-head CI passes and each issue's remaining acceptance criteria are satisfied. The larger P0 security boundary/authentication work (#32–33), WorkGraph orchestration (#22–24), and UI/host certification (#25–31) remain open.
+
+
+## WorkGraph orchestration foundation — 2026-11-07
+
+The following additions are staged in PR #60 and remain subject to exact-head CI:
+
+- `g4f/rocksoul_work_graph_budget.py`: finite versioned aggregate graph caps; deterministic child budget intersections; conservative sum-of-node upper-bound checks; exact permission intersection; child approval remains independent; decision digest.
+- `WorkGraphStore.resolve_budget_and_authority`: validates every child WorkItem event chain and contract digest, persists the immutable decision, and appends an audit event. Repeated identical decisions are idempotent.
+- `g4f/rocksoul_work_graph_lifecycle.py`: optimistic expected-status/version transitions, dependency gating, child WorkItem integrity/approval/acceptance authority, optional-node-aware graph summary, idempotent cancellation, and hash-chained lifecycle events.
+- Offline tests cover budget bounds, authority non-expansion, persistence/idempotency, lifecycle transitions, dependency gates, cancellation and tamper detection.
+
+This is not yet an end-to-end worker dispatcher. Atomic claim leases, lease recovery, dispatch API/CLI/Console controls, cancellation propagation to providers, and Playwright role-boundary proof remain open. Do not close WorkGraph issues #22–24 until those acceptance criteria pass.
