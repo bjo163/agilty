@@ -220,8 +220,6 @@ class WorkGraphLifecycleStore:
             if current != expected_status or int(row["version"]) != expected_version:
                 raise WorkGraphLifecycleError("stale lifecycle state; expected status/version does not match")
             if target not in _NODE_TRANSITIONS[current]:
-                if target == current and current == "cancelled":
-                    return self.get(graph_id)
                 raise WorkGraphLifecycleError(f"illegal lifecycle transition: {current} -> {target}")
             # A node can become ready only after every dependency's WorkItem has
             # been accepted and its evidence chain verifies in this same transaction.
@@ -295,22 +293,32 @@ class WorkGraphLifecycleStore:
                 (graph_id,),
             ).fetchall()
             previous: dict[str, str | None] = {}
+            previous_status: dict[str, str] = {}
             counts: dict[str, int] = {}
             for row in rows:
                 node_id = row["node_id"]
                 expected_sequence = counts.get(node_id, 0) + 1
-                if row["sequence"] != expected_sequence or row["previous_hash"] != previous.get(node_id):
+                expected_from = previous_status.get(node_id, "pending")
+                if (row["sequence"] != expected_sequence or row["previous_hash"] != previous.get(node_id)
+                        or row["from_status"] != expected_from or row["to_status"] not in _NODE_TRANSITIONS.get(expected_from, set())):
                     return {"ok": False, "reason": "lifecycle_chain_discontinuous", "node_id": node_id}
-                event = {
-                    "event_id": row["event_id"], "graph_id": graph_id, "node_id": node_id,
-                    "sequence": row["sequence"], "from_status": row["from_status"],
-                    "to_status": row["to_status"], "expected_version": row["expected_version"],
-                    "payload": json.loads(row["payload_json"]),
-                    "previous_hash": row["previous_hash"], "created_at": row["created_at"],
-                }
+                try:
+                    payload = json.loads(row["payload_json"])
+                    if not isinstance(payload, dict):
+                        raise ValueError("payload must be an object")
+                    event = {
+                        "event_id": row["event_id"], "graph_id": graph_id, "node_id": node_id,
+                        "sequence": row["sequence"], "from_status": row["from_status"],
+                        "to_status": row["to_status"], "expected_version": row["expected_version"],
+                        "payload": payload,
+                        "previous_hash": row["previous_hash"], "created_at": row["created_at"],
+                    }
+                except (TypeError, ValueError):
+                    return {"ok": False, "reason": "lifecycle_payload_invalid", "node_id": node_id}
                 if self._hash(event) != row["event_hash"]:
                     return {"ok": False, "reason": "lifecycle_event_tampered", "node_id": node_id}
                 previous[node_id] = row["event_hash"]
+                previous_status[node_id] = row["to_status"]
                 counts[node_id] = expected_sequence
             for state in states:
                 if counts.get(state["node_id"], 0) != int(state["version"]):
