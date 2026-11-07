@@ -22,7 +22,6 @@ def run_markitdown_extraction(
                 import resource
                 resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds + 1))
                 resource.setrlimit(resource.RLIMIT_AS, (max_memory_bytes, max_memory_bytes))
-                resource.setrlimit(resource.RLIMIT_FSIZE, (max_output_chars * 4, max_output_chars * 4))
                 resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
             except (ImportError, OSError, ValueError):
                 pass
