@@ -688,7 +688,14 @@ from ..proxy.constants import (
 )
 
 def _api_auth_mode() -> str:
-    mode = os.environ.get("G4F_AUTH_MODE", "optional").strip().lower()
+    configured = os.environ.get("G4F_AUTH_MODE")
+    if configured is None:
+        # run_api records the bind host before importing the app factory.
+        # Unspecified non-loopback binds must not silently start keyless.
+        host = os.environ.get("G4F_API_HOST", "127.0.0.1").strip().lower().strip("[]")
+        mode = "optional" if host in {"127.0.0.1", "::1", "localhost"} else "required"
+    else:
+        mode = configured.strip().lower()
     if mode not in {"optional", "required"}:
         raise ValueError("G4F_AUTH_MODE must be optional or required")
     return mode
