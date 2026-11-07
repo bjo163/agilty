@@ -167,6 +167,16 @@ _EXTRACTION_SLOTS = threading.BoundedSemaphore(
 )
 
 
+def _stop_extraction_process(process) -> None:
+    if not process.is_alive():
+        return
+    process.terminate()
+    process.join(timeout=2)
+    if process.is_alive():
+        process.kill()
+        process.join(timeout=2)
+
+
 def _extract_document_isolated(
     file_path: str, extension: str, mimetype: str, recognition_language: str | None
 ) -> str | None:
@@ -189,8 +199,7 @@ def _extract_document_isolated(
         process.start()
         send.close()
         if not receive.poll(timeout):
-            process.terminate()
-            process.join(timeout=2)
+            _stop_extraction_process(process)
             logger.warning("Document extraction exceeded its %s second deadline", timeout)
             return None
         try:
@@ -198,9 +207,7 @@ def _extract_document_isolated(
         except (EOFError, OSError):
             result = None
         process.join(timeout=1)
-        if process.is_alive():
-            process.terminate()
-            process.join(timeout=2)
+        _stop_extraction_process(process)
         if not isinstance(result, dict) or not result.get("ok"):
             logger.warning("Document extraction worker failed or exited without a result")
             return None
@@ -209,9 +216,7 @@ def _extract_document_isolated(
         return str(result.get("text") or "")
     except (OSError, RuntimeError, ValueError):
         logger.exception("Unable to start isolated document extraction worker")
-        if process.is_alive():
-            process.terminate()
-            process.join(timeout=2)
+        _stop_extraction_process(process)
         return None
     finally:
         receive.close()
