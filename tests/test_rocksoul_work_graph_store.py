@@ -9,7 +9,8 @@ from pathlib import Path
 from g4f.rocksoul_db import RocksoulDB
 from g4f.rocksoul_work_graph import WorkGraph, WorkGraphNode
 from g4f.rocksoul_work_graph_store import WorkGraphStore, WorkGraphStoreError
-from g4f.rocksoul_contracts import AcceptanceCriterion, WorkItem
+from g4f.rocksoul_contracts import AcceptanceCriterion, ExecutionBudget, WorkItem
+from g4f.rocksoul_work_graph_budget import WorkGraphBudget
 from g4f.rocksoul_work_store import WorkItemStore
 from g4f.rocksoul_verification import VerificationProfile
 from g4f.rocksoul_verifier_engine import VerificationEngine
@@ -81,6 +82,40 @@ class WorkGraphStoreTests(unittest.TestCase):
         result = self.store.verify_event_chain("pipeline")
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "graph_contract_tampered")
+
+
+    def test_budget_authority_decision_is_persisted_and_idempotent(self):
+        work_store = WorkItemStore(self.db)
+        for work_id in ("work-build", "work-test"):
+            work_store.create(WorkItem(
+                work_id=work_id,
+                goal="Bounded graph work",
+                acceptance_criteria=(AcceptanceCriterion(
+                    criterion_id="done", description="Complete", verification_method="manual",
+                ),),
+                budget=ExecutionBudget(
+                    max_wall_time_seconds=30, max_attempts=1, max_repairs=0,
+                    max_tokens=1000, max_cost_usd=1.0,
+                ),
+                permissions=("files.read", "network.fetch"),
+            ))
+        budget = WorkGraphBudget(
+            max_wall_time_seconds=120, max_attempts=4, max_repairs=2,
+            max_tokens=5000, max_cost_usd=5.0,
+        )
+        first = self.store.resolve_budget_and_authority(
+            "pipeline", budget, ("files.read",), work_store
+        )
+        second = self.store.resolve_budget_and_authority(
+            "pipeline", budget, ("files.read",), work_store
+        )
+        self.assertFalse(first["idempotent"])
+        self.assertTrue(second["idempotent"])
+        self.assertEqual(first["decision"]["decision_digest"], second["decision"]["decision_digest"])
+        record = self.store.get("pipeline")
+        self.assertEqual(len(record["decisions"]), 1)
+        self.assertEqual(record["decisions"][0]["decision_digest"], first["decision"]["decision_digest"])
+        self.assertEqual(record["decisions"][0]["decision"]["nodes"][0]["permissions"], ["files.read"])
 
     def test_missing_graph_has_stable_failure(self):
         result = self.store.verify_event_chain("missing")
