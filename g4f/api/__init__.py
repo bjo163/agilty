@@ -1144,9 +1144,14 @@ class Api:
                         status_code=HTTP_401_UNAUTHORIZED,
                         content={"error": {"code": "invalid_api_key", "message": "A valid API key or authenticated session is required"}},
                     )
-                request.state.principal_id = _principal_id("user", str(verified_user))
+                # Basic auth verifies the same configured API secret; the
+                # client-controlled Basic username is not an independent identity.
+                principal_id = _principal_id(
+                    "key", hashlib.sha256(configured_key.encode("utf-8")).hexdigest()
+                )
+                request.state.principal_id = principal_id
                 request.state.authenticated = True
-                request = update_headers(request, str(verified_user), True)
+                request = update_headers(request, principal_id, True)
             response = await call_next(request)
             return response
 
