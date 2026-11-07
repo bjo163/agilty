@@ -91,14 +91,6 @@ class WorkGraphLifecycleStore:
         integrity = self.graph_store.verify_event_chain(graph_id)
         if not integrity.get("ok"):
             raise WorkGraphLifecycleError("WorkGraph integrity verification failed")
-        if target == "cancelled":
-            try:
-                snapshot = self.get(graph_id)
-                current_node = next((item for item in snapshot["nodes"] if item["node_id"] == node_id), None)
-                if current_node is not None and current_node["status"] == "cancelled":
-                    return snapshot
-            except WorkGraphLifecycleError:
-                pass
         with self.db.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             graph_row = conn.execute(
@@ -193,6 +185,14 @@ class WorkGraphLifecycleStore:
         encoded_payload = self._canonical(dict(payload or {}))
         if len(encoded_payload.encode("utf-8")) > 65536:
             raise WorkGraphLifecycleError("lifecycle event payload exceeds 64 KiB")
+        if target == "cancelled":
+            try:
+                snapshot = self.get(graph_id)
+                current_node = next((item for item in snapshot["nodes"] if item["node_id"] == node_id), None)
+                if current_node is not None and current_node["status"] == "cancelled":
+                    return snapshot
+            except WorkGraphLifecycleError:
+                pass
         with self.db.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             graph_row = conn.execute(
