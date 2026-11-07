@@ -206,10 +206,21 @@ class WorkGraphStore:
                 encoded = self._canonical(decision)
             except (TypeError, ValueError) as exc:
                 raise WorkGraphStoreError(f"WorkGraph budget/authority resolution failed: {exc}") from exc
+            existing = conn.execute(
+                "SELECT created_at FROM rocksoul_work_graph_decisions WHERE graph_id=? AND decision_digest=?",
+                (graph_id, decision["decision_digest"]),
+            ).fetchone()
+            if existing:
+                return {
+                    "graph_id": graph_id,
+                    "decision": decision,
+                    "created_at": existing["created_at"],
+                    "persisted": True,
+                    "idempotent": True,
+                }
             created_at = datetime.now(timezone.utc).isoformat(timespec="microseconds")
             conn.execute(
-                """INSERT OR IGNORE INTO rocksoul_work_graph_decisions
-                   (graph_id,decision_digest,decision_json,created_at) VALUES(?,?,?,?)""",
+                "INSERT INTO rocksoul_work_graph_decisions(graph_id,decision_digest,decision_json,created_at) VALUES(?,?,?,?)",
                 (graph_id, decision["decision_digest"], encoded, created_at),
             )
             self._append_event(conn, graph_id, "graph.budget_authority_resolved", {
@@ -222,6 +233,7 @@ class WorkGraphStore:
                 "decision": decision,
                 "created_at": created_at,
                 "persisted": True,
+                "idempotent": False,
             }
 
     def list(self, *, limit: int = 50, offset: int = 0) -> dict[str, Any]:
