@@ -41,11 +41,7 @@ class WorkGraphLifecycleTests(unittest.TestCase):
         self.temp.cleanup()
 
     def _accept_build_work_item(self):
-        for current, target in (
-            ("pending", "planning"), ("planning", "ready"),
-            ("ready", "running"), ("running", "verifying"),
-        ):
-            self.work_store.transition("work-build", target, expected_status=current)
+        self.work_store.transition("work-build", "verifying", expected_status="running")
         profile = VerificationProfile.from_dict({
             "schema_version": 1, "profile_id": "graph.lifecycle", "version": 1,
             "adapter_id": "artifact_digest",
