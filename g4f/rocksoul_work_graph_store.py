@@ -410,4 +410,42 @@ class WorkGraphStore:
             first_payload = json.loads(rows[0]["payload_json"])
             if rows[0]["event_type"] != "graph.created" or first_payload.get("graph_digest") != graph.digest:
                 return {"ok": False, "reason": "graph_creation_event_invalid", "verified_events": 0}
-            return {"ok": True, "reason": None, "verified_events": len(rows), "graph_digest": graph.digest}
+            decisions = conn.execute(
+                "SELECT decision_digest,decision_json FROM rocksoul_work_graph_decisions WHERE graph_id=?",
+                (graph_id,),
+            ).fetchall()
+            persisted_decisions = {}
+            for decision_row in decisions:
+                try:
+                    decision = json.loads(decision_row["decision_json"])
+                    if not isinstance(decision, dict):
+                        raise ValueError("decision must be an object")
+                    supplied_digest = decision.get("decision_digest")
+                    digest_payload = dict(decision)
+                    digest_payload.pop("decision_digest", None)
+                    computed_digest = self._hash(digest_payload)
+                except (TypeError, ValueError):
+                    return {"ok": False, "reason": "graph_decision_invalid", "verified_events": len(rows)}
+                if (supplied_digest != decision_row["decision_digest"]
+                        or computed_digest != supplied_digest
+                        or decision.get("graph_id") != graph_id
+                        or decision.get("graph_digest") != graph.digest):
+                    return {"ok": False, "reason": "graph_decision_tampered", "verified_events": len(rows)}
+                persisted_decisions[supplied_digest] = decision
+            referenced_decisions = set()
+            for row in rows:
+                if row["event_type"] != "graph.budget_authority_resolved":
+                    continue
+                payload = json.loads(row["payload_json"])
+                decision_digest = payload.get("decision_digest")
+                decision = persisted_decisions.get(decision_digest)
+                if (decision is None or payload.get("graph_digest") != graph.digest
+                        or payload.get("node_count") != len(decision.get("nodes", []))):
+                    return {"ok": False, "reason": "graph_decision_event_mismatch", "verified_events": len(rows)}
+                referenced_decisions.add(decision_digest)
+            if referenced_decisions != set(persisted_decisions):
+                return {"ok": False, "reason": "graph_decision_event_missing", "verified_events": len(rows)}
+            return {
+                "ok": True, "reason": None, "verified_events": len(rows),
+                "verified_decisions": len(persisted_decisions), "graph_digest": graph.digest,
+            }
