@@ -28,6 +28,7 @@ services:
       - G4F_EXTRACTION_CPU_SECONDS=${G4F_EXTRACTION_CPU_SECONDS:-25}
       - G4F_EXTRACTION_MAX_MEMORY_MB=${G4F_EXTRACTION_MAX_MEMORY_MB:-1536}
       - G4F_EXTRACTION_MAX_WORKERS=${G4F_EXTRACTION_MAX_WORKERS:-2}
+      - G4F_MAX_IMAGE_PIXELS=${G4F_MAX_IMAGE_PIXELS:-40000000}
       - G4F_GUI_TRUSTED_IPS=${G4F_GUI_TRUSTED_IPS:-172.16.0.0/12,192.168.65.1/32}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=5)"]
