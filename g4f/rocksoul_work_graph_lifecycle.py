@@ -290,7 +290,6 @@ class WorkGraphLifecycleStore:
             with self.db.connect() as conn:
                 return self.verify_event_chain(graph_id, connection=conn)
         conn = connection
-    with self.db.connect() as conn:
         states = conn.execute(
             "SELECT node_id,status,version FROM rocksoul_work_graph_node_state WHERE graph_id=? ORDER BY node_id",
             (graph_id,),
