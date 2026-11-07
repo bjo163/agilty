@@ -117,6 +117,39 @@ class WorkGraphStoreTests(unittest.TestCase):
         self.assertEqual(record["decisions"][0]["decision_digest"], first["decision"]["decision_digest"])
         self.assertEqual(record["decisions"][0]["decision"]["nodes"][0]["permissions"], ["files.read"])
 
+    def test_detects_persisted_budget_decision_tampering(self):
+        work_store = WorkItemStore(self.db)
+        for work_id in ("work-build", "work-test"):
+            work_store.create(WorkItem(
+                work_id=work_id,
+                goal="Bounded graph work",
+                acceptance_criteria=(AcceptanceCriterion(
+                    criterion_id="done", description="Complete", verification_method="manual",
+                ),),
+                budget=ExecutionBudget(
+                    max_wall_time_seconds=30, max_attempts=1, max_repairs=0,
+                    max_tokens=1000, max_cost_usd=1.0,
+                ),
+                permissions=("files.read",),
+            ))
+        self.store.resolve_budget_and_authority(
+            "pipeline",
+            WorkGraphBudget(
+                max_wall_time_seconds=120, max_attempts=4, max_repairs=2,
+                max_tokens=5000, max_cost_usd=5.0,
+            ),
+            ("files.read",),
+            work_store,
+        )
+        with self.db.connect() as conn:
+            conn.execute(
+                "UPDATE rocksoul_work_graph_decisions SET decision_json=? WHERE graph_id=?",
+                (json.dumps({"decision_digest": "0" * 64}), "pipeline"),
+            )
+        result = self.store.verify_event_chain("pipeline")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "graph_decision_tampered")
+
     def test_missing_graph_has_stable_failure(self):
         result = self.store.verify_event_chain("missing")
         self.assertFalse(result["ok"])
