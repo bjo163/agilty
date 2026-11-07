@@ -1166,18 +1166,16 @@ class Api:
                 request.state.authenticated = False
                 return await _call_with_principal_limit(request, call_next, limiter)
 
-            supplied_key = None
-            try:
-                supplied_key = await self.get_g4f_api_key(request)
-            except HTTPException:
-                try:
-                    credentials = await self.security(request)
-                except HTTPException:
-                    credentials = None
-                supplied_key = getattr(credentials, "credentials", None)
-            valid_key = bool(
-                supplied_key
-                and secrets.compare_digest(configured_key, supplied_key)
+            supplied_candidates = [
+                request.headers.get("g4f-api-key", ""),
+                request.headers.get("x-api-key", ""),
+            ]
+            authorization_header = request.headers.get("authorization", "")
+            if authorization_header.lower().startswith("bearer "):
+                supplied_candidates.append(authorization_header[7:].strip())
+            valid_key = any(
+                candidate and secrets.compare_digest(configured_key, candidate)
+                for candidate in supplied_candidates
             )
             if valid_key:
                 principal_id = _principal_id("key", hashlib.sha256(supplied_key.encode("utf-8")).hexdigest())
