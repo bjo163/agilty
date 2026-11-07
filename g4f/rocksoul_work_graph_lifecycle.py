@@ -93,6 +93,9 @@ class WorkGraphLifecycleStore:
             raise WorkGraphLifecycleError("WorkGraph integrity verification failed")
         with self.db.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
+            lifecycle_integrity = self.verify_event_chain(graph_id, connection=conn)
+            if not lifecycle_integrity.get("ok"):
+                raise WorkGraphLifecycleError("WorkGraph lifecycle integrity verification failed")
             graph_row = conn.execute(
                 "SELECT graph_json,graph_digest FROM rocksoul_work_graphs WHERE graph_id=?",
                 (graph_id,),
@@ -280,52 +283,58 @@ class WorkGraphLifecycleStore:
             )
         return self.get(graph_id)
 
-    def verify_event_chain(self, graph_id: str) -> dict[str, Any]:
-        with self.db.connect() as conn:
-            states = conn.execute(
-                "SELECT node_id,status,version FROM rocksoul_work_graph_node_state WHERE graph_id=? ORDER BY node_id",
-                (graph_id,),
-            ).fetchall()
-            if not states:
-                return {"ok": False, "reason": "lifecycle_not_initialized", "verified_events": 0}
-            rows = conn.execute(
-                "SELECT * FROM rocksoul_work_graph_lifecycle_events WHERE graph_id=? ORDER BY node_id,sequence",
-                (graph_id,),
-            ).fetchall()
-            previous: dict[str, str | None] = {}
-            previous_status: dict[str, str] = {}
-            counts: dict[str, int] = {}
-            for row in rows:
-                node_id = row["node_id"]
-                expected_sequence = counts.get(node_id, 0) + 1
-                expected_from = previous_status.get(node_id, "pending")
-                if (row["sequence"] != expected_sequence or row["previous_hash"] != previous.get(node_id)
-                        or row["from_status"] != expected_from or row["to_status"] not in _NODE_TRANSITIONS.get(expected_from, set())):
-                    return {"ok": False, "reason": "lifecycle_chain_discontinuous", "node_id": node_id}
-                try:
-                    payload = json.loads(row["payload_json"])
-                    if not isinstance(payload, dict):
-                        raise ValueError("payload must be an object")
-                    event = {
-                        "event_id": row["event_id"], "graph_id": graph_id, "node_id": node_id,
-                        "sequence": row["sequence"], "from_status": row["from_status"],
-                        "to_status": row["to_status"], "expected_version": row["expected_version"],
-                        "payload": payload,
-                        "previous_hash": row["previous_hash"], "created_at": row["created_at"],
-                    }
-                except (TypeError, ValueError):
-                    return {"ok": False, "reason": "lifecycle_payload_invalid", "node_id": node_id}
-                if self._hash(event) != row["event_hash"]:
-                    return {"ok": False, "reason": "lifecycle_event_tampered", "node_id": node_id}
-                previous[node_id] = row["event_hash"]
-                previous_status[node_id] = row["to_status"]
-                counts[node_id] = expected_sequence
-            for state in states:
-                if counts.get(state["node_id"], 0) != int(state["version"]):
-                    return {"ok": False, "reason": "lifecycle_state_version_mismatch", "node_id": state["node_id"]}
-                node_events = [row for row in rows if row["node_id"] == state["node_id"]]
-                if node_events and node_events[-1]["to_status"] != state["status"]:
-                    return {"ok": False, "reason": "lifecycle_state_mismatch", "node_id": state["node_id"]}
-                if not node_events and state["status"] != "pending":
-                    return {"ok": False, "reason": "lifecycle_initial_state_invalid", "node_id": state["node_id"]}
-            return {"ok": True, "verified_events": len(rows), "nodes": len(states)}
+    def verify_event_chain(
+        self, graph_id: str, *, connection: sqlite3.Connection | None = None
+    ) -> dict[str, Any]:
+        if connection is None:
+            with self.db.connect() as conn:
+                return self.verify_event_chain(graph_id, connection=conn)
+        conn = connection
+    with self.db.connect() as conn:
+        states = conn.execute(
+            "SELECT node_id,status,version FROM rocksoul_work_graph_node_state WHERE graph_id=? ORDER BY node_id",
+            (graph_id,),
+        ).fetchall()
+        if not states:
+            return {"ok": False, "reason": "lifecycle_not_initialized", "verified_events": 0}
+        rows = conn.execute(
+            "SELECT * FROM rocksoul_work_graph_lifecycle_events WHERE graph_id=? ORDER BY node_id,sequence",
+            (graph_id,),
+        ).fetchall()
+        previous: dict[str, str | None] = {}
+        previous_status: dict[str, str] = {}
+        counts: dict[str, int] = {}
+        for row in rows:
+            node_id = row["node_id"]
+            expected_sequence = counts.get(node_id, 0) + 1
+            expected_from = previous_status.get(node_id, "pending")
+            if (row["sequence"] != expected_sequence or row["previous_hash"] != previous.get(node_id)
+                    or row["from_status"] != expected_from or row["to_status"] not in _NODE_TRANSITIONS.get(expected_from, set())):
+                return {"ok": False, "reason": "lifecycle_chain_discontinuous", "node_id": node_id}
+            try:
+                payload = json.loads(row["payload_json"])
+                if not isinstance(payload, dict):
+                    raise ValueError("payload must be an object")
+                event = {
+                    "event_id": row["event_id"], "graph_id": graph_id, "node_id": node_id,
+                    "sequence": row["sequence"], "from_status": row["from_status"],
+                    "to_status": row["to_status"], "expected_version": row["expected_version"],
+                    "payload": payload,
+                    "previous_hash": row["previous_hash"], "created_at": row["created_at"],
+                }
+            except (TypeError, ValueError):
+                return {"ok": False, "reason": "lifecycle_payload_invalid", "node_id": node_id}
+            if self._hash(event) != row["event_hash"]:
+                return {"ok": False, "reason": "lifecycle_event_tampered", "node_id": node_id}
+            previous[node_id] = row["event_hash"]
+            previous_status[node_id] = row["to_status"]
+            counts[node_id] = expected_sequence
+        for state in states:
+            if counts.get(state["node_id"], 0) != int(state["version"]):
+                return {"ok": False, "reason": "lifecycle_state_version_mismatch", "node_id": state["node_id"]}
+            node_events = [row for row in rows if row["node_id"] == state["node_id"]]
+            if node_events and node_events[-1]["to_status"] != state["status"]:
+                return {"ok": False, "reason": "lifecycle_state_mismatch", "node_id": state["node_id"]}
+            if not node_events and state["status"] != "pending":
+                return {"ok": False, "reason": "lifecycle_initial_state_invalid", "node_id": state["node_id"]}
+        return {"ok": True, "verified_events": len(rows), "nodes": len(states)}
