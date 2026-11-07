@@ -1178,7 +1178,7 @@ class Api:
                 for candidate in supplied_candidates
             )
             if valid_key:
-                principal_id = _principal_id("key", hashlib.sha256(supplied_key.encode("utf-8")).hexdigest())
+                principal_id = _principal_id("key", hashlib.sha256(configured_key.encode("utf-8")).hexdigest())
                 request.state.principal_id = principal_id
                 request.state.authenticated = True
                 # Do not let a caller choose another principal via x-user.
