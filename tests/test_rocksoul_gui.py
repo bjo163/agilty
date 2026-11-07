@@ -435,6 +435,7 @@ def test_canonical_compose_has_healthcheck_restart_and_api_key_configuration():
     assert "healthcheck:" in compose
     assert "/health/ready" in compose
     assert "G4F_API_KEY=${G4F_API_KEY:-}" in compose
+    assert "G4F_AUTH_MODE=${G4F_AUTH_MODE:-optional}" in compose
     assert "G4F_GUI_TRUSTED_IPS=" in compose
     assert "g4f-data:/data/g4f" in compose
 
