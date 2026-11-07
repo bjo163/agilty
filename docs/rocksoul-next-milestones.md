@@ -215,3 +215,8 @@ The following additions are staged in PR #60 and remain subject to exact-head CI
 - Offline tests cover budget bounds, authority non-expansion, persistence/idempotency, lifecycle transitions, dependency gates, cancellation and tamper detection.
 
 This is not yet an end-to-end worker dispatcher. Atomic claim leases, lease recovery, dispatch API/CLI/Console controls, cancellation propagation to providers, and Playwright role-boundary proof remain open. Do not close WorkGraph issues #22–24 until those acceptance criteria pass.
+
+
+## Remote API authentication foundation — 2026-11-07
+
+PR #60 now adds `G4F_AUTH_MODE=required`. When unset, `run_api` defaults to required auth for non-loopback bind hosts and optional auth for loopback hosts; canonical Compose explicitly opts into optional mode while binding ports to `127.0.0.1`. Required mode returns a configuration error when no API key exists and authenticates API requests using the configured key or a verified Basic-auth session. Successful authentication receives an opaque principal ID, and caller-provided `x-user` is not accepted as identity. This is not yet a multi-key identity service: hashed-at-rest storage, scopes, revocation, rotation, route inventory, per-route scope checks and exhaustive Flask/MCP/WebSocket auth tests remain open.
