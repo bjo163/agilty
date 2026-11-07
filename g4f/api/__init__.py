@@ -1110,7 +1110,10 @@ class Api:
             try:
                 supplied_key = await self.get_g4f_api_key(request)
             except HTTPException:
-                credentials = await self.security(request)
+                try:
+                    credentials = await self.security(request)
+                except HTTPException:
+                    credentials = None
                 supplied_key = getattr(credentials, "credentials", None)
             valid_key = bool(
                 supplied_key
