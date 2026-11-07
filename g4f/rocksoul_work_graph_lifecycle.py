@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS rocksoul_work_graph_node_state (
     work_id TEXT NOT NULL,
     status TEXT NOT NULL,
     version INTEGER NOT NULL,
+    required INTEGER NOT NULL DEFAULT 1,
     reason TEXT,
     updated_at TEXT NOT NULL,
     PRIMARY KEY(graph_id,node_id),
@@ -74,6 +75,9 @@ class WorkGraphLifecycleStore:
         self.db = graph_store.db
         with self.db.connect() as conn:
             conn.executescript(LIFECYCLE_SCHEMA)
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(rocksoul_work_graph_node_state)")}
+            if "required" not in columns:
+                conn.execute("ALTER TABLE rocksoul_work_graph_node_state ADD COLUMN required INTEGER NOT NULL DEFAULT 1")
 
     @staticmethod
     def _canonical(value: Mapping[str, Any]) -> str:
@@ -87,6 +91,14 @@ class WorkGraphLifecycleStore:
         integrity = self.graph_store.verify_event_chain(graph_id)
         if not integrity.get("ok"):
             raise WorkGraphLifecycleError("WorkGraph integrity verification failed")
+        if target == "cancelled":
+            try:
+                snapshot = self.get(graph_id)
+                current_node = next((item for item in snapshot["nodes"] if item["node_id"] == node_id), None)
+                if current_node is not None and current_node["status"] == "cancelled":
+                    return snapshot
+            except WorkGraphLifecycleError:
+                pass
         with self.db.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             graph_row = conn.execute(
@@ -101,12 +113,12 @@ class WorkGraphLifecycleStore:
             for node in graph.nodes:
                 conn.execute(
                     """INSERT OR IGNORE INTO rocksoul_work_graph_node_state
-                       (graph_id,node_id,work_id,status,version,reason,updated_at)
-                       VALUES(?,?,?,'pending',0,NULL,?)""",
-                    (graph_id,node.node_id,node.work_id,datetime.now(timezone.utc).isoformat(timespec="microseconds")),
+                       (graph_id,node_id,work_id,status,version,required,reason,updated_at)
+                       VALUES(?,?,?,'pending',0,?,NULL,?)""",
+                    (graph_id,node.node_id,node.work_id,int(node.required),datetime.now(timezone.utc).isoformat(timespec="microseconds")),
                 )
             rows = conn.execute(
-                "SELECT node_id,work_id,status,version,reason,updated_at FROM rocksoul_work_graph_node_state WHERE graph_id=? ORDER BY node_id",
+                "SELECT node_id,work_id,status,version,required,reason,updated_at FROM rocksoul_work_graph_node_state WHERE graph_id=? ORDER BY node_id",
                 (graph_id,),
             ).fetchall()
             if len(rows) != len(graph.nodes) or any(
@@ -119,7 +131,7 @@ class WorkGraphLifecycleStore:
     def get(self, graph_id: str) -> dict[str, Any]:
         with self.db.connect() as conn:
             rows = conn.execute(
-                "SELECT node_id,work_id,status,version,reason,updated_at FROM rocksoul_work_graph_node_state WHERE graph_id=? ORDER BY node_id",
+                "SELECT node_id,work_id,status,version,required,reason,updated_at FROM rocksoul_work_graph_node_state WHERE graph_id=? ORDER BY node_id",
                 (graph_id,),
             ).fetchall()
             if not rows:
@@ -148,13 +160,15 @@ class WorkGraphLifecycleStore:
         for row in rows:
             status = row["status"]
             counts[status] = counts.get(status, 0) + 1
-        required_open = sum(1 for row in rows if row["status"] not in _TERMINAL)
-        failed = sum(counts.get(key, 0) for key in ("failed", "rejected", "expired", "uncertain", "blocked"))
+        required_rows = [row for row in rows if bool(row["required"])]
+        required_open = sum(1 for row in required_rows if row["status"] not in _TERMINAL)
+        required_failed = any(row["status"] in {"failed", "rejected", "expired", "uncertain", "blocked"} for row in required_rows)
+        required_cancelled = any(row["status"] == "cancelled" for row in required_rows)
         if required_open:
             graph_status = "running" if counts.get("running") or counts.get("ready") else "pending"
-        elif failed:
+        elif required_failed:
             graph_status = "failed"
-        elif counts.get("cancelled"):
+        elif required_cancelled:
             graph_status = "cancelled"
         else:
             graph_status = "accepted"
