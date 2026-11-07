@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import multiprocessing
+from importlib.util import find_spec
 import threading
 import hmac
 import ipaddress
@@ -38,10 +39,10 @@ try:
 except ImportError:
     has_pillow = False
 try:
-    from ...integration.markitdown import MarkItDown, StreamInfo
-
-    has_markitdown = True
-except ImportError as e:
+    # Detect the optional dependency without importing parser code into the
+    # request worker; the isolated child imports the converter on demand.
+    has_markitdown = find_spec("markitdown") is not None
+except (ImportError, ValueError):
     has_markitdown = False
 try:
     from .crypto import (
