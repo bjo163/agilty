@@ -707,6 +707,20 @@ def _principal_id(kind: str, value: str) -> str:
     return f"{kind}_{digest}"
 
 
+def _matches_api_key(configured_key: str, headers) -> bool:
+    candidates = [
+        headers.get("g4f-api-key", ""),
+        headers.get("x-api-key", ""),
+    ]
+    authorization_header = headers.get("authorization", "")
+    if authorization_header.lower().startswith("bearer "):
+        candidates.append(authorization_header[7:].strip())
+    return any(
+        candidate and secrets.compare_digest(configured_key, candidate)
+        for candidate in candidates
+    )
+
+
 def _bounded_api_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
     try:
         value = int(os.environ.get(name, str(default)))
@@ -1166,17 +1180,7 @@ class Api:
                 request.state.authenticated = False
                 return await _call_with_principal_limit(request, call_next, limiter)
 
-            supplied_candidates = [
-                request.headers.get("g4f-api-key", ""),
-                request.headers.get("x-api-key", ""),
-            ]
-            authorization_header = request.headers.get("authorization", "")
-            if authorization_header.lower().startswith("bearer "):
-                supplied_candidates.append(authorization_header[7:].strip())
-            valid_key = any(
-                candidate and secrets.compare_digest(configured_key, candidate)
-                for candidate in supplied_candidates
-            )
+            valid_key = _matches_api_key(configured_key, request.headers)
             if valid_key:
                 principal_id = _principal_id("key", hashlib.sha256(configured_key.encode("utf-8")).hexdigest())
                 request.state.principal_id = principal_id
