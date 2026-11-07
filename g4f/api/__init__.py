@@ -687,6 +687,19 @@ from ..proxy.constants import (
     _PROXY_JSON_CONTENT_TYPES,
 )
 
+def _api_auth_mode() -> str:
+    mode = os.environ.get("G4F_AUTH_MODE", "optional").strip().lower()
+    if mode not in {"optional", "required"}:
+        raise ValueError("G4F_AUTH_MODE must be optional or required")
+    return mode
+
+
+def _principal_id(kind: str, value: str) -> str:
+    """Return a stable opaque principal identifier without retaining credentials."""
+    digest = hashlib.sha256((kind + ":" + value).encode("utf-8")).hexdigest()[:24]
+    return f"{kind}_{digest}"
+
+
 def create_app():
     app = FastAPI(lifespan=lifespan)
 
@@ -1071,45 +1084,59 @@ class Api:
                 "Register authentication key:",
                 "".join(["*" for _ in range(len(AppConfig.g4f_api_key))]),
             )
+        auth_mode = _api_auth_mode()
         if has_crypto:
             private_key, _ = create_or_read_keys()
             session_key = get_session_key()
 
         @self.app.middleware("http")
         async def authorization(request: Request, call_next):
-            user = request.headers.get("x-user")
-            if user and user.startswith("XX:") and request.headers.get("cf-ipcountry"):
-                user = f"{request.headers.get('cf-ipcountry')}:{user[3:]}"
-            remove_authorization_header = False
-            if (
-                request.method != "OPTIONS"
-                and request.url.path not in {"/health/live", "/health/ready"}
-                and AppConfig.g4f_api_key is not None
-            ):
+            if request.method == "OPTIONS" or request.url.path in {"/health/live", "/health/ready"}:
+                return await call_next(request)
+            configured_key = AppConfig.g4f_api_key
+            if auth_mode == "required" and not configured_key:
+                return JSONResponse(
+                    status_code=HTTP_503_SERVICE_UNAVAILABLE,
+                    content={"error": {"code": "auth_misconfigured", "message": "G4F_AUTH_MODE=required needs G4F_API_KEY configured"}},
+                )
+            if configured_key is None:
+                # Explicit local/optional mode preserves the upstream keyless
+                # development workflow. No client-supplied x-user is promoted
+                # into an authenticated principal.
+                request.state.principal_id = None
+                return await call_next(request)
+
+            supplied_key = None
+            try:
+                supplied_key = await self.get_g4f_api_key(request)
+            except HTTPException:
+                credentials = await self.security(request)
+                supplied_key = getattr(credentials, "credentials", None)
+            valid_key = bool(
+                supplied_key
+                and secrets.compare_digest(configured_key, supplied_key)
+            )
+            if valid_key:
+                principal_id = _principal_id("key", hashlib.sha256(supplied_key.encode("utf-8")).hexdigest())
+                request.state.principal_id = principal_id
+                request.state.authenticated = True
+                # Do not let a caller choose another principal via x-user.
+                request = update_headers(request, principal_id, False)
+            else:
                 try:
-                    user_g4f_api_key = await self.get_g4f_api_key(request)
-                except HTTPException:
-                    user_g4f_api_key = getattr(
-                        await self.security(request), "credentials", None
+                    verified_user = await self.get_username(request)
+                except HTTPException as exc:
+                    return ErrorResponse.from_message(
+                        exc.detail, exc.status_code, exc.headers
                     )
-                    remove_authorization_header = True
-                if (
-                    AppConfig.g4f_api_key is None
-                    or not user_g4f_api_key
-                    or not secrets.compare_digest(
-                        AppConfig.g4f_api_key, user_g4f_api_key
+                if not verified_user:
+                    return JSONResponse(
+                        status_code=HTTP_401_UNAUTHORIZED,
+                        content={"error": {"code": "invalid_api_key", "message": "A valid API key or authenticated session is required"}},
                     )
-                ):
-                    try:
-                        new_user = await self.get_username(request)
-                        if new_user:
-                            remove_authorization_header = True
-                            user = new_user
-                    except HTTPException as e:
-                        return ErrorResponse.from_message(
-                            e.detail, e.status_code, e.headers
-                        )
-                request = update_headers(request, user, remove_authorization_header)
+                request.state.principal_id = _principal_id("user", str(verified_user))
+                request.state.authenticated = True
+                request = update_headers(request, str(verified_user), True)
             response = await call_next(request)
             return response
 
