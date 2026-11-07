@@ -100,6 +100,25 @@ class WorkGraphLifecycleTests(unittest.TestCase):
                 "lifecycle", "build", "running", expected_status="pending", expected_version=0
             )
 
+    def test_cancellation_is_idempotent(self):
+        self.lifecycle.initialize("lifecycle")
+        first = self.lifecycle.transition(
+            "lifecycle", "build", "cancelled", expected_status="pending", expected_version=0
+        )
+        second = self.lifecycle.transition(
+            "lifecycle", "build", "cancelled", expected_status="pending", expected_version=0
+        )
+        self.assertEqual(len(first["events"]), len(second["events"]))
+        self.assertEqual(second["nodes"][0]["status"], "cancelled")
+
+    def test_optional_failure_does_not_fail_required_graph_completion(self):
+        summary = self.lifecycle._summary([
+            {"node_id": "required", "status": "accepted", "required": 1},
+            {"node_id": "optional", "status": "failed", "required": 0},
+        ])
+        self.assertEqual(summary["status"], "accepted")
+        self.assertEqual(summary["open_nodes"], 0)
+
     def test_terminal_node_cannot_be_restarted(self):
         self.lifecycle.initialize("lifecycle")
         self.lifecycle.transition(
