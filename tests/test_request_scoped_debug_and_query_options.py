@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from g4f import debug
-from g4f.api import _api_auth_mode, _principal_id
+from g4f.api import _api_auth_mode, _matches_api_key, _principal_id
 from g4f.gui.server.backend_api import _bounded_int_env, _parse_bool_query
 
 
@@ -77,6 +77,13 @@ class ApiAuthPolicyTests(unittest.TestCase):
         with patch.dict(os.environ, {"G4F_AUTH_MODE": "sometimes"}, clear=True):
             with self.assertRaises(ValueError):
                 _api_auth_mode()
+
+    def test_api_key_accepts_supported_headers_and_bearer(self):
+        self.assertTrue(_matches_api_key("secret", {"g4f-api-key": "secret"}))
+        self.assertTrue(_matches_api_key("secret", {"x-api-key": "secret"}))
+        self.assertTrue(_matches_api_key("secret", {"authorization": "Bearer secret"}))
+        self.assertFalse(_matches_api_key("secret", {"x-api-key": "wrong"}))
+        self.assertFalse(_matches_api_key("secret", {}))
 
     def test_principal_id_is_stable_opaque_and_namespaced(self):
         first = _principal_id("key", "example-secret")
