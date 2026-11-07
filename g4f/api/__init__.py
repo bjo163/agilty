@@ -1099,7 +1099,7 @@ class Api:
                     status_code=HTTP_503_SERVICE_UNAVAILABLE,
                     content={"error": {"code": "auth_misconfigured", "message": "G4F_AUTH_MODE=required needs G4F_API_KEY configured"}},
                 )
-            if configured_key is None:
+            if not configured_key:
                 # Explicit local/optional mode preserves the upstream keyless
                 # development workflow. No client-supplied x-user is promoted
                 # into an authenticated principal.
