@@ -20,9 +20,18 @@ services:
       - ROCKSOUL_UI_ENABLED=${ROCKSOUL_UI_ENABLED:-1}
       - G4F_CONFIG_DIR=/data/g4f
       - G4F_API_KEY=${G4F_API_KEY:-}
+      - G4F_AUTH_MODE=${G4F_AUTH_MODE:-optional}
+      - G4F_RATE_LIMIT_PER_MINUTE=${G4F_RATE_LIMIT_PER_MINUTE:-120}
+      - G4F_MAX_INFLIGHT_PER_PRINCIPAL=${G4F_MAX_INFLIGHT_PER_PRINCIPAL:-4}
+      - G4F_EXTRACTION_TIMEOUT_SECONDS=${G4F_EXTRACTION_TIMEOUT_SECONDS:-30}
+      - G4F_EXTRACTION_MAX_OUTPUT_CHARS=${G4F_EXTRACTION_MAX_OUTPUT_CHARS:-1000000}
+      - G4F_EXTRACTION_CPU_SECONDS=${G4F_EXTRACTION_CPU_SECONDS:-25}
+      - G4F_EXTRACTION_MAX_MEMORY_MB=${G4F_EXTRACTION_MAX_MEMORY_MB:-1536}
+      - G4F_EXTRACTION_MAX_WORKERS=${G4F_EXTRACTION_MAX_WORKERS:-2}
+      - G4F_MAX_IMAGE_PIXELS=${G4F_MAX_IMAGE_PIXELS:-40000000}
       - G4F_GUI_TRUSTED_IPS=${G4F_GUI_TRUSTED_IPS:-172.16.0.0/12,192.168.65.1/32}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/backend-api/v2/status', timeout=5)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=5)"]
       interval: 30s
       timeout: 8s
       retries: 5

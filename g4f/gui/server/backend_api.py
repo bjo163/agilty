@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
+from importlib.util import find_spec
+import threading
+import warnings
 import hmac
 import ipaddress
 import flask
@@ -36,10 +40,10 @@ try:
 except ImportError:
     has_pillow = False
 try:
-    from ...integration.markitdown import MarkItDown, StreamInfo
-
-    has_markitdown = True
-except ImportError as e:
+    # Detect the optional dependency without importing parser code into the
+    # request worker; the isolated child imports the converter on demand.
+    has_markitdown = find_spec("markitdown") is not None
+except (ImportError, ValueError):
     has_markitdown = False
 try:
     from .crypto import (
@@ -150,6 +154,91 @@ def _privileged_forbidden():
     return jsonify({"error": {"message": "Privileged operation requires a trusted client or valid API key"}}), 403
 
 
+def _bounded_int_env(name: str, default: int, minimum: int, maximum: int) -> int:
+    """Read an integer environment setting and clamp it to a safe range."""
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(value, maximum))
+
+
+_EXTRACTION_SLOTS = threading.BoundedSemaphore(
+    _bounded_int_env("G4F_EXTRACTION_MAX_WORKERS", 2, 1, 4)
+)
+
+
+def _stop_extraction_process(process) -> None:
+    if not process.is_alive():
+        return
+    process.terminate()
+    process.join(timeout=2)
+    if process.is_alive():
+        process.kill()
+        process.join(timeout=2)
+
+
+def _extract_document_isolated(
+    file_path: str, extension: str, mimetype: str, recognition_language: str | None
+) -> str | None:
+    """Run an untrusted document parser in a bounded child process."""
+    from .document_worker import run_markitdown_extraction
+
+    timeout = _bounded_int_env("G4F_EXTRACTION_TIMEOUT_SECONDS", 30, 3, 120)
+    output_chars = _bounded_int_env("G4F_EXTRACTION_MAX_OUTPUT_CHARS", 1_000_000, 1000, 5_000_000)
+    memory_bytes = _bounded_int_env("G4F_EXTRACTION_MAX_MEMORY_MB", 1536, 256, 4096) * 1024 * 1024
+    cpu_seconds = _bounded_int_env("G4F_EXTRACTION_CPU_SECONDS", 25, 2, 120)
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    process = context.Process(
+        target=run_markitdown_extraction,
+        args=(send, file_path, extension, mimetype, recognition_language,
+              output_chars, memory_bytes, cpu_seconds),
+        name="g4f-document-extractor",
+    )
+    try:
+        process.start()
+        send.close()
+        if not receive.poll(timeout):
+            _stop_extraction_process(process)
+            logger.warning("Document extraction exceeded its %s second deadline", timeout)
+            return None
+        try:
+            result = receive.recv()
+        except (EOFError, OSError):
+            result = None
+        process.join(timeout=1)
+        _stop_extraction_process(process)
+        if not isinstance(result, dict) or not result.get("ok"):
+            logger.warning("Document extraction worker failed or exited without a result")
+            return None
+        if result.get("truncated"):
+            logger.warning("Document extraction output was truncated at %s characters", output_chars)
+        return str(result.get("text") or "")
+    except (OSError, RuntimeError, ValueError):
+        logger.exception("Unable to start isolated document extraction worker")
+        _stop_extraction_process(process)
+        return None
+    finally:
+        receive.close()
+        try:
+            send.close()
+        except OSError:
+            pass
+
+
+def _parse_bool_query(value: str | None, default: bool) -> bool:
+    """Parse a query-string boolean without treating non-empty 'false' as true."""
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "off"}:
+        return False
+    raise ValueError("Expected a boolean value: true/false, 1/0, yes/no, or on/off")
+
+
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -185,6 +274,20 @@ class Backend_Api(Api):
         self.app: Flask = app
         self.chat_cache = {}
         self.client = Client()
+
+        # Bound multipart uploads at the WSGI layer before parsing file parts.
+        self.app.config["MAX_CONTENT_LENGTH"] = _bounded_int_env(
+            "G4F_MAX_UPLOAD_BYTES", 25 * 1024 * 1024,
+            1024 * 1024, 256 * 1024 * 1024,
+        )
+        self.max_upload_files = _bounded_int_env("G4F_MAX_UPLOAD_FILES", 10, 1, 50)
+
+        @self.app.errorhandler(413)
+        def request_entity_too_large(error):
+            return jsonify({"error": {
+                "code": "request_too_large",
+                "message": "Request exceeds the configured upload size limit",
+            }}), 413
 
         # Warm the shared MCP registry during startup so the first
         # /backend-api/v2/webmcp/tools request is served from cache instead of
@@ -1024,10 +1127,15 @@ class Backend_Api(Api):
                     logger.exception(e)
                     return jsonify({"error": {"message": "Failed to delete bucket"}}), 500
 
-            delete_files = request.args.get("delete_files", True)
-            refine_chunks_with_spacy = request.args.get(
-                "refine_chunks_with_spacy", False
-            )
+            try:
+                delete_files = _parse_bool_query(
+                    request.args.get("delete_files"), default=True
+                )
+                refine_chunks_with_spacy = _parse_bool_query(
+                    request.args.get("refine_chunks_with_spacy"), default=False
+                )
+            except ValueError as error:
+                return jsonify({"error": {"message": "Invalid query parameter"}}), 400
             event_stream = event_stream or "text/event-stream" in request.headers.get(
                 "Accept", ""
             )
@@ -1043,13 +1151,22 @@ class Backend_Api(Api):
         def upload_files(bucket_id: str):
             if not _privileged_request_allowed():
                 return _privileged_forbidden()
+            uploaded_files = request.files.getlist("files")
+            if not uploaded_files:
+                return jsonify({"error": {"code": "empty_upload", "message": "At least one file is required"}}), 400
+            if len(uploaded_files) > self.max_upload_files:
+                return jsonify({"error": {
+                    "code": "too_many_files",
+                    "message": f"Upload exceeds the {self.max_upload_files}-file limit",
+                }}), 413
             bucket_id = secure_filename(bucket_id)
             bucket_dir = get_bucket_dir(bucket_id)
             media_dir = os.path.join(bucket_dir, "media")
             os.makedirs(bucket_dir, exist_ok=True)
             filenames = []
             media = []
-            for file in request.files.getlist("files"):
+            extraction_errors = []
+            for file in uploaded_files:
                 filename = secure_filename(file.filename)
                 mimetype = file.mimetype.split(";")[0]
                 if (not filename or filename == "blob") and mimetype in MEDIA_TYPE_MAP:
@@ -1058,19 +1175,23 @@ class Backend_Api(Api):
                 copyfile = get_tempfile(file, suffix)
                 result = None
                 if has_markitdown and not filename.endswith((".md", ".json", ".zip")):
-                    try:
-                        language = request.headers.get("x-recognition-language")
-                        md = MarkItDown()
-                        result = md.convert(
-                            copyfile,
-                            stream_info=StreamInfo(
-                                extension=suffix,
-                                mimetype=file.mimetype,
-                            ),
-                            recognition_language=language,
-                        ).text_content
-                    except Exception as e:
-                        logger.exception(e)
+                    acquired = _EXTRACTION_SLOTS.acquire(timeout=2)
+                    if not acquired:
+                        extraction_errors.append({
+                            "name": filename, "code": "extraction_capacity_exceeded"
+                        })
+                    else:
+                        try:
+                            result = _extract_document_isolated(
+                                copyfile, suffix, file.mimetype,
+                                request.headers.get("x-recognition-language"),
+                            )
+                            if result is None:
+                                extraction_errors.append({
+                                    "name": filename, "code": "extraction_failed_or_timed_out"
+                                })
+                        finally:
+                            _EXTRACTION_SLOTS.release()
                 is_media = is_allowed_extension(filename)
                 is_supported = result or supports_filename(filename)
                 if not is_media and not is_supported:
@@ -1090,19 +1211,33 @@ class Backend_Api(Api):
                     image_size = {}
                     if has_pillow:
                         try:
-                            image = Image.open(copyfile)
-                            width, height = image.size
-                            image_size = {"width": width, "height": height}
-                            thumbnail_dir = os.path.join(bucket_dir, "thumbnail")
-                            os.makedirs(thumbnail_dir, exist_ok=True)
-                            width, height = process_image(
-                                image, save=os.path.join(thumbnail_dir, filename)
+                            max_pixels = _bounded_int_env(
+                                "G4F_MAX_IMAGE_PIXELS", 40_000_000, 1_000_000, 200_000_000
                             )
-                            image_size = {"width": width, "height": height}
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                                with Image.open(copyfile) as image:
+                                    width, height = image.size
+                                    image_size = {"width": width, "height": height}
+                                    if width * height > max_pixels:
+                                        extraction_errors.append({
+                                            "name": filename, "code": "image_pixel_limit_exceeded"
+                                        })
+                                    else:
+                                        thumbnail_dir = os.path.join(bucket_dir, "thumbnail")
+                                        os.makedirs(thumbnail_dir, exist_ok=True)
+                                        width, height = process_image(
+                                            image, save=os.path.join(thumbnail_dir, filename)
+                                        )
+                                        image_size = {"width": width, "height": height}
                         except UnidentifiedImageError:
                             pass
-                        except Exception as e:
-                            logger.exception(e)
+                        except (Image.DecompressionBombWarning, Image.DecompressionBombError):
+                            extraction_errors.append({
+                                "name": filename, "code": "image_decompression_limit_exceeded"
+                            })
+                        except Exception:
+                            logger.exception("Image thumbnail processing failed")
                     if result:
                         media.append({"name": filename, "text": result, **image_size})
                     else:
@@ -1125,7 +1260,10 @@ class Backend_Api(Api):
             ) as f:
                 for filename in filenames:
                     f.write(f"{filename}\n")
-            return jsonify({"bucket_id": bucket_id, "files": filenames, "media": media})
+            return jsonify({
+                "bucket_id": bucket_id, "files": filenames, "media": media,
+                "extraction_errors": extraction_errors,
+            })
 
         @app.route("/files/<bucket_id>/<file_type>/<filename>", methods=["GET"])
         def get_media(bucket_id, file_type: str, filename, dirname: str = None):

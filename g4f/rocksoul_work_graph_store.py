@@ -35,6 +35,14 @@ CREATE TABLE IF NOT EXISTS rocksoul_work_graph_events (
 );
 CREATE INDEX IF NOT EXISTS idx_rocksoul_work_graph_events_graph
     ON rocksoul_work_graph_events(graph_id, sequence);
+CREATE TABLE IF NOT EXISTS rocksoul_work_graph_decisions (
+    graph_id TEXT NOT NULL,
+    decision_digest TEXT NOT NULL,
+    decision_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(graph_id, decision_digest),
+    FOREIGN KEY(graph_id) REFERENCES rocksoul_work_graphs(graph_id) ON DELETE RESTRICT
+);
 """
 
 
@@ -128,10 +136,19 @@ class WorkGraphStore:
             "SELECT * FROM rocksoul_work_graph_events WHERE graph_id=? ORDER BY sequence ASC",
             (graph_id,),
         ).fetchall()
+        decisions = connection.execute(
+            "SELECT decision_digest,decision_json,created_at FROM rocksoul_work_graph_decisions WHERE graph_id=? ORDER BY created_at,decision_digest",
+            (graph_id,),
+        ).fetchall()
         return {
             "graph": json.loads(row["graph_json"]),
             "graph_digest": row["graph_digest"],
             "created_at": row["created_at"],
+            "decisions": [{
+                "decision_digest": item["decision_digest"],
+                "decision": json.loads(item["decision_json"]),
+                "created_at": item["created_at"],
+            } for item in decisions],
             "events": [{
                 "event_id": item["event_id"],
                 "sequence": item["sequence"],
@@ -142,6 +159,82 @@ class WorkGraphStore:
                 "created_at": item["created_at"],
             } for item in events],
         }
+
+    def resolve_budget_and_authority(
+        self,
+        graph_id: str,
+        graph_budget: Any,
+        graph_permissions: tuple[str, ...],
+        work_items: Any,
+    ) -> dict[str, Any]:
+        """Resolve and persist a deterministic aggregate budget/authority decision."""
+        from .rocksoul_contracts import WorkItem
+        from .rocksoul_work_graph_budget import resolve_graph_budget_and_authority
+
+        if work_items is None or not callable(getattr(work_items, "get", None)) or not callable(getattr(work_items, "verify_event_chain", None)):
+            raise WorkGraphStoreError("budget resolution requires a WorkItemStore-compatible object")
+        integrity = self.verify_event_chain(graph_id)
+        if not integrity.get("ok"):
+            raise WorkGraphStoreError("WorkGraph integrity verification failed")
+        with self.db.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                "SELECT graph_json,graph_digest FROM rocksoul_work_graphs WHERE graph_id=?",
+                (graph_id,),
+            ).fetchone()
+            if row is None:
+                raise WorkGraphStoreError("WorkGraph not found")
+            graph = WorkGraph.from_dict(json.loads(row["graph_json"]))
+            if graph.digest != row["graph_digest"]:
+                raise WorkGraphStoreError("WorkGraph contract changed during budget resolution")
+            contracts = {}
+            for node in graph.nodes:
+                child_integrity = work_items.verify_event_chain(node.work_id, connection=conn)
+                if not child_integrity.get("ok"):
+                    raise WorkGraphStoreError(
+                        f"WorkItem integrity check failed for {node.work_id}: {child_integrity.get('reason')}"
+                    )
+                record = work_items.get(node.work_id, connection=conn)
+                contract = WorkItem.from_dict(record["contract"])
+                if contract.contract_digest != record["contract_digest"]:
+                    raise WorkGraphStoreError(f"WorkItem contract digest mismatch for {node.work_id}")
+                contracts[node.work_id] = contract
+            try:
+                decision = resolve_graph_budget_and_authority(
+                    graph, graph_budget, graph_permissions, contracts
+                )
+                encoded = self._canonical(decision)
+            except (TypeError, ValueError) as exc:
+                raise WorkGraphStoreError(f"WorkGraph budget/authority resolution failed: {exc}") from exc
+            existing = conn.execute(
+                "SELECT created_at FROM rocksoul_work_graph_decisions WHERE graph_id=? AND decision_digest=?",
+                (graph_id, decision["decision_digest"]),
+            ).fetchone()
+            if existing:
+                return {
+                    "graph_id": graph_id,
+                    "decision": decision,
+                    "created_at": existing["created_at"],
+                    "persisted": True,
+                    "idempotent": True,
+                }
+            created_at = datetime.now(timezone.utc).isoformat(timespec="microseconds")
+            conn.execute(
+                "INSERT INTO rocksoul_work_graph_decisions(graph_id,decision_digest,decision_json,created_at) VALUES(?,?,?,?)",
+                (graph_id, decision["decision_digest"], encoded, created_at),
+            )
+            self._append_event(conn, graph_id, "graph.budget_authority_resolved", {
+                "decision_digest": decision["decision_digest"],
+                "graph_digest": graph.digest,
+                "node_count": len(decision["nodes"]),
+            })
+            return {
+                "graph_id": graph_id,
+                "decision": decision,
+                "created_at": created_at,
+                "persisted": True,
+                "idempotent": False,
+            }
 
     def list(self, *, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= self.MAX_LIST_LIMIT:
@@ -317,4 +410,42 @@ class WorkGraphStore:
             first_payload = json.loads(rows[0]["payload_json"])
             if rows[0]["event_type"] != "graph.created" or first_payload.get("graph_digest") != graph.digest:
                 return {"ok": False, "reason": "graph_creation_event_invalid", "verified_events": 0}
-            return {"ok": True, "reason": None, "verified_events": len(rows), "graph_digest": graph.digest}
+            decisions = conn.execute(
+                "SELECT decision_digest,decision_json FROM rocksoul_work_graph_decisions WHERE graph_id=?",
+                (graph_id,),
+            ).fetchall()
+            persisted_decisions = {}
+            for decision_row in decisions:
+                try:
+                    decision = json.loads(decision_row["decision_json"])
+                    if not isinstance(decision, dict):
+                        raise ValueError("decision must be an object")
+                    supplied_digest = decision.get("decision_digest")
+                    digest_payload = dict(decision)
+                    digest_payload.pop("decision_digest", None)
+                    computed_digest = self._hash(digest_payload)
+                except (TypeError, ValueError):
+                    return {"ok": False, "reason": "graph_decision_invalid", "verified_events": len(rows)}
+                if (supplied_digest != decision_row["decision_digest"]
+                        or computed_digest != supplied_digest
+                        or decision.get("graph_id") != graph_id
+                        or decision.get("graph_digest") != graph.digest):
+                    return {"ok": False, "reason": "graph_decision_tampered", "verified_events": len(rows)}
+                persisted_decisions[supplied_digest] = decision
+            referenced_decisions = set()
+            for row in rows:
+                if row["event_type"] != "graph.budget_authority_resolved":
+                    continue
+                payload = json.loads(row["payload_json"])
+                decision_digest = payload.get("decision_digest")
+                decision = persisted_decisions.get(decision_digest)
+                if (decision is None or payload.get("graph_digest") != graph.digest
+                        or payload.get("node_count") != len(decision.get("nodes", []))):
+                    return {"ok": False, "reason": "graph_decision_event_mismatch", "verified_events": len(rows)}
+                referenced_decisions.add(decision_digest)
+            if referenced_decisions != set(persisted_decisions):
+                return {"ok": False, "reason": "graph_decision_event_missing", "verified_events": len(rows)}
+            return {
+                "ok": True, "reason": None, "verified_events": len(rows),
+                "verified_decisions": len(persisted_decisions), "graph_digest": graph.digest,
+            }

@@ -189,3 +189,34 @@ Keep each GitHub issue open until its own acceptance gates have evidence. Exact-
 - Requiring optional Arena, Mesh, WorkItem, WorkGraph, or operator Console modules for ordinary chat.
 - Claiming production readiness from mocked browser tests alone.
 - Enabling remote public exposure before privileged backend endpoints enforce server-side authorization.
+
+
+## Backend hardening progress — 2026-11-07
+
+The following source changes are staged in [PR #60](https://github.com/bjo163/agilty/pull/60); they are implementation progress, not certified completion until exact-head CI and the remaining environment-specific gates pass:
+
+- Request-scoped GUI debug log sinks replace mutation of the process-global debug callback and shared log list; concurrent isolation regression tests added.
+- SSE diagnostic capture is bounded to a configurable tail buffer (64 KiB default, 1 MiB maximum), and the client stream remains incremental.
+- Diagnostic body capture is disabled by default. Explicit capture redacts known JSON credential fields and omits non-JSON, multipart, and raw SSE bodies; credential-like query parameters and sensitive headers are redacted before log/HAR persistence.
+- Flask file uploads have a configurable aggregate request limit (25 MiB default, 1–256 MiB clamp) and file-count limit (10 default, 1–50 clamp); parser isolation and extraction CPU/output limits remain separate work.
+- File extraction boolean query parameters are parsed strictly and invalid values return HTTP 400.
+- Provider-independent /health/live and /health/ready endpoints are added; Compose now checks readiness rather than the provider-discovery status route.
+
+PR #60 also contains the test coverage and documentation for these changes. Do not close backend issues #34, #35, #37, #38, #43, or #45 until exact-head CI passes and each issue's remaining acceptance criteria are satisfied. The larger P0 security boundary/authentication work (#32–33), WorkGraph orchestration (#22–24), and UI/host certification (#25–31) remain open.
+
+
+## WorkGraph orchestration foundation — 2026-11-07
+
+The following additions are staged in PR #60 and remain subject to exact-head CI:
+
+- `g4f/rocksoul_work_graph_budget.py`: finite versioned aggregate graph caps; deterministic child budget intersections; conservative sum-of-node upper-bound checks; exact permission intersection; child approval remains independent; decision digest.
+- `WorkGraphStore.resolve_budget_and_authority`: validates every child WorkItem event chain and contract digest, persists the immutable decision, and appends an audit event. Repeated identical decisions are idempotent.
+- `g4f/rocksoul_work_graph_lifecycle.py`: optimistic expected-status/version transitions, dependency gating, child WorkItem integrity/approval/acceptance authority, optional-node-aware graph summary, idempotent cancellation, and hash-chained lifecycle events.
+- Offline tests cover budget bounds, authority non-expansion, persistence/idempotency, lifecycle transitions, dependency gates, cancellation and tamper detection.
+
+This is not yet an end-to-end worker dispatcher. Atomic claim leases, lease recovery, dispatch API/CLI/Console controls, cancellation propagation to providers, and Playwright role-boundary proof remain open. Do not close WorkGraph issues #22–24 until those acceptance criteria pass.
+
+
+## Remote API authentication foundation — 2026-11-07
+
+PR #60 now adds `G4F_AUTH_MODE=required`. When unset, `run_api` defaults to required auth for non-loopback bind hosts and optional auth for loopback hosts; canonical Compose explicitly opts into optional mode while binding ports to `127.0.0.1`. Required mode returns a configuration error when no API key exists and authenticates API requests using the configured key or a verified Basic-auth session. Successful authentication receives an opaque principal ID, and caller-provided `x-user` is not accepted as identity. This is not yet a multi-key identity service: hashed-at-rest storage, scopes, revocation, rotation, route inventory, per-route scope checks and exhaustive Flask/MCP/WebSocket auth tests remain open.

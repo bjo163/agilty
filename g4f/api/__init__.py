@@ -183,10 +183,27 @@ _SENSITIVE_HEADERS = {
     "cookie",
     "set-cookie",
     "x-api-key",
+    "proxy-authorization",
+    "x-auth-token",
+    "x-goog-api-key",
+    "x-amz-security-token",
+    "x-session-token",
 }
 
 _request_log: deque = deque(maxlen=_MAX_LOG_ENTRIES)
 _log_id_counter: int = 0
+
+
+def _sanitize_query(query: str) -> str:
+    """Redact credential-like query parameters before logging URLs."""
+    from urllib.parse import parse_qsl, urlencode
+
+    sensitive = {"api_key", "apikey", "access_token", "refresh_token", "token",
+                 "password", "secret", "key", "authorization", "cookie", "session"}
+    return urlencode([
+        (key, "***" if key.lower().replace("-", "_") in sensitive else value)
+        for key, value in parse_qsl(query, keep_blank_values=True)
+    ])
 
 
 def _sanitize_headers(headers: dict) -> dict:
@@ -204,6 +221,8 @@ def _record_outgoing_request(entry: dict) -> None:
     global _log_id_counter
     url = str(entry.get("url") or "")
     parsed = urlsplit(url)
+    safe_query = _sanitize_query(parsed.query)
+    safe_url = parsed._replace(query=safe_query).geturl() if url else None
     _log_id_counter += 1
     log_entry = {
         "id": _log_id_counter,
@@ -211,9 +230,9 @@ def _record_outgoing_request(entry: dict) -> None:
         or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "method": str(entry.get("method") or "GET").upper(),
         "path": parsed.path or "/",
-        "url": url or None,
+        "url": safe_url,
         "host": parsed.netloc or None,
-        "query": parsed.query or None,
+        "query": safe_query or None,
         "status": entry.get("status") if entry.get("status") is not None else 0,
         "duration_ms": entry.get("duration_ms", 0),
         "user": None,
@@ -231,11 +250,44 @@ def _record_outgoing_request(entry: dict) -> None:
     ):
         _save_har_entry(
             log_entry,
-            url,
-            request_body=entry.get("request_body"),
+            safe_url or "",
+            request_body=None,
             response_body=None,
         )
     _request_log.append(log_entry)
+
+
+_SENSITIVE_BODY_KEYS = {
+    "api_key", "apikey", "authorization", "access_token", "refresh_token",
+    "id_token", "password", "passwd", "secret", "client_secret",
+    "cookie", "cookies", "session", "session_id", "token", "credential",
+    "credentials", "private_key", "g4f_api_key", "clientsecret",
+    "accesstoken", "refreshtoken", "idtoken", "sessionid", "privatekey",
+    "apikey", "api_key", "key", "auth", "bearer",
+}
+
+
+def _redact_sensitive_body(value):
+    """Redact credential-bearing JSON fields before optional diagnostic retention."""
+    if isinstance(value, dict):
+        return {
+            key: ("***" if str(key).lower().replace("-", "_") in _SENSITIVE_BODY_KEYS
+                  else _redact_sensitive_body(item))
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_sensitive_body(item) for item in value]
+    return value
+
+
+def _safe_body_for_log(body_bytes: bytes, content_type: str):
+    """Keep only redacted JSON diagnostics; never persist arbitrary text or multipart data."""
+    if "application/json" not in (content_type or "").lower():
+        return f"<{len(body_bytes)} bytes omitted>"
+    parsed = _try_parse_body(body_bytes, content_type)
+    if not isinstance(parsed, (dict, list)):
+        return f"<{len(body_bytes)} invalid JSON bytes omitted>"
+    return _redact_sensitive_body(parsed)
 
 
 def _try_parse_body(body_bytes: bytes, content_type: str):
@@ -295,6 +347,24 @@ def _body_to_text(body) -> str:
         except Exception:
             return str(body)
     return str(body)
+
+def _append_bounded_capture(buffer: bytearray, chunk: bytes, limit: int) -> bool:
+    """Append a chunk to a bounded tail buffer; return whether data was truncated."""
+    if not chunk:
+        return False
+    if limit <= 0:
+        return True
+    if len(chunk) >= limit:
+        buffer[:] = chunk[-limit:]
+        return True
+    overflow = len(buffer) + len(chunk) - limit
+    if overflow > 0:
+        del buffer[:overflow]
+        buffer.extend(chunk)
+        return True
+    buffer.extend(chunk)
+    return False
+
 
 def _sse_body_has_error(raw: bytes) -> bool:
     """Detect error payloads in an SSE body.
@@ -397,9 +467,11 @@ def _save_har_entry(
 
 def _save_request_har(request: Request, entry: dict) -> Optional[str]:
     """Save an incoming API request/response pair as a HAR file."""
+    parsed_url = urlsplit(str(request.url))
+    safe_url = parsed_url._replace(query=_sanitize_query(parsed_url.query)).geturl()
     return _save_har_entry(
         entry,
-        str(request.url),
+        safe_url,
         entry.get("request_body"),
         entry.get("response_body"),
     )
@@ -615,8 +687,100 @@ from ..proxy.constants import (
     _PROXY_JSON_CONTENT_TYPES,
 )
 
+def _api_auth_mode() -> str:
+    configured = os.environ.get("G4F_AUTH_MODE")
+    if configured is None:
+        # run_api records the bind host before importing the app factory.
+        # Unspecified non-loopback binds must not silently start keyless.
+        host = os.environ.get("G4F_API_HOST", "127.0.0.1").strip().lower().strip("[]")
+        mode = "optional" if host in {"127.0.0.1", "::1", "localhost"} else "required"
+    else:
+        mode = configured.strip().lower()
+    if mode not in {"optional", "required"}:
+        raise ValueError("G4F_AUTH_MODE must be optional or required")
+    return mode
+
+
+def _principal_id(kind: str, value: str) -> str:
+    """Return a stable opaque principal identifier without retaining credentials."""
+    digest = hashlib.sha256((kind + ":" + value).encode("utf-8")).hexdigest()[:24]
+    return f"{kind}_{digest}"
+
+
+def _matches_api_key(configured_key: str, headers) -> bool:
+    candidates = [
+        headers.get("g4f-api-key", ""),
+        headers.get("x-api-key", ""),
+    ]
+    authorization_header = headers.get("authorization", "")
+    if authorization_header.lower().startswith("bearer "):
+        candidates.append(authorization_header[7:].strip())
+    return any(
+        candidate and secrets.compare_digest(configured_key, candidate)
+        for candidate in candidates
+    )
+
+
+def _bounded_api_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(value, maximum))
+
+
+async def _call_with_principal_limit(request: Request, call_next, limiter):
+    from .limits import PrincipalLimiter
+
+    principal_id = getattr(request.state, "principal_id", None)
+    if not principal_id:
+        # Do not trust X-Forwarded-For unless a separately configured proxy
+        # trust boundary has validated it.
+        principal_id = f"ip:{request.client.host if request.client else 'unknown'}"
+    allowed, retry_after = await limiter.acquire(principal_id)
+    if not allowed:
+        return JSONResponse(
+            status_code=HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(max(1, int(retry_after)))},
+            content={"error": {
+                "code": "rate_limit_exceeded",
+                "message": "Request rate or concurrent request limit exceeded",
+            }},
+        )
+    try:
+        response = await call_next(request)
+    except BaseException:
+        await limiter.release(principal_id)
+        raise
+    if response.headers.get("content-type", "").lower().startswith(("text/event-stream", "application/octet-stream")):
+        iterator = response.body_iterator
+
+        async def release_after_stream():
+            try:
+                async for chunk in iterator:
+                    yield chunk
+            finally:
+                await limiter.release(principal_id)
+
+        response.body_iterator = release_after_stream()
+    else:
+        await limiter.release(principal_id)
+    return response
+
+
 def create_app():
     app = FastAPI(lifespan=lifespan)
+
+    @app.get("/health/live", include_in_schema=False)
+    async def liveness():
+        """Cheap process liveness; never performs provider/model discovery."""
+        return {"status": "ok"}
+
+    @app.get("/health/ready", include_in_schema=False)
+    async def readiness():
+        """Local application readiness; provider availability is diagnostic only."""
+        return {"status": "ready"}
+
     add_request_sink(_record_outgoing_request)
 
     # CDP relay: let the g4f browser extension act as a CDP provider.
@@ -700,21 +864,21 @@ def create_app():
         ):
             return await call_next(request)
 
-        qs = f"?{request.url.query}" if request.url.query else ""
+        safe_request_query = _sanitize_query(request.url.query)
+        qs = f"?{safe_request_query}" if safe_request_query else ""
         user = request.headers.get("x-user", "")
         user_info = f" user={user}" if user else ""
         logger.debug("→ %s %s%s%s", request.method, path, qs, user_info)
 
-        audit_body = os.environ.get("G4F_ENABLE_AUDIT_LOG", "").lower() in ("1", "true", "yes")
-        # In debug mode, request/response pairs are saved as HAR files
-        # (see _save_request_har) so they can be inspected later.
+        # Prompt and response bodies are privacy-sensitive. Capture is disabled
+        # unless an operator explicitly opts in, independently of debug logging.
+        capture_body = os.environ.get("G4F_CAPTURE_BODIES", "").lower() in ("1", "true", "yes")
         har_log_enabled = g4f.debug.logging
         har_min_status = _har_log_min_status()
-        capture_body = audit_body or har_log_enabled
         req_body = None
         if capture_body:
             req_body_bytes = await request.body()
-            req_body = _try_parse_body(
+            req_body = _safe_body_for_log(
                 req_body_bytes, request.headers.get("content-type", "")
             )
 
@@ -734,7 +898,7 @@ def create_app():
                 async for chunk in response.body_iterator:
                     chunks.append(chunk)
                 resp_body_bytes = b"".join(chunks)
-                resp_body = _try_parse_body(resp_body_bytes, resp_content_type)
+                resp_body = _safe_body_for_log(resp_body_bytes, resp_content_type)
                 # Reconstruct response so it can still be sent to the client
                 resp_headers = {
                     k: v
@@ -748,23 +912,30 @@ def create_app():
                     media_type=response.media_type,
                 )
             else:
-                # Tee the streaming iterator: forward chunks to client AND accumulate for log
-                sse_chunks: list[bytes] = []
+                # Keep only a bounded tail for diagnostics; never buffer an entire
+                # generated response or delay forwarding chunks to the client.
+                try:
+                    capture_limit = int(os.environ.get("G4F_SSE_LOG_MAX_BYTES", "65536"))
+                except ValueError:
+                    capture_limit = 65536
+                capture_limit = max(0, min(capture_limit, 1024 * 1024))
+                sse_capture = bytearray()
+                sse_truncated = False
                 orig_iterator = response.body_iterator
 
                 async def tee_iterator():
+                    nonlocal sse_truncated
                     async for chunk in orig_iterator:
-                        if isinstance(chunk, bytes):
-                            sse_chunks.append(chunk)
-                        else:
-                            sse_chunks.append(chunk.encode("utf-8", errors="replace"))
+                        encoded = chunk if isinstance(chunk, bytes) else chunk.encode("utf-8", errors="replace")
+                        if _append_bounded_capture(sse_capture, encoded, capture_limit):
+                            sse_truncated = True
                         yield chunk
-                    # After iteration completes, parse and store the full SSE body
-                    raw = b"".join(sse_chunks)
-                    parsed = _try_parse_body(raw, "text/plain")
-                    log_entry["response_body"] = parsed
-                    # Streaming errors arrive as 200 responses with error
-                    # chunks inside the SSE body – save those HARs too.
+                    raw = bytes(sse_capture)
+                    log_entry["response_body"] = f"<{len(raw)} diagnostic bytes omitted>"
+                    if sse_truncated:
+                        log_entry["response_body_truncated"] = True
+                    # The retained tail still captures terminal SSE errors while
+                    # memory remains bounded independently of generation length.
                     has_stream_error = _sse_body_has_error(raw)
                     if has_stream_error:
                         log_entry["stream_error"] = True
@@ -794,7 +965,7 @@ def create_app():
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "method": request.method,
                 "path": path,
-                "query": request.url.query or None,
+                "query": _sanitize_query(request.url.query) or None,
                 "status": response.status_code,
                 "duration_ms": duration_ms,
                 "user": user or None,
@@ -873,7 +1044,7 @@ def create_app_debug():
 def create_app_with_gui_and_debug():
     g4f.debug.logging = True
     AppConfig.gui = True
-    os.environ["G4F_ENABLE_AUDIT_LOG"] = os.environ.get("G4F_ENABLE_AUDIT_LOG", "1")
+    # Body capture remains disabled unless G4F_CAPTURE_BODIES is explicitly enabled.
     return create_app()
 
 
@@ -981,45 +1152,62 @@ class Api:
                 "Register authentication key:",
                 "".join(["*" for _ in range(len(AppConfig.g4f_api_key))]),
             )
+        auth_mode = _api_auth_mode()
+        from .limits import PrincipalLimiter
+        limiter = PrincipalLimiter(
+            requests_per_minute=_bounded_api_env_int("G4F_RATE_LIMIT_PER_MINUTE", 120, 1, 100000),
+            max_in_flight=_bounded_api_env_int("G4F_MAX_INFLIGHT_PER_PRINCIPAL", 4, 1, 10000),
+        )
         if has_crypto:
             private_key, _ = create_or_read_keys()
             session_key = get_session_key()
 
         @self.app.middleware("http")
         async def authorization(request: Request, call_next):
-            user = request.headers.get("x-user")
-            if user and user.startswith("XX:") and request.headers.get("cf-ipcountry"):
-                user = f"{request.headers.get('cf-ipcountry')}:{user[3:]}"
-            remove_authorization_header = False
-            if (
-                request.method != "OPTIONS"
-                and AppConfig.g4f_api_key is not None
-            ):
+            if request.method == "OPTIONS" or request.url.path in {"/health/live", "/health/ready"}:
+                return await call_next(request)
+            configured_key = AppConfig.g4f_api_key
+            if auth_mode == "required" and not configured_key:
+                return JSONResponse(
+                    status_code=HTTP_503_SERVICE_UNAVAILABLE,
+                    content={"error": {"code": "auth_misconfigured", "message": "G4F_AUTH_MODE=required needs G4F_API_KEY configured"}},
+                )
+            if not configured_key:
+                # Explicit local/optional mode preserves the upstream keyless
+                # development workflow. No client-supplied x-user is promoted
+                # into an authenticated principal.
+                request.state.principal_id = None
+                request.state.authenticated = False
+                return await _call_with_principal_limit(request, call_next, limiter)
+
+            valid_key = _matches_api_key(configured_key, request.headers)
+            if valid_key:
+                principal_id = _principal_id("key", hashlib.sha256(configured_key.encode("utf-8")).hexdigest())
+                request.state.principal_id = principal_id
+                request.state.authenticated = True
+                # Do not let a caller choose another principal via x-user.
+                request = update_headers(request, principal_id, False)
+            else:
                 try:
-                    user_g4f_api_key = await self.get_g4f_api_key(request)
-                except HTTPException:
-                    user_g4f_api_key = getattr(
-                        await self.security(request), "credentials", None
+                    verified_user = await self.get_username(request)
+                except HTTPException as exc:
+                    return ErrorResponse.from_message(
+                        exc.detail, exc.status_code, exc.headers
                     )
-                    remove_authorization_header = True
-                if (
-                    AppConfig.g4f_api_key is None
-                    or not user_g4f_api_key
-                    or not secrets.compare_digest(
-                        AppConfig.g4f_api_key, user_g4f_api_key
+                if not verified_user:
+                    return JSONResponse(
+                        status_code=HTTP_401_UNAUTHORIZED,
+                        content={"error": {"code": "invalid_api_key", "message": "A valid API key or authenticated session is required"}},
                     )
-                ):
-                    try:
-                        new_user = await self.get_username(request)
-                        if new_user:
-                            remove_authorization_header = True
-                            user = new_user
-                    except HTTPException as e:
-                        return ErrorResponse.from_message(
-                            e.detail, e.status_code, e.headers
-                        )
-                request = update_headers(request, user, remove_authorization_header)
-            response = await call_next(request)
+                # Basic auth verifies the same configured API secret; the
+                # client-controlled Basic username is not an independent identity.
+                principal_id = _principal_id(
+                    "key", hashlib.sha256(configured_key.encode("utf-8")).hexdigest()
+                )
+                request.state.principal_id = principal_id
+                request.state.authenticated = True
+                request = update_headers(request, principal_id, True)
+            response = await _call_with_principal_limit(request, call_next, limiter)
             return response
 
     def register_validation_exception_handler(self):

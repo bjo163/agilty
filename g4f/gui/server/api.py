@@ -7,6 +7,7 @@ import os
 import time
 import asyncio
 import threading
+import tempfile
 from pathlib import Path
 from typing import Iterator
 from flask import send_from_directory, request
@@ -226,18 +227,34 @@ class Api:
 
     @staticmethod
     def _write_providers_cache(result: list) -> bool:
-        """Persist the provider list to a JSON file inside the g4f package."""
+        """Persist provider metadata atomically to avoid partial cache files."""
         global _providers_cache_writable
         if not _providers_cache_writable:
             return False
+        temporary_path = None
         try:
-            with open(Api._providers_cache_file(), "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+            cache_path = Api._providers_cache_file()
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=cache_path.parent,
+                prefix=f".{cache_path.name}.", suffix=".tmp", delete=False,
+            ) as handle:
+                temporary_path = Path(handle.name)
+                json.dump(result, handle, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, cache_path)
             return True
         except OSError as e:
-            logger.warning(f"Failed to write providers cache: {e}")
+            logger.warning("Failed to write providers cache: %s", e)
             _providers_cache_writable = False
             return False
+        finally:
+            if temporary_path is not None and temporary_path.exists():
+                try:
+                    temporary_path.unlink()
+                except OSError:
+                    logger.debug("Failed to remove temporary provider cache file", exc_info=True)
 
     @staticmethod
     def _read_providers_cache() -> list | None:
@@ -367,12 +384,14 @@ class Api:
         download_media: bool = True,
         tempfiles: list[str] = [],
     ) -> Iterator:
+        request_logs: list[str] = []
+
         def decorated_log(*values: str, file=None):
-            debug.logs.append(" ".join([str(value) for value in values]))
+            request_logs.append(" ".join(str(value) for value in values))
             if debug.logging:
                 debug.log_handler(*values, file=file)
 
-        debug.log = decorated_log
+        log_token = debug.set_request_log_sink(decorated_log)
         proxy = os.environ.get("G4F_PROXY")
         try:
             model = kwargs.get("model")
@@ -383,18 +402,19 @@ class Api:
                 debug.error("Referrer:", kwargs.get("referer", ""))
                 debug.error("User-Agent:", kwargs.get("user-agent", ""))
         except Exception as e:
+            debug.reset_request_log_sink(log_token)
             logger.exception(e)
             yield self._format_json(
                 "error", type(e).__name__, message=get_error_message(e)
             )
             return
-        if not isinstance(provider_handler, BaseRetryProvider):
-            yield self.handle_provider(provider_handler, model)
-            if hasattr(provider_handler, "get_parameters"):
-                yield self._format_json(
-                    "parameters", provider_handler.get_parameters(as_json=True)
-                )
         try:
+            if not isinstance(provider_handler, BaseRetryProvider):
+                yield self.handle_provider(provider_handler, model)
+                if hasattr(provider_handler, "get_parameters"):
+                    yield self._format_json(
+                        "parameters", provider_handler.get_parameters(as_json=True)
+                    )
             result = iter_run_tools(
                 provider_handler,
                 **{
@@ -536,18 +556,19 @@ class Api:
                 "error", type(e).__name__, message=get_error_message(e)
             )
         finally:
-            yield from self._yield_logs()
-            for tempfile in tempfiles:
-                try:
-                    os.remove(tempfile)
-                except Exception as e:
-                    logger.exception(e)
+            try:
+                yield from self._yield_logs(request_logs)
+            finally:
+                debug.reset_request_log_sink(log_token)
+                for tempfile in tempfiles:
+                    try:
+                        os.remove(tempfile)
+                    except Exception as e:
+                        logger.exception(e)
 
-    def _yield_logs(self):
-        if debug.logs:
-            for log in debug.logs:
-                yield self._format_json("log", log)
-            debug.logs = []
+    def _yield_logs(self, request_logs: list[str] | None = None):
+        for log in request_logs or ():
+            yield self._format_json("log", log)
 
     def _format_json(self, response_type: str, content=None, **kwargs):
         if content is not None and isinstance(response_type, str):

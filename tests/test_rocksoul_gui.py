@@ -433,8 +433,17 @@ def test_canonical_compose_has_healthcheck_restart_and_api_key_configuration():
     assert "restart: unless-stopped" in compose
     assert "init: true" in compose
     assert "healthcheck:" in compose
-    assert "/backend-api/v2/status" in compose
+    assert "/health/ready" in compose
     assert "G4F_API_KEY=${G4F_API_KEY:-}" in compose
+    assert "G4F_AUTH_MODE=${G4F_AUTH_MODE:-optional}" in compose
+    assert "G4F_RATE_LIMIT_PER_MINUTE=${G4F_RATE_LIMIT_PER_MINUTE:-120}" in compose
+    assert "G4F_MAX_INFLIGHT_PER_PRINCIPAL=${G4F_MAX_INFLIGHT_PER_PRINCIPAL:-4}" in compose
+    assert "G4F_EXTRACTION_TIMEOUT_SECONDS=${G4F_EXTRACTION_TIMEOUT_SECONDS:-30}" in compose
+    assert "G4F_EXTRACTION_MAX_OUTPUT_CHARS=${G4F_EXTRACTION_MAX_OUTPUT_CHARS:-1000000}" in compose
+    assert "G4F_EXTRACTION_CPU_SECONDS=${G4F_EXTRACTION_CPU_SECONDS:-25}" in compose
+    assert "G4F_EXTRACTION_MAX_MEMORY_MB=${G4F_EXTRACTION_MAX_MEMORY_MB:-1536}" in compose
+    assert "G4F_EXTRACTION_MAX_WORKERS=${G4F_EXTRACTION_MAX_WORKERS:-2}" in compose
+    assert "G4F_MAX_IMAGE_PIXELS=${G4F_MAX_IMAGE_PIXELS:-40000000}" in compose
     assert "G4F_GUI_TRUSTED_IPS=" in compose
     assert "g4f-data:/data/g4f" in compose
 
@@ -545,7 +554,7 @@ def test_rocksoul_theme_text_tokens_meet_wcag_aa_contrast():
     def variables(selector):
         match = re.search(selector + r"\{([^}]+)\}", styles)
         assert match, selector
-        return dict(re.findall(r"(--[a-z-]+):(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))", match.group(1)))
+        return dict(re.findall(r"(--[a-z-]+):(#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3}))", match.group(1)))
 
     def luminance(color):
         value = color.lstrip("#")
