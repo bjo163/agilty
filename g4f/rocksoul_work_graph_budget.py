@@ -8,7 +8,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .rocksoul_contracts import ExecutionBudget, WorkItem
+from .rocksoul_contracts import ExecutionBudget, WorkItem, _PERMISSION_PATTERN
 from .rocksoul_work_graph import WorkGraph, WorkGraphValidationError
 
 
@@ -99,7 +99,7 @@ def resolve_graph_budget_and_authority(
         raise WorkGraphBudgetError("validated WorkGraph and WorkGraphBudget are required")
     if not isinstance(graph_permissions, tuple) or len(graph_permissions) > 100:
         raise WorkGraphBudgetError("graph_permissions must be a tuple of at most 100 exact capabilities")
-    if any(not isinstance(p, str) or not p or p.strip() != p or p != p.lower() or "*" in p for p in graph_permissions):
+    if any(not isinstance(p, str) or not _PERMISSION_PATTERN.fullmatch(p) for p in graph_permissions):
         raise WorkGraphBudgetError("graph permissions must be exact lowercase capability identifiers")
     if len(set(graph_permissions)) != len(graph_permissions):
         raise WorkGraphBudgetError("graph permissions must be unique")
