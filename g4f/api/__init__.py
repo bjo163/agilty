@@ -707,6 +707,53 @@ def _principal_id(kind: str, value: str) -> str:
     return f"{kind}_{digest}"
 
 
+def _bounded_api_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(value, maximum))
+
+
+async def _call_with_principal_limit(request: Request, call_next, limiter):
+    from .limits import PrincipalLimiter
+
+    principal_id = getattr(request.state, "principal_id", None)
+    if not principal_id:
+        # Do not trust X-Forwarded-For unless a separately configured proxy
+        # trust boundary has validated it.
+        principal_id = f"ip:{request.client.host if request.client else 'unknown'}"
+    allowed, retry_after = await limiter.acquire(principal_id)
+    if not allowed:
+        return JSONResponse(
+            status_code=HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(max(1, int(retry_after)))},
+            content={"error": {
+                "code": "rate_limit_exceeded",
+                "message": "Request rate or concurrent request limit exceeded",
+            }},
+        )
+    try:
+        response = await call_next(request)
+    except BaseException:
+        await limiter.release(principal_id)
+        raise
+    if response.headers.get("content-type", "").lower().startswith(("text/event-stream", "application/octet-stream")):
+        iterator = response.body_iterator
+
+        async def release_after_stream():
+            try:
+                async for chunk in iterator:
+                    yield chunk
+            finally:
+                await limiter.release(principal_id)
+
+        response.body_iterator = release_after_stream()
+    else:
+        await limiter.release(principal_id)
+    return response
+
+
 def create_app():
     app = FastAPI(lifespan=lifespan)
 
@@ -1092,6 +1139,11 @@ class Api:
                 "".join(["*" for _ in range(len(AppConfig.g4f_api_key))]),
             )
         auth_mode = _api_auth_mode()
+        from .limits import PrincipalLimiter
+        limiter = PrincipalLimiter(
+            requests_per_minute=_bounded_api_env_int("G4F_RATE_LIMIT_PER_MINUTE", 120, 1, 100000),
+            max_in_flight=_bounded_api_env_int("G4F_MAX_INFLIGHT_PER_PRINCIPAL", 4, 1, 10000),
+        )
         if has_crypto:
             private_key, _ = create_or_read_keys()
             session_key = get_session_key()
@@ -1111,7 +1163,8 @@ class Api:
                 # development workflow. No client-supplied x-user is promoted
                 # into an authenticated principal.
                 request.state.principal_id = None
-                return await call_next(request)
+                request.state.authenticated = False
+                return await _call_with_principal_limit(request, call_next, limiter)
 
             supplied_key = None
             try:
@@ -1152,7 +1205,7 @@ class Api:
                 request.state.principal_id = principal_id
                 request.state.authenticated = True
                 request = update_headers(request, principal_id, True)
-            response = await call_next(request)
+            response = await _call_with_principal_limit(request, call_next, limiter)
             return response
 
     def register_validation_exception_handler(self):
