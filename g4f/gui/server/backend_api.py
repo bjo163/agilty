@@ -4,6 +4,7 @@ import json
 import multiprocessing
 from importlib.util import find_spec
 import threading
+import warnings
 import hmac
 import ipaddress
 import flask
@@ -1210,19 +1211,33 @@ class Backend_Api(Api):
                     image_size = {}
                     if has_pillow:
                         try:
-                            image = Image.open(copyfile)
-                            width, height = image.size
-                            image_size = {"width": width, "height": height}
-                            thumbnail_dir = os.path.join(bucket_dir, "thumbnail")
-                            os.makedirs(thumbnail_dir, exist_ok=True)
-                            width, height = process_image(
-                                image, save=os.path.join(thumbnail_dir, filename)
+                            max_pixels = _bounded_int_env(
+                                "G4F_MAX_IMAGE_PIXELS", 40_000_000, 1_000_000, 200_000_000
                             )
-                            image_size = {"width": width, "height": height}
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                                with Image.open(copyfile) as image:
+                                    width, height = image.size
+                                    image_size = {"width": width, "height": height}
+                                    if width * height > max_pixels:
+                                        extraction_errors.append({
+                                            "name": filename, "code": "image_pixel_limit_exceeded"
+                                        })
+                                    else:
+                                        thumbnail_dir = os.path.join(bucket_dir, "thumbnail")
+                                        os.makedirs(thumbnail_dir, exist_ok=True)
+                                        width, height = process_image(
+                                            image, save=os.path.join(thumbnail_dir, filename)
+                                        )
+                                        image_size = {"width": width, "height": height}
                         except UnidentifiedImageError:
                             pass
-                        except Exception as e:
-                            logger.exception(e)
+                        except (Image.DecompressionBombWarning, Image.DecompressionBombError):
+                            extraction_errors.append({
+                                "name": filename, "code": "image_decompression_limit_exceeded"
+                            })
+                        except Exception:
+                            logger.exception("Image thumbnail processing failed")
                     if result:
                         media.append({"name": filename, "text": result, **image_size})
                     else:
